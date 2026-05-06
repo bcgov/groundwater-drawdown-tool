@@ -21,6 +21,17 @@ Changed, Fixed, Removed.
   launches an empty Dash app on `localhost:8050` and logs the tool
   version on startup.
 - Committed `uv.lock` for reproducible installs.
+- Phase 2 core math (no UI): `core/units.py` (BCGW field conversions
+  plus the CSV-driven pumping-rate unit table), `core/crs_utils.py`
+  (WGS84 <-> BC Albers via cached `pyproj.Transformer`), `core/drawdown.py`
+  (Cooper-Jacob with r->0.1 m fallback, u<0.01 validity check, and a
+  superposition-ready signature accepting a list of pumping sources),
+  `core/aquifer_lookup.py` (T/S defaults from `data/ts_lookup.csv`),
+  `core/well_classification.py` (legacy `Impact!R` reassigned-material
+  rule), `core/sad.py` (legacy `Impact!U` SAD formula with three
+  status branches). All ported from the legacy Excel; verified against
+  the canonical case (`Q=3.97 L/s, T=250 m^2/d, S=0.005, t=180 d,
+  r=100 m`). 66 pytest tests, all passing.
 
 ### Removed
 
