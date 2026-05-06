@@ -8,14 +8,14 @@ in BC's Geographic Warehouse (BCGW).
 This is the developer-facing README. For end-user installation, see
 `CLIENT_INSTALL.md`.
 
+The specifications are largely derived from the client’s previous solution, which relied on IMAP and Excel-based tools.
+
 ## Documents to read first
 
 | File | Purpose |
 |---|---|
 | `PROJECT_PLAN.md` | The spec. Architecture, phase plan, working agreements. |
 | `DATA_REFERENCE.md` | BCGW column names, units, T/S lookup, SQL templates. |
-| `DESIGN_NOTES.md` | Why Stage-1 choices look the way they do. |
-| `CLAUDE_CODE_PROMPT.md` | Kickoff prompt for the Claude Code session. |
 
 ## Tooling
 
@@ -68,7 +68,6 @@ groundwater-drawdown-tool/
 ├── PROJECT_PLAN.md             # full spec
 ├── DATA_REFERENCE.md           # BCGW columns, T/S lookup, SQL, SAD logic
 ├── DESIGN_NOTES.md             # Stage-1 design rationale
-├── CLAUDE_CODE_PROMPT.md       # Claude Code kickoff
 ├── setup.bat                   # first-run installer for end users
 ├── run.bat                     # daily-use launcher (calls update.bat in Phase 6+)
 ├── update.bat                  # auto-update from share (Phase 6+)
@@ -125,42 +124,13 @@ Why: see `DESIGN_NOTES.md`.
 
 | Key | Required | Purpose |
 |---|---|---|
-| `BCGW_USER` | yes | Oracle username for BCGW |
-| `BCGW_PASSWORD` | yes | Oracle password |
-| `BCGW_DSN` | yes | Connection string (host:port/service) |
 | `LOG_LEVEL` | no | Default: `INFO` |
 | `OUTPUT_DIR` | no | Default: `./outputs` |
 | `DASH_DEBUG` | no | Default: `false` |
-| `DEFAULT_PUMPING_DURATION_DAYS` | no | Default: `100`. Placeholder, Q4/Q10. |
-| `AT_RISK_DRAWDOWN_FRACTION` | no | Default: `0.30`. Placeholder, Q3. |
+| `DEFAULT_PUMPING_DURATION_DAYS` | no | Default: `100`. |
+| `AT_RISK_DRAWDOWN_FRACTION` | no | Default: `0.30`. |
 | `UPDATE_CHECK_SHARE` | no | Network share path for auto-update (Phase 6+). Empty disables the check. |
 
-Missing required keys cause startup to fail loudly. Don't paper over this
-with defaults.
-
-## Known placeholders
-
-These are tagged in code as `# CLIENT_TBD: Q<n>`. Grep for them when client
-answers come in.
-
-- **Q1** — T/S lookup by aquifer subtype. Now matches the legacy Excel
-  `AquiferProperty_DB` (Wei et al. 2009 medians); effectively closed.
-- **Q3** — at-risk drawdown threshold; default 30% of SAD (matches legacy
-  Excel).
-- **Q4 / Q10** — default pumping duration; default 100 days (matches legacy
-  Excel for east-coast Vancouver Island; confirm for other regions).
-- **Q5** — multi-well superposition not exposed in UI (single-well Stage 1).
-  `core/drawdown.py` is already superposition-ready.
-- **Q7** — legacy Excel received as `iMapBCDistDrawdown_20241108.xlsx`;
-  now used as the validation harness for `core/drawdown.py`.
-- **Q11** — SAD calculation for confined / bedrock wells. v1 uses the
-  unconfined-style formula and flags these wells with a "manual review"
-  note plus a per-well override field.
-- **Q12** — single-aquifer filter default behaviour. v1 default-on.
-- **Q13** — `> 5 ft` bedrock-depth threshold in the reassigned-material
-  rule. v1 ports the legacy Excel verbatim.
-
-Full list in `PROJECT_PLAN.md` section 7.
 
 ## Coordinate reference systems
 
@@ -171,4 +141,4 @@ Full list in `PROJECT_PLAN.md` section 7.
 
 ## License
 
-To be determined. For internal client delivery initially.
+To be determined.
