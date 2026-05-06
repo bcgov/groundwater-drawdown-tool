@@ -1,0 +1,44 @@
+# Environment / secrets
+.env
+
+# uv / Python
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Build artifacts
+build/
+dist/
+*.egg
+
+# Tool outputs
+outputs/
+logs/
+*.log
+
+# Server-side session store
+flask_session/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# kickoff prompt - not for public consumption
+PROMPT.md
+
+# Client-confidential reference materials (kept locally only)
+references/iMapBCDistDrawdown_20241108.xlsx
+references/legacy_workflow_deck.pptx
+references/proposal_deck.pptx

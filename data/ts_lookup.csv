@@ -1,0 +1,13 @@
+subtype_code,subtype_description,T_m2_per_day,S_dimensionless,valid
+1a,Unconfined sand and gravel - large river system,4500,0.3,yes
+1b,Unconfined sand and gravel aquifer - medium stream system,1300,0.3,yes
+1c,Unconfined sand and gravel aquifer - small stream system,200,0.02,yes
+2,Unconfined sand and gravel - deltaic,1049,0.02,yes
+3,Unconfined sand and gravel - alluvial or colluvial fan,710,0.019,yes
+4a,Unconfined sand and gravel - late glacial outwash,690,0.02,yes
+4b,Confined sand and gravel - glacial,250,0.005,yes
+4c,Confined sand and gravel - glacio-marine,150,0.005,yes
+5a,Fractured sedimentary rock,4,0.00003,yes
+5b,Karstic limestone,,,no
+6a,Flat-lying to gently-dipping volcanic bedrock,23,0.00064,yes
+6b,Fractured crystalline bedrock,1.7,0.00064,yes
