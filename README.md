@@ -35,9 +35,11 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 
 # In the project directory:
 uv sync
-copy .env.example .env
-# Edit .env with your BCGW credentials
 ```
+
+No `.env` file is needed. BCGW credentials are entered at runtime through
+the login UI. Optional override variables (logging level, output dir, etc.)
+are listed below — create a `.env` only if you need to change a default.
 
 Run the app:
 
@@ -60,7 +62,6 @@ groundwater-drawdown-tool/
 ├── pyproject.toml              # uv-managed deps + project metadata
 ├── uv.lock                     # locked versions, committed
 ├── .python-version             # pins Python 3.13
-├── .env.example                # optional override template; real .env is gitignored
 ├── version.txt                 # current tool version (single line, e.g. 0.1.0)
 ├── CHANGELOG.md                # human-readable release notes
 ├── README.md                   # this file (developer setup)
@@ -120,16 +121,22 @@ ui  →  core, data_access  →  config
 
 Why: see `DESIGN_NOTES.md`.
 
-## Environment variables (`.env`)
+## Optional environment overrides
 
-| Key | Required | Purpose |
+The tool ships with sensible defaults for every tunable. Create a `.env`
+file at the project root only if you need to override one. BCGW credentials
+are **not** in here — they are entered at runtime through the login UI.
+
+| Key | Default | Purpose |
 |---|---|---|
-| `LOG_LEVEL` | no | Default: `INFO` |
-| `OUTPUT_DIR` | no | Default: `./outputs` |
-| `DASH_DEBUG` | no | Default: `false` |
-| `DEFAULT_PUMPING_DURATION_DAYS` | no | Default: `100`. |
-| `AT_RISK_DRAWDOWN_FRACTION` | no | Default: `0.30`. |
-| `UPDATE_CHECK_SHARE` | no | Network share path for auto-update (Phase 6+). Empty disables the check. |
+| `LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
+| `OUTPUT_DIR` | `./outputs` | Where CSV / GeoJSON / PDF exports are written |
+| `DASH_DEBUG` | `false` | Enable Dash hot-reload during development |
+| `DEFAULT_PUMPING_DURATION_DAYS` | `100` | Legacy Excel default. CLIENT_TBD: Q4, Q10. |
+| `AT_RISK_DRAWDOWN_FRACTION` | `0.30` | Drawdown / SAD ratio that flags a well at-risk. CLIENT_TBD: Q3. |
+| `COOPER_JACOB_U_THRESHOLD` | `0.01` | Validity threshold for `u = r²S / (4Tt)` |
+| `SESSION_TIMEOUT_HOURS` | `8` | Inactive session expiry before re-login |
+| `UPDATE_CHECK_SHARE` | (empty) | Network share path for Phase 6 auto-updater. Empty disables. |
 
 
 ## Coordinate reference systems

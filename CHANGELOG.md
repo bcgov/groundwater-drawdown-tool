@@ -15,6 +15,18 @@ Changed, Fixed, Removed.
 ### Added
 
 - Initial project scaffolding.
+- Phase 1 skeleton: `src/gwdrawdown/` package layout (`core/`,
+  `data_access/`, `ui/{pages,components}/`), `config.py` with hardcoded
+  `BCGW_DSN` and env-overridable defaults, and an `app.py` stub that
+  launches an empty Dash app on `localhost:8050` and logs the tool
+  version on startup.
+- Committed `uv.lock` for reproducible installs.
+
+### Removed
+
+- `.env.example`. The tool runs without a `.env`; BCGW credentials are
+  entered through the login UI at runtime. Override variables are
+  documented in `README.md`.
 
 ## [0.1.0] — TBD
 
