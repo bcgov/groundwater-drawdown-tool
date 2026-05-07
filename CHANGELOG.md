@@ -56,6 +56,33 @@ Changed, Fixed, Removed.
   user + Logout link. Setup and results pages are 4a stubs
   (sub-stages 4b and 4c will fill them in). Verified end-to-end in
   the browser with valid and invalid BCGW credentials.
+- Phase 4b setup page + analysis pipeline. New `core/flagging.py`
+  combines drawdown + SAD into a `WellStatus` (OK / AT_RISK /
+  INSUFFICIENT_DATA / SUSPECT_DATA / OUTSIDE_VALIDITY); SUSPECT_DATA
+  fires when GWELLS reports static water level deeper than the well
+  bottom (e.g. WTN 96473), so the UI can flag the baseline record
+  for review rather than the proposed pumping. New `analysis.py`
+  orchestrates BCGW queries -> per-well SI conversion -> Cooper-Jacob
+  -> SAD -> classification -> flagging, with a pure
+  `_compute_well_result` function that's unit-tested without a
+  database. The Cooper-Jacob u<0.01 validity check is bypassed at
+  the pipeline level pending client confirmation (math still computes
+  u_max for diagnostics; revert is a one-line change). Real setup
+  page replaces the 4a stub with three input modes (map click /
+  lat-lon / WTN with auto-aquifer), source-aquifer picker for stacked
+  polygons, T/S override checkbox with full-precision float display,
+  pumping-rate dropdown driven by `data/unit_conversions.csv`,
+  duration presets (30 d / 100 d / 1 yr / 10 yr), buffer radius
+  (default 1000 m), same-aquifer filter (default on per Q12). Run
+  Analysis opens results in a new browser tab via clientside
+  callback so the user can iterate on the setup page without losing
+  earlier results. Results page in 4b is a textual dump of the
+  pipeline output (sub-stage 4c builds the chart, tables, and map).
+  Hardened the auth shell: `is_authenticated()` now also verifies
+  the BCGW pool is open (clears stale sessions left over from a
+  previous app run); `SESSION_USE_SIGNER=True` so cookies issued
+  before a `SECRET_KEY` rotation are rejected. 96 pytest tests
+  passing (16 new flagging + 14 analysis); ruff clean.
 
 ### Removed
 

@@ -25,7 +25,7 @@ from pathlib import Path
 
 import dash
 import flask
-from dash import html
+from dash import dcc, html
 from flask_session import Session
 
 from gwdrawdown import config
@@ -58,6 +58,12 @@ def _configure_sessions(server: flask.Flask) -> None:
         SESSION_COOKIE_HTTPONLY=True,
         # Local HTTP only in Stage 1; deployment will flip this on.
         SESSION_COOKIE_SECURE=False,
+        # Sign the session-id cookie with SECRET_KEY. Combined with the
+        # per-process random SECRET_KEY above, this means cookies issued
+        # by a previous app run are rejected after a restart, so a
+        # browser tab cannot land on /setup with a stale session while
+        # the BCGW pool is gone.
+        SESSION_USE_SIGNER=True,
     )
     Session(server)
 
@@ -89,7 +95,16 @@ def create_app() -> dash.Dash:
     )
     _configure_sessions(app.server)
     _register_routes(app.server)
-    app.layout = html.Div([dash.page_container])
+    app.layout = html.Div(
+        [
+            # App-level store: setup page writes the AnalysisInputs JSON
+            # here, results page reads it back. Session storage so a
+            # browser reload doesn't lose the inputs while the user is
+            # iterating, but the data drops on tab close.
+            dcc.Store(id="analysis-inputs", storage_type="session"),
+            dash.page_container,
+        ]
+    )
     return app
 
 
