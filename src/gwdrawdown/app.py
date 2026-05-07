@@ -1,49 +1,95 @@
 """Dash entry point for the Groundwater Drawdown Tool.
 
-Phase 1 stub: launches an empty Dash app on http://localhost:8050 and
-logs the tool version on startup. The login page, multi-page routing,
-session handling, and the analysis pipeline land in later phases. See
-PROJECT_PLAN.md §6 for the build order.
+Wires up:
+
+- The Dash app with multi-page routing (``use_pages=True``) — pages are
+  auto-discovered from ``src/gwdrawdown/ui/pages``.
+- Server-side session storage (Flask-Session, filesystem backend at
+  ``config.SESSION_DIR``) with the configured inactivity timeout
+  (``config.SESSION_TIMEOUT_HOURS``).
+- A Flask ``/logout`` route that closes the BCGW connection pool,
+  clears the session, and redirects to ``/login``. Logout is an
+  action, not a view, so it lives outside the Dash page registry.
+
+The connection pool is **not** opened here — it is opened by the login
+handler in ``ui/pages/login_page.py`` after the user's credentials are
+verified. See PROJECT_PLAN.md §6 phase 4 and DESIGN_NOTES.md.
 """
 
 from __future__ import annotations
 
 import logging
+import secrets
+from datetime import timedelta
+from pathlib import Path
 
 import dash
+import flask
 from dash import html
+from flask_session import Session
 
 from gwdrawdown import config
+from gwdrawdown.data_access import close_pool
 
 logger = logging.getLogger(__name__)
 
 
 def _configure_logging() -> None:
-    """Set up the root logger. File rotation is added in Phase 5."""
+    """Set up the root logger. File rotation lands in Phase 5."""
     logging.basicConfig(
         level=config.LOG_LEVEL,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
 
+def _configure_sessions(server: flask.Flask) -> None:
+    """Install Flask-Session with the project's filesystem backend."""
+    config.SESSION_DIR.mkdir(parents=True, exist_ok=True)
+    server.config.update(
+        # SECRET_KEY is regenerated at every process start. That invalidates
+        # cookies issued by previous runs, which is acceptable for Stage 1
+        # (single user, local) — they just sign in again.
+        SECRET_KEY=secrets.token_hex(32),
+        SESSION_TYPE="filesystem",
+        SESSION_FILE_DIR=str(config.SESSION_DIR),
+        SESSION_PERMANENT=True,
+        PERMANENT_SESSION_LIFETIME=timedelta(hours=config.SESSION_TIMEOUT_HOURS),
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_HTTPONLY=True,
+        # Local HTTP only in Stage 1; deployment will flip this on.
+        SESSION_COOKIE_SECURE=False,
+    )
+    Session(server)
+
+
+def _register_routes(server: flask.Flask) -> None:
+    """Register Flask routes that sit alongside Dash's page routing."""
+
+    @server.route("/logout")
+    def logout() -> flask.Response:
+        user = flask.session.get("user")
+        if user is not None:
+            logger.info("User %r logging out", user)
+        try:
+            close_pool()
+        finally:
+            flask.session.clear()
+        return flask.redirect("/login")
+
+
 def create_app() -> dash.Dash:
     """Build and return the Dash application instance."""
-    app = dash.Dash(__name__, title="Groundwater Drawdown Tool")
-    app.layout = html.Div(
-        [
-            html.H1("Groundwater Drawdown Tool"),
-            html.P(f"Version {config.version()} — Phase 1 skeleton."),
-            html.P(
-                "Login, setup, and results pages are added in later phases. "
-                "See PROJECT_PLAN.md."
-            ),
-        ],
-        style={
-            "fontFamily": "sans-serif",
-            "padding": "2rem",
-            "maxWidth": "640px",
-        },
+    pages_folder = Path(__file__).resolve().parent / "ui" / "pages"
+    app = dash.Dash(
+        __name__,
+        title="Groundwater Drawdown Tool",
+        use_pages=True,
+        pages_folder=str(pages_folder),
+        suppress_callback_exceptions=True,
     )
+    _configure_sessions(app.server)
+    _register_routes(app.server)
+    app.layout = html.Div([dash.page_container])
     return app
 
 

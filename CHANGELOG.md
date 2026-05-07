@@ -45,6 +45,17 @@ Changed, Fixed, Removed.
   gravel and 198 bedrock); all four queries return sensible results.
   Three new optional config keys: `DB_POOL_MIN`, `DB_POOL_MAX`,
   `DB_POOL_INCREMENT` (defaults 1/2/1).
+- Phase 4a auth shell: multi-page Dash app (`use_pages=True`),
+  server-side sessions via Flask-Session (filesystem backend at
+  `config.SESSION_DIR`, lifetime `config.SESSION_TIMEOUT_HOURS`),
+  `/login` page that runs `SELECT 1 FROM DUAL` to verify BCGW
+  credentials before calling `data_access.init_pool` and redirecting
+  to `/setup`, Flask `/logout` route that closes the pool and clears
+  the session, root redirect `/` -> `/setup` if authenticated else
+  `/login`, footer component on every page showing version + signed-in
+  user + Logout link. Setup and results pages are 4a stubs
+  (sub-stages 4b and 4c will fill them in). Verified end-to-end in
+  the browser with valid and invalid BCGW credentials.
 
 ### Removed
 
