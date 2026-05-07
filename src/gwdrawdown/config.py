@@ -81,6 +81,12 @@ SESSION_TIMEOUT_HOURS: Final[float] = float(
     os.environ.get("SESSION_TIMEOUT_HOURS", "8")
 )
 
+# Connection-pool sizing. Single-user app, so 1/2 is enough; the abstraction
+# is kept for Stage 2 (more sessions per process). See PROJECT_PLAN.md §4.1.
+DB_POOL_MIN: Final[int] = int(os.environ.get("DB_POOL_MIN", "1"))
+DB_POOL_MAX: Final[int] = int(os.environ.get("DB_POOL_MAX", "2"))
+DB_POOL_INCREMENT: Final[int] = int(os.environ.get("DB_POOL_INCREMENT", "1"))
+
 
 def version() -> str:
     """Return the current tool version as written in version.txt.

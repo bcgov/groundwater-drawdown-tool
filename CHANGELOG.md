@@ -32,6 +32,19 @@ Changed, Fixed, Removed.
   status branches). All ported from the legacy Excel; verified against
   the canonical case (`Q=3.97 L/s, T=250 m^2/d, S=0.005, t=180 d,
   r=100 m`). 66 pytest tests, all passing.
+- Phase 3 data access: `data_access/db.py` (lazy `oracledb` thin-mode
+  pool; `init_pool` called by the future login handler, `get_connection`
+  context manager that raises `PoolNotInitialisedError` pre-login,
+  `close_pool` on logout/shutdown), `data_access/queries.py`
+  (parameterised SQL templates for the four BCGW queries from
+  `DATA_REFERENCE.md` §6: nearby wells with optional same-aquifer
+  filter, aquifers-at-point returning a list for stacked polygons,
+  subtype-code lookup, well-by-tag), `scripts/smoke_test_db.py`
+  (`getpass`-based developer smoke test). Verified live against BCGW
+  using the Cowichan Bay test point (intersects aquifer 186 sand &
+  gravel and 198 bedrock); all four queries return sensible results.
+  Three new optional config keys: `DB_POOL_MIN`, `DB_POOL_MAX`,
+  `DB_POOL_INCREMENT` (defaults 1/2/1).
 
 ### Removed
 
