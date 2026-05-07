@@ -1,11 +1,24 @@
-"""Results page — sub-stage 4b dump.
+"""Results page — sub-stage 4c.1 read-only dashboard.
 
-For 4b this page reads the ``analysis-inputs`` store written by the
-setup page, runs ``analysis.run_analysis`` against the live BCGW
-pool, and dumps the resulting ``AnalysisResult`` as a ``<pre>`` block
-of formatted text. Sub-stage 4c replaces the dump with the real
-dashboard (at-risk summary table, stat cards, distance-drawdown
-chart, colour-coded map, full per-well table).
+Layout from top:
+
+1. Header — H1 + "Back to Setup" link.
+2. Run summary — timestamp, signed-in user, source aquifer, T/S used
+   (with "(override)" tag when applicable), Q in m³/day, duration,
+   buffer radius, filter on/off.
+3. Stat cards — six status counts + max drawdown.
+4. At-risk wells table — `dash_table.DataTable` filtered to
+   ``WellStatus.AT_RISK`` only, with built-in CSV export. This is
+   the artifact attached to the licence-assessment file.
+5. Per-well details table — full 17-column table with sort, filter,
+   pagination (25/page), CSV export, fixed first column. Status cell
+   colour-coded per `WellStatus`.
+6. Footer.
+
+Sub-stage 4c.2 turns four cells of the per-well table into editable
+overrides (NPL, finished depth, stickup, top of fracture/screen) with
+per-row live recompute. Sub-stage 4c.3 adds the distance-drawdown
+chart and the colour-coded map.
 """
 
 from __future__ import annotations
@@ -18,7 +31,12 @@ from dash import Input, Output, callback, dcc, html
 
 from gwdrawdown.analysis import AnalysisInputs, AnalysisResult, run_analysis
 from gwdrawdown.ui.components.footer import make_footer
-from gwdrawdown.ui.session import is_authenticated
+from gwdrawdown.ui.components.results_table import (
+    make_at_risk_table,
+    make_full_well_table,
+)
+from gwdrawdown.ui.components.stat_cards import make_stat_cards
+from gwdrawdown.ui.session import current_user, is_authenticated
 
 dash.register_page(__name__, path="/results", name="Results")
 
@@ -27,16 +45,24 @@ logger = logging.getLogger(__name__)
 _PAGE_STYLE = {
     "fontFamily": "sans-serif",
     "padding": "1.5rem 2rem",
-    "maxWidth": "1100px",
+    "maxWidth": "1400px",
     "margin": "0 auto",
 }
+_SUMMARY_STYLE = {
+    "border": "1px solid #d0d0d0",
+    "borderRadius": "4px",
+    "padding": "0.75rem 1rem",
+    "marginBottom": "1.5rem",
+    "backgroundColor": "#fafafa",
+    "fontSize": "0.9rem",
+    "lineHeight": 1.6,
+}
 _PRE_STYLE = {
-    "backgroundColor": "#f5f5f5",
+    "backgroundColor": "#fdecea",
     "padding": "1rem",
     "borderRadius": "4px",
-    "fontSize": "0.8rem",
-    "overflowX": "auto",
-    "whiteSpace": "pre",
+    "color": "#b00020",
+    "whiteSpace": "pre-wrap",
 }
 
 
@@ -47,11 +73,16 @@ def layout(**_kwargs: object) -> html.Div:
         )
     return html.Div(
         [
-            html.H1("Results"),
-            html.P(
-                "Sub-stage 4b dump — pipeline output as raw text. "
-                "Sub-stage 4c will replace this with the chart, tables, "
-                "and map."
+            html.Div(
+                [
+                    html.H1("Results", style={"display": "inline-block", "marginRight": "1.5rem"}),
+                    dcc.Link(
+                        "← Back to Setup",
+                        href="/setup",
+                        style={"color": "#1565c0", "textDecoration": "none"},
+                    ),
+                ],
+                style={"display": "flex", "alignItems": "baseline", "gap": "1rem"},
             ),
             html.Div(id="results-output"),
             make_footer(),
@@ -60,80 +91,51 @@ def layout(**_kwargs: object) -> html.Div:
     )
 
 
-def _format_result(result: AnalysisResult) -> str:
-    inputs = result.inputs
-    lines: list[str] = []
-    lines.append("=" * 78)
-    lines.append("INPUTS")
-    lines.append("=" * 78)
-    lines.append(
-        f"Pumping point:       WGS84 ({inputs.pumping_lon:.6f}, "
-        f"{inputs.pumping_lat:.6f})"
-    )
-    lines.append(
-        f"                     BC Albers ({inputs.pumping_x_albers:.1f}, "
-        f"{inputs.pumping_y_albers:.1f})"
-    )
-    lines.append(
-        f"Source aquifer:      {inputs.source_aquifer_name} "
-        f"(id {inputs.source_aquifer_id}, subtype "
-        f"{inputs.source_subtype_code!r})"
-    )
-    lines.append(
-        f"T / S used:          T = {inputs.transmissivity_m2_per_day} m²/day, "
-        f"S = {inputs.storativity}"
-    )
-    lines.append(
-        f"Pumping rate:        Q = {inputs.Q_value} {inputs.Q_unit} "
-        f"= {inputs.Q_m3_per_day:.3f} m³/day"
-    )
-    lines.append(f"Duration:            {inputs.duration_days} days")
-    lines.append(f"Buffer radius:       {inputs.buffer_radius_m} m")
-    lines.append(
-        f"Same-aquifer filter: {'ON' if inputs.same_aquifer_filter else 'off'}"
-    )
-    lines.append(f"Run timestamp:       {result.run_timestamp.isoformat(timespec='seconds')}")
-    lines.append("")
-    lines.append("=" * 78)
-    lines.append("SUMMARY")
-    lines.append("=" * 78)
-    lines.append(f"Total wells in buffer:   {result.n_total}")
-    lines.append(f"  At risk:               {result.n_at_risk}")
-    lines.append(f"  OK:                    {result.n_ok}")
-    lines.append(f"  Insufficient data:     {result.n_insufficient_data}")
-    lines.append(f"  Suspect data:          {result.n_suspect_data}")
-    lines.append(f"  Outside C-J validity:  {result.n_outside_validity}")
-    if result.max_drawdown_m is not None:
-        lines.append(f"Max drawdown (valid):    {result.max_drawdown_m:.4f} m")
-    lines.append("")
-    lines.append("=" * 78)
-    lines.append("WELLS")
-    lines.append("=" * 78)
-    if not result.wells:
-        lines.append("(no wells returned)")
-    else:
-        lines.append(
-            f"{'WTN':>8}  {'Aquifer':>7}  {'Dist m':>8}  "
-            f"{'Drawdown m':>10}  {'SAD m':>8}  "
-            f"{'Impact %':>8}  {'Material':<14}  Status"
+def _summary_block(inputs: AnalysisInputs, result: AnalysisResult) -> html.Div:
+    user = current_user() or "—"
+    ts = result.run_timestamp.strftime("%Y-%m-%d %H:%M:%S")
+    ts_tag = " (override)" if inputs.ts_overridden else ""
+    filter_tag = "ON" if inputs.same_aquifer_filter else "off"
+
+    def row(label: str, value: str) -> html.Div:
+        return html.Div(
+            [
+                html.Span(
+                    label,
+                    style={
+                        "display": "inline-block",
+                        "width": "180px",
+                        "color": "#555",
+                    },
+                ),
+                html.Span(value, style={"fontWeight": "500"}),
+            ]
         )
-        for w in sorted(result.wells, key=lambda w: w.distance_m):
-            sad_text = f"{w.sad_m:.3f}" if w.sad_m is not None else "  (na)"
-            impact_text = (
-                f"{w.impact_fraction * 100:.1f}"
-                if w.impact_fraction is not None
-                else "  (na)"
-            )
-            lines.append(
-                f"{w.well_tag_number:>8}  "
-                f"{(w.aquifer_id if w.aquifer_id is not None else '-'):>7}  "
-                f"{w.distance_m:>8.1f}  "
-                f"{w.drawdown_m:>10.4f}  "
-                f"{sad_text:>8}  "
-                f"{impact_text:>8}  "
-                f"{w.reassigned_material:<14}  {w.well_status.value}"
-            )
-    return "\n".join(lines)
+
+    return html.Div(
+        [
+            row("Run timestamp:", ts),
+            row("BCGW user:", user),
+            row(
+                "Source aquifer:",
+                f"{inputs.source_aquifer_name} (id {inputs.source_aquifer_id}, "
+                f"subtype {inputs.source_subtype_code or '—'})",
+            ),
+            row(
+                "T / S used:",
+                f"T = {inputs.transmissivity_m2_per_day} m²/day, "
+                f"S = {inputs.storativity}{ts_tag}",
+            ),
+            row(
+                "Pumping rate:",
+                f"{inputs.Q_value} {inputs.Q_unit} = {inputs.Q_m3_per_day:.3f} m³/day",
+            ),
+            row("Duration:", f"{inputs.duration_days:g} days"),
+            row("Buffer radius:", f"{inputs.buffer_radius_m:g} m"),
+            row("Same-aquifer filter:", filter_tag),
+        ],
+        style=_SUMMARY_STYLE,
+    )
 
 
 @callback(
@@ -145,8 +147,8 @@ def render_results(inputs_data: dict[str, Any] | None) -> Any:
         return html.Div(
             [
                 html.P(
-                    "No analysis has been run in this browser session yet.",
-                    style={"marginBottom": "0.5rem"},
+                    "No analysis has been run in this browser tab yet.",
+                    style={"marginTop": "1rem"},
                 ),
                 dcc.Link("Go to Setup", href="/setup"),
             ]
@@ -163,4 +165,11 @@ def render_results(inputs_data: dict[str, Any] | None) -> Any:
         logger.exception("Pipeline failed")
         return html.Pre(f"Pipeline error: {e}", style=_PRE_STYLE)
 
-    return html.Pre(_format_result(result), style=_PRE_STYLE)
+    return html.Div(
+        [
+            _summary_block(inputs, result),
+            make_stat_cards(result),
+            make_at_risk_table(result),
+            make_full_well_table(result),
+        ]
+    )

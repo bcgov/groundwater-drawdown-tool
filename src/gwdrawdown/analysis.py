@@ -60,6 +60,7 @@ class AnalysisInputs:
     source_subtype_code: str | None
     transmissivity_m2_per_day: float
     storativity: float
+    ts_overridden: bool
     Q_value: float
     Q_unit: str
     Q_m3_per_day: float
@@ -74,6 +75,10 @@ class AnalysisInputs:
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> AnalysisInputs:
+        # Older sessionStorage payloads (pre-4c.1) may lack ts_overridden;
+        # default to False so existing tabs don't crash.
+        data = {**data}
+        data.setdefault("ts_overridden", False)
         return cls(**data)
 
 
@@ -85,8 +90,15 @@ class WellResult:
     aquifer_id: int | None
     distance_m: float
     finished_well_depth_m: float | None
+    total_depth_drilled_m: float | None
     bedrock_depth_m: float | None
     static_water_level_m: float | None
+    # Stickup is not in BCGW (DATA_REFERENCE.md §12); always None until
+    # 4c.2 exposes a per-well override sourced from the driller's log.
+    stickup_m: float | None
+    # Per-well override of "top of fracture / aquifer / screen" used by
+    # SAD. Always None in 4c.1; 4c.2 turns this into an editable cell.
+    top_of_fracture_or_aquifer_or_screen_m: float | None
     yield_m3_per_day: float | None
     well_class: str | None
     intended_water_use: str | None
@@ -143,6 +155,7 @@ def _compute_well_result(
     Has no DB or UI dependencies — unit-testable with synthetic rows.
     """
     finished_m = _to_si_or_none(well_row.get("FINISHED_WELL_DEPTH"), feet_to_metres)
+    total_depth_m = _to_si_or_none(well_row.get("TOTAL_DEPTH_DRILLED"), feet_to_metres)
     bedrock_m = _to_si_or_none(well_row.get("BEDROCK_DEPTH"), feet_to_metres)
     swl_m = _to_si_or_none(well_row.get("STATIC_WATER_LEVEL"), feet_to_metres)
     yield_m3_per_day = _to_si_or_none(well_row.get("YIELD"), us_gpm_to_m3_per_day)
@@ -199,8 +212,11 @@ def _compute_well_result(
         ),
         distance_m=distance_m,
         finished_well_depth_m=finished_m,
+        total_depth_drilled_m=total_depth_m,
         bedrock_depth_m=bedrock_m,
         static_water_level_m=swl_m,
+        stickup_m=None,
+        top_of_fracture_or_aquifer_or_screen_m=None,
         yield_m3_per_day=yield_m3_per_day,
         well_class=well_row.get("WELL_CLASS"),
         intended_water_use=well_row.get("INTENDED_WATER_USE"),

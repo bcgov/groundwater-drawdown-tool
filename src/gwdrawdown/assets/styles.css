@@ -1,0 +1,25 @@
+/* Auto-loaded by Dash from src/gwdrawdown/assets/.
+ * Overrides for dash_table's filter-row rendering. */
+
+/* Standardise the filter-row placeholder.
+ *
+ * dash_table's default behaviour is inconsistent: the leftmost column
+ * shows the "filter data..." placeholder permanently while later
+ * columns only reveal it on hover. Hide the placeholder by default
+ * and reveal it on hover or focus, consistently across all columns,
+ * so the filter row reads as a clean band of empty inputs that hint
+ * at their function only when the user engages.
+ */
+.dash-table-container .dash-filter input::placeholder,
+.dash-spreadsheet-container .dash-filter input::placeholder {
+    opacity: 0;
+    transition: opacity 0.15s ease-in-out;
+}
+
+.dash-table-container .dash-filter input:hover::placeholder,
+.dash-table-container .dash-filter input:focus::placeholder,
+.dash-spreadsheet-container .dash-filter input:hover::placeholder,
+.dash-spreadsheet-container .dash-filter input:focus::placeholder {
+    opacity: 0.6;
+    color: #999;
+}

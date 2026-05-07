@@ -56,6 +56,27 @@ Changed, Fixed, Removed.
   user + Logout link. Setup and results pages are 4a stubs
   (sub-stages 4b and 4c will fill them in). Verified end-to-end in
   the browser with valid and invalid BCGW credentials.
+- Phase 4c.1 results dashboard (read-only). Replaces the 4b text dump
+  with a real layout: run-summary block (timestamp, BCGW user, source
+  aquifer, T/S used with override marker, Q in m³/day, duration,
+  buffer, filter), seven colour-coded stat cards (Total / OK /
+  At risk / Insufficient / Suspect / Outside / Max drawdown),
+  at-risk summary table (`InputValues!B30:E32` parity, descending by
+  Impact %), and a full per-well table with the 17 columns from
+  PROJECT_PLAN.md §4.1. Both tables are sortable / filterable, paginate
+  at 10 rows / page, have a sticky header row, and live inside their
+  own scroll containers so the horizontal scrollbar stays in view.
+  Each table has a custom Export CSV button (no built-in export to
+  avoid dash_table's fixed-columns layout bug); CSV reflects the
+  current sort + filter state via `derived_virtual_data`. Status
+  cells are colour-coded per `WellStatus`. New `WellResult` fields
+  for total depth, stickup, and the per-well top-of-fracture/screen
+  override (populated as None today; 4c.2 turns the latter three
+  into editable cells with per-row live recompute). Auto-loaded
+  `assets/styles.css` standardises dash_table's filter-row
+  placeholder visibility on hover. New ts_overridden flag on
+  `AnalysisInputs` so the run-summary can mark T/S as "(override)"
+  when the officer customised them.
 - Phase 4b setup page + analysis pipeline. New `core/flagging.py`
   combines drawdown + SAD into a `WellStatus` (OK / AT_RISK /
   INSUFFICIENT_DATA / SUSPECT_DATA / OUTSIDE_VALIDITY); SUSPECT_DATA

@@ -719,6 +719,7 @@ def run_analysis_click(
         "source_subtype_code": (lookup or {}).get("subtype_code"),
         "transmissivity_m2_per_day": float(T_value),
         "storativity": float(S_value),
+        "ts_overridden": bool(override_on),
         "Q_value": float(q_value),
         "Q_unit": q_unit,
         "Q_m3_per_day": float(Q_m3_per_day),
