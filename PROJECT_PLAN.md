@@ -201,7 +201,20 @@ SAD result, classify as:
 - `AT_RISK` — drawdown impact ≥ 30% of SAD.
 - `INSUFFICIENT_DATA` — SAD could not be computed (`no NPL`, `no Well
   Depth`, well attributes missing).
+- `SUSPECT_DATA` — SAD was computed but is non-positive (e.g. GWELLS
+  reports static water level deeper than the well bottom — physically
+  impossible, see WTN 96473). The pumping impact is fine; the
+  *baseline* well record needs review against the driller's log.
+  Excluded from the at-risk summary table because it is a data-quality
+  channel, not an at-risk channel.
 - `OUTSIDE_VALIDITY` — Cooper-Jacob `u >= 0.01` at this distance/duration.
+  **Currently bypassed at the pipeline level** (`analysis.run_analysis`
+  passes `u_threshold=inf`) pending client confirmation. The math still
+  computes `u_max` per well for diagnostics; revert is one line.
+
+Status precedence when more than one rule could apply:
+``OUTSIDE_VALIDITY`` > ``INSUFFICIENT_DATA`` > ``SUSPECT_DATA`` >
+``AT_RISK`` > ``OK``.
 
 The 30% threshold matches the legacy Excel (`Impact!V` formula and the
 summary table at `InputValues!B30`). Make the threshold a config key
@@ -405,34 +418,92 @@ the SQL is verified.
 
 ### Phase 4 — UI
 
-- `ui/app.py` with multi-page setup, server-side session handling
-  (Flask-Session, filesystem backend pointed at `./flask_session/`),
-  and a session-required decorator/check for protected pages.
-- `ui/pages/login_page.py` — BCGW credentials form, read-only display of
-  the connection target, connection-test on submit (`SELECT 1 FROM DUAL`),
-  initialises pool on success, redirects to setup. Logout button on every
-  page footer that closes the pool, clears the session, and returns to
-  login.
-- `ui/pages/setup_page.py` with all three input methods, the Q-with-units
-  dropdown, duration presets (30 d / 100 d / 1 yr / 10 yr), and the
-  single-aquifer filter toggle. Protected: redirects to login if no
-  session.
-- `ui/pages/results_page.py` with the at-risk summary table, stat cards,
-  the distance-drawdown chart matching the legacy Excel layout (see
-  `references/excel_chart_layout.md`), the colour-coded map, and the
-  full per-well details table. Protected: redirects to login if no
-  session.
-- `core/flagging.py`, `core/well_classification.py`, and `core/sad.py`
-  integrated into the results pipeline.
-- Session timeout configured (default 8 hours of inactivity → re-login).
+Subdivided into five browser-verifiable sub-stages, each committed
+separately so the work stayed bisectable:
 
-**Acceptance:** user launches the app, sees login page, enters BCGW
-credentials, lands on setup page, runs an analysis through to results,
-clicks logout, sees login page again. Wrong credentials show an inline
-error and don't redirect. The username appears in the UI footer (and in
-log entries) for the active session. The at-risk summary table and the
-distance-drawdown chart are visually equivalent to the legacy Excel
-output (deck slide 21).
+- **4a — Auth shell** *(committed `239b05f`)*. Multi-page Dash app
+  (`use_pages=True`), Flask-Session with filesystem backend at
+  `config.SESSION_DIR`, `/login` page that runs `SELECT 1 FROM DUAL`
+  before calling `data_access.init_pool`, Flask `/logout` route that
+  closes the pool and clears the session, root redirect, footer
+  component, session-required guard. Setup and results pages are
+  stubs at this point. `is_authenticated()` also verifies the pool is
+  open so a session that survives an app restart but loses the pool
+  is treated as stale (cleared, redirected to login).
+  `SESSION_USE_SIGNER=True` so cookies issued before a `SECRET_KEY`
+  rotation are rejected.
+- **4b — Setup page + analysis pipeline + flagging** *(committed
+  `b831ba7`)*. Real setup page replaces the 4a stub: three input
+  modes (map click via `dash-leaflet`, lat/lon, WTN with auto-aquifer
+  resolution), source-aquifer picker for stacked polygons, T/S
+  override checkbox with full-precision float display, Q + unit
+  dropdown driven by `data/unit_conversions.csv`, duration presets
+  (30 d / 100 d / 1 yr / 10 yr), buffer radius (default 1000 m),
+  same-aquifer filter (default on per Q12). Run Analysis opens
+  `/results` in a new browser tab via clientside callback —
+  sessionStorage inheritance gives each tab its own snapshot so
+  earlier results tabs aren't disturbed by re-runs. `core/flagging.py`
+  and `analysis.py` (orchestration: queries → SI conversion →
+  Cooper-Jacob → SAD → classification → flagging) ship in this
+  sub-stage. `_compute_well_result` is a pure function unit-tested
+  without a database. Cooper-Jacob `u<0.01` validity check is
+  bypassed at the pipeline level pending client confirmation; the
+  math still runs in `core.drawdown.cooper_jacob` and `u_max` is
+  preserved on every `WellResult`. Revert is a one-line change in
+  `analysis.run_analysis`.
+- **4c.1 — Read-only results dashboard** *(committed `64fa593`)*.
+  Replaces the 4b text dump with a structured page: run-summary
+  block (timestamp, BCGW user, source aquifer, T/S used with
+  "(override)" tag, Q in m³/day, duration, buffer, filter), seven
+  colour-coded stat cards, at-risk summary table (5 columns,
+  matches `InputValues!B30:E32`, sorted desc by Impact %, AT_RISK
+  only — SUSPECT_DATA wells excluded), full per-well details table
+  (17 columns, sortable / filterable / paginated 10/page, sticky
+  header, status cell colour-coded). Both tables are own-scroll-
+  container so the horizontal scrollbar stays in view. Custom
+  Export CSV buttons (built-in `dash_table` export avoided due to
+  a layout bug with `fixed_columns`); CSV reflects the current
+  sort + filter state via `derived_virtual_data`. Auto-loaded
+  `assets/styles.css` standardises the filter-row placeholder
+  visibility on hover.
+- **4c.2 — Editable per-well overrides + live recompute**
+  *(committed)*. Per-well table now has four editable columns —
+  NPL, finished depth, stickup (BCGW doesn't expose this; the
+  table is the only way to populate it), and top of fracture /
+  aquifer / screen (the existing override field on `core.sad`,
+  finally exposed in the UI). Edits route through `analysis.
+  recompute_well` (pure math; same kernel `_compute_well_result`
+  uses), per-WTN overrides land in a sessionStorage `dcc.Store`,
+  and `analysis.apply_overrides` rebuilds the totals from the
+  cached pipeline output without a fresh BCGW query. Two new
+  app-level Stores back this: `analysis-result` caches the
+  pipeline JSON so tab refreshes and override edits don't replay
+  queries (cleared whenever `analysis-inputs` changes), and
+  `well-overrides` carries the per-WTN map of edited cells. Rows
+  with active overrides are tinted light yellow; overridden
+  values carry a trailing `*`. Hidden `<col>_base` shadow cells
+  in the table data let the override-capture callback diff
+  edits against the BCGW value without consulting the store.
+  This is the manual-review path the legacy Excel only supports
+  as a copy-paste workflow. New `analysis.effective_u_threshold`
+  centralises the Cooper-Jacob bypass so it flips in one place
+  for both the initial pipeline and the override recompute.
+- **4c.3 — Distance-drawdown chart + colour-coded map**.
+  Implements `references/excel_chart_layout.md` (deck slide 21):
+  scatter chart with three series (red dots for wells with WTN
+  labels, smooth black Cooper-Jacob curve, vertical orange SAD
+  bars), inverted Y axis. Colour-coded `dash-leaflet` map with
+  marker size proportional to drawdown impact; cross-linked to
+  the chart (click one, highlight the other). After 4c.3, the
+  full Phase 4 acceptance is met.
+
+**Acceptance (full Phase 4):** user launches the app, sees login page,
+enters BCGW credentials, lands on setup page, runs an analysis through
+to results, clicks logout, sees login page again. Wrong credentials
+show an inline error and don't redirect. The username appears in the
+UI footer (and in log entries) for the active session. The at-risk
+summary table and the distance-drawdown chart are visually equivalent
+to the legacy Excel output (deck slide 21).
 
 ### Phase 5 — Exports and polish
 

@@ -1,4 +1,4 @@
-"""Results page — sub-stage 4c.1 read-only dashboard.
+"""Results page — sub-stage 4c.2 dashboard with editable overrides.
 
 Layout from top:
 
@@ -7,33 +7,66 @@ Layout from top:
    (with "(override)" tag when applicable), Q in m³/day, duration,
    buffer radius, filter on/off.
 3. Stat cards — six status counts + max drawdown.
-4. At-risk wells table — `dash_table.DataTable` filtered to
-   ``WellStatus.AT_RISK`` only, with built-in CSV export. This is
-   the artifact attached to the licence-assessment file.
+4. At-risk wells table — filtered to ``WellStatus.AT_RISK`` only.
 5. Per-well details table — full 17-column table with sort, filter,
-   pagination (25/page), CSV export, fixed first column. Status cell
-   colour-coded per `WellStatus`.
+   pagination (10/page), CSV export, four editable columns (NPL,
+   finished depth, stickup, top of fracture/screen), and a Reset
+   button. Status cell colour-coded per `WellStatus`. Rows with
+   active overrides are tinted light yellow; the rightmost "Edited"
+   column lists which fields each row has overridden (carried
+   through to CSV export).
 6. Footer.
 
-Sub-stage 4c.2 turns four cells of the per-well table into editable
-overrides (NPL, finished depth, stickup, top of fracture/screen) with
-per-row live recompute. Sub-stage 4c.3 adds the distance-drawdown
-chart and the colour-coded map.
+Render flow (rebuilt in 4c.2 to fix a dash_table reconciliation
+issue): the layout in `layout()` is a *static skeleton* —
+named-id containers (`summary-block-container`, `stat-cards-container`,
+the at-risk and per-well sections built by
+`results_table.build_*_section`) — that exists from page mount. The
+dash_table components live inside that skeleton from the start, so
+their props (especially ``data``) can be updated in isolation by
+the render callback rather than via a full ``children`` rebuild.
+
+Two callbacks drive the page:
+
+- `run_pipeline_if_needed` reads `analysis-inputs`, calls
+  `run_analysis` only when the inputs change, and writes the
+  JSON-serialised `AnalysisResult` to `analysis-result`. Also resets
+  `well-overrides` on a new run so edits from a previous analysis
+  don't leak across the wells.
+- `render` reads `analysis-result` + `well-overrides`, applies
+  overrides via `analysis.apply_overrides`, and writes each dynamic
+  region directly (summary block, stat cards, at-risk heading/helper/
+  data, per-well heading, per-well data). No BCGW round-trip happens
+  here — overrides edit the cached result in place — and crucially
+  the two dash_tables stay mounted across renders, which keeps cell
+  clears and Edited-column refreshes consistent.
+
+Sub-stage 4c.3 will plug the distance-drawdown chart and the colour-
+coded map into the same render callback.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
 import dash
-from dash import Input, Output, callback, dcc, html
+from dash import Input, Output, callback, dcc, html, no_update
 
-from gwdrawdown.analysis import AnalysisInputs, AnalysisResult, run_analysis
+from gwdrawdown.analysis import (
+    AnalysisInputs,
+    AnalysisResult,
+    apply_overrides,
+    run_analysis,
+)
 from gwdrawdown.ui.components.footer import make_footer
 from gwdrawdown.ui.components.results_table import (
-    make_at_risk_table,
-    make_full_well_table,
+    at_risk_helper_text,
+    build_at_risk_section,
+    build_per_well_section,
+    make_at_risk_rows,
+    make_per_well_rows,
 )
 from gwdrawdown.ui.components.stat_cards import make_stat_cards
 from gwdrawdown.ui.session import current_user, is_authenticated
@@ -64,9 +97,17 @@ _PRE_STYLE = {
     "color": "#b00020",
     "whiteSpace": "pre-wrap",
 }
+_EMPTY_STATE_STYLE = {"marginTop": "1rem"}
 
 
 def layout(**_kwargs: object) -> html.Div:
+    """Static page skeleton.
+
+    Components with stable ids exist from page mount; the render
+    callback only writes their dynamic props. The two dash_tables
+    in particular are NEVER re-created mid-session — that's the
+    point of this restructure.
+    """
     if not is_authenticated():
         return html.Div(
             dcc.Location(href="/login", id="results-redirect-login", refresh=True)
@@ -75,7 +116,10 @@ def layout(**_kwargs: object) -> html.Div:
         [
             html.Div(
                 [
-                    html.H1("Results", style={"display": "inline-block", "marginRight": "1.5rem"}),
+                    html.H1(
+                        "Results",
+                        style={"display": "inline-block", "marginRight": "1.5rem"},
+                    ),
                     dcc.Link(
                         "← Back to Setup",
                         href="/setup",
@@ -84,14 +128,28 @@ def layout(**_kwargs: object) -> html.Div:
                 ],
                 style={"display": "flex", "alignItems": "baseline", "gap": "1rem"},
             ),
-            html.Div(id="results-output"),
+            # Either the empty/error message OR the results content is
+            # shown at any time; the render callback toggles each via
+            # its ``style.display``.
+            html.Div(id="results-empty-state", style=_EMPTY_STATE_STYLE),
+            html.Div(
+                id="results-content",
+                style={"display": "none"},
+                children=[
+                    html.Div(id="summary-block-container"),
+                    html.Div(id="stat-cards-container"),
+                    build_at_risk_section(),
+                    build_per_well_section(),
+                ],
+            ),
             make_footer(),
         ],
         style=_PAGE_STYLE,
     )
 
 
-def _summary_block(inputs: AnalysisInputs, result: AnalysisResult) -> html.Div:
+def _summary_block(result: AnalysisResult) -> html.Div:
+    inputs = result.inputs
     user = current_user() or "—"
     ts = result.run_timestamp.strftime("%Y-%m-%d %H:%M:%S")
     ts_tag = " (override)" if inputs.ts_overridden else ""
@@ -138,38 +196,178 @@ def _summary_block(inputs: AnalysisInputs, result: AnalysisResult) -> html.Div:
     )
 
 
+def _inputs_fingerprint(inputs_data: dict[str, Any]) -> str:
+    """Stable JSON hash of the analysis inputs.
+
+    Used to decide whether the cached `analysis-result` is still valid
+    for the current `analysis-inputs`. ``sort_keys=True`` so two equal
+    dicts with different key orders don't trigger a re-run.
+    """
+    return json.dumps(inputs_data, sort_keys=True, default=str)
+
+
 @callback(
-    Output("results-output", "children"),
+    Output("analysis-result", "data"),
+    Output("well-overrides", "data", allow_duplicate=True),
     Input("analysis-inputs", "data"),
+    prevent_initial_call="initial_duplicate",
 )
-def render_results(inputs_data: dict[str, Any] | None) -> Any:
+def run_pipeline_if_needed(
+    inputs_data: dict[str, Any] | None,
+) -> tuple[Any, Any]:
+    """Run the BCGW pipeline when `analysis-inputs` changes.
+
+    Caches the result in `analysis-result` so override edits and tab
+    refreshes don't replay the pipeline. Also clears `well-overrides`
+    on a new run — the previous overrides referenced WTNs that may
+    not appear in the new well set.
+    """
     if not inputs_data:
-        return html.Div(
-            [
-                html.P(
-                    "No analysis has been run in this browser tab yet.",
-                    style={"marginTop": "1rem"},
-                ),
-                dcc.Link("Go to Setup", href="/setup"),
-            ]
-        )
+        return no_update, no_update
     try:
         inputs = AnalysisInputs.from_json(inputs_data)
-    except (TypeError, KeyError) as e:
-        logger.exception("Bad analysis-inputs payload: %s", inputs_data)
-        return html.Pre(f"Invalid stored inputs: {e}", style=_PRE_STYLE)
-
+    except (TypeError, KeyError) as exc:
+        logger.exception("Bad analysis-inputs payload")
+        return {"_error": f"Invalid stored inputs: {exc}"}, {}
     try:
         result = run_analysis(inputs)
-    except Exception as e:
+    except Exception as exc:
+        # Surface any pipeline failure to the UI rather than 500-ing.
         logger.exception("Pipeline failed")
-        return html.Pre(f"Pipeline error: {e}", style=_PRE_STYLE)
+        return {"_error": f"Pipeline error: {exc}"}, {}
+    payload = result.to_json()
+    payload["_fingerprint"] = _inputs_fingerprint(inputs_data)
+    return payload, {}
 
+
+def _coerce_overrides(
+    raw: dict[str, Any] | None,
+) -> dict[int, dict[str, float | None]]:
+    """Re-key the JSON-stored overrides to int(WTN).
+
+    Dash sessionStorage stringifies dict keys; `analysis.apply_overrides`
+    expects ``{int: {field: float | None}}``. Drops any key that
+    doesn't parse as an int.
+    """
+    if not raw:
+        return {}
+    out: dict[int, dict[str, float | None]] = {}
+    for k, v in raw.items():
+        try:
+            wtn = int(k)
+        except (TypeError, ValueError):
+            continue
+        if isinstance(v, dict):
+            out[wtn] = v
+    return out
+
+
+_HIDE = {"display": "none"}
+_SHOW = {}
+# Reveal styling for the at-risk / per-well empty-state messages.
+# Matches `_EMPTY_MESSAGE_STYLE` in `results_table` (the hidden form
+# carries the same color + italic so toggling display alone reveals it).
+_EMPTY_VISIBLE = {"color": "#555", "fontStyle": "italic"}
+
+
+def _empty_state(message: str, style: dict[str, str]) -> html.Div:
     return html.Div(
         [
-            _summary_block(inputs, result),
-            make_stat_cards(result),
-            make_at_risk_table(result),
-            make_full_well_table(result),
+            html.P(message, style=style),
+            dcc.Link("Go to Setup", href="/setup"),
         ]
+    )
+
+
+@callback(
+    Output("results-empty-state", "children"),
+    Output("results-empty-state", "style"),
+    Output("results-content", "style"),
+    Output("summary-block-container", "children"),
+    Output("stat-cards-container", "children"),
+    Output("at-risk-heading", "children"),
+    Output("at-risk-helper", "children"),
+    Output("at-risk-summary", "data"),
+    Output("at-risk-table-wrapper", "style"),
+    Output("at-risk-empty-message", "style"),
+    Output("per-well-heading", "children"),
+    Output("per-well-details", "data"),
+    Output("per-well-table-wrapper", "style"),
+    Output("per-well-empty-message", "style"),
+    Input("analysis-result", "data"),
+    Input("well-overrides", "data"),
+)
+def render(
+    result_data: dict[str, Any] | None,
+    overrides_data: dict[str, Any] | None,
+) -> tuple[Any, ...]:
+    """Update each dynamic region from the cached result + overrides.
+
+    No BCGW. Writes each part of the page through its own ``Output``
+    so the two ``dash_table.DataTable`` components stay mounted —
+    only their ``data`` props change. This was the fix for cell clears
+    not re-rendering after a server-pushed override drop: rebuilding
+    the whole tree was causing dash_table to preserve stale row state
+    for some cells (notably the ``edited_fields`` summary and the
+    style-driven row tint).
+    """
+    # Empty / error states: hide the content, show a message. The
+    # 11 trailing no_updates correspond to the 11 dynamic outputs
+    # inside ``results-content`` — leaving them untouched while the
+    # content is hidden keeps the last successful render intact for
+    # the moment the user navigates back.
+    n_dynamic_outputs = 11
+    if not result_data:
+        return (
+            _empty_state(
+                "No analysis has been run in this browser tab yet.",
+                _EMPTY_STATE_STYLE,
+            ),
+            _EMPTY_STATE_STYLE,
+            _HIDE,
+            *([no_update] * n_dynamic_outputs),
+        )
+    if "_error" in result_data:
+        return (
+            html.Pre(result_data["_error"], style=_PRE_STYLE),
+            _EMPTY_STATE_STYLE,
+            _HIDE,
+            *([no_update] * n_dynamic_outputs),
+        )
+    try:
+        base = AnalysisResult.from_json(result_data)
+    except (TypeError, KeyError, ValueError) as exc:
+        logger.exception("Bad analysis-result payload")
+        return (
+            html.Pre(f"Invalid cached result: {exc}", style=_PRE_STYLE),
+            _EMPTY_STATE_STYLE,
+            _HIDE,
+            *([no_update] * n_dynamic_outputs),
+        )
+
+    overrides = _coerce_overrides(overrides_data)
+    current = apply_overrides(base, overrides)
+    base_wells_by_wtn = {w.well_tag_number: w for w in base.wells}
+    at_risk_rows = make_at_risk_rows(current)
+    per_well_rows = make_per_well_rows(
+        current,
+        base_wells_by_wtn=base_wells_by_wtn,
+        overrides_by_wtn=overrides,
+    )
+
+    return (
+        "",  # clear any prior empty-state message
+        _HIDE,  # hide empty-state container
+        _SHOW,  # show results content
+        _summary_block(current),
+        make_stat_cards(current),
+        f"At-risk wells ({current.n_at_risk})",
+        at_risk_helper_text(current),
+        at_risk_rows,
+        _SHOW if at_risk_rows else _HIDE,
+        _HIDE if at_risk_rows else _EMPTY_VISIBLE,
+        f"All wells in buffer ({current.n_total})",
+        per_well_rows,
+        _SHOW if per_well_rows else _HIDE,
+        _HIDE if per_well_rows else _EMPTY_VISIBLE,
     )

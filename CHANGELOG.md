@@ -77,6 +77,43 @@ Changed, Fixed, Removed.
   placeholder visibility on hover. New ts_overridden flag on
   `AnalysisInputs` so the run-summary can mark T/S as "(override)"
   when the officer customised them.
+- Phase 4c.2 editable per-well overrides + live recompute. The
+  per-well details table on /results gains four editable columns —
+  NPL, finished depth, stickup, and top of fracture/aquifer/screen
+  — and rebuilds SAD, Impact %, status, the at-risk summary table,
+  and the seven stat cards as the officer types. Overrides live in
+  a sessionStorage `dcc.Store` keyed by WTN; the page-level
+  pipeline callback caches the BCGW result in another Store
+  (`analysis-result`) so override edits and tab refreshes don't
+  replay the queries. Editing a cell to match the BCGW value
+  reverts the override; clearing a cell does the same. The four
+  editable columns are declared with `type="any"` (rather than
+  `numeric`) so dash_table doesn't treat empty input as invalid
+  and silently revert the cell; the trade-off is alphabetical sort
+  on those four columns, which the new "Edited" summary column at
+  the right of the table compensates for. The Edited column
+  lists the field names of any active overrides for each row
+  (e.g. `"NPL, Stickup"`) and is carried through to the CSV
+  export. A "Reset all overrides" button next to Export CSV wipes
+  every per-well override in one click. Rows with active
+  overrides are tinted light yellow. New
+  `analysis.recompute_well` (pure math,
+  no DB) shares its kernel with `_compute_well_result`;
+  `analysis.apply_overrides` rebuilds the `AnalysisResult` totals
+  from a cached base + per-WTN override map. New
+  `analysis.effective_u_threshold` centralises the Cooper-Jacob
+  bypass — flipping the bypass back is now a one-line edit shared
+  by the initial pipeline and the override recompute. JSON
+  round-trip on `WellResult` and `AnalysisResult` preserves the
+  three enum fields. 110 pytest tests passing (14 new); ruff
+  clean.
+- Setup page now restores the last-run inputs on Back-to-Setup.
+  Point, lat/lon, Q + unit, duration, buffer radius, same-aquifer
+  filter, and the source-aquifer pick all replay from
+  `analysis-inputs` on /setup mount, so iterating on a parameter
+  no longer means re-keying the whole form. T/S override values
+  are deliberately not restored — re-tick "Override default T / S"
+  if you customised them.
 - Phase 4b setup page + analysis pipeline. New `core/flagging.py`
   combines drawdown + SAD into a `WellStatus` (OK / AT_RISK /
   INSUFFICIENT_DATA / SUSPECT_DATA / OUTSIDE_VALIDITY); SUSPECT_DATA

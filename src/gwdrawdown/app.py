@@ -97,11 +97,21 @@ def create_app() -> dash.Dash:
     _register_routes(app.server)
     app.layout = html.Div(
         [
-            # App-level store: setup page writes the AnalysisInputs JSON
-            # here, results page reads it back. Session storage so a
-            # browser reload doesn't lose the inputs while the user is
-            # iterating, but the data drops on tab close.
+            # App-level stores. All three are sessionStorage so a tab
+            # refresh keeps state but tab close drops it.
+            #
+            # - analysis-inputs: setup page writes the AnalysisInputs
+            #   JSON here on Run Analysis.
+            # - analysis-result: results page caches the pipeline output
+            #   so override edits and tab refreshes don't replay the
+            #   BCGW queries. Cleared (re-populated) when
+            #   analysis-inputs changes.
+            # - well-overrides: per-WTN dict of edited cells from the
+            #   per-well details table, applied on top of
+            #   analysis-result by the render callback.
             dcc.Store(id="analysis-inputs", storage_type="session"),
+            dcc.Store(id="analysis-result", storage_type="session"),
+            dcc.Store(id="well-overrides", storage_type="session", data={}),
             dash.page_container,
         ]
     )

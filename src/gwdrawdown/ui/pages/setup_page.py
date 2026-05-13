@@ -384,6 +384,15 @@ def layout(**_kwargs: object) -> html.Div:
             # snapshot of analysis-inputs and re-runs in the parent
             # don't disturb earlier results tabs.
             dcc.Store(id="setup-results-trigger", storage_type="memory", data=0),
+            # Page-mount trigger for `hydrate_setup_form`. Re-created
+            # on every visit to /setup so the hydration callback fires
+            # each time the user comes back from /results.
+            dcc.Store(id="setup-mount-trigger", storage_type="memory", data={}),
+            # One-shot flag: True until `restore_saved_aquifer` has
+            # re-selected the previously-run aquifer. Subsequent point
+            # changes leave it False so the auto-pick logic in
+            # `fetch_aquifers` takes over again.
+            dcc.Store(id="setup-restore-pending", storage_type="memory", data=True),
             html.Div(id="setup-results-noop", style={"display": "none"}),
             make_footer(),
         ],
@@ -408,7 +417,7 @@ def toggle_input_panels(mode: str) -> tuple[dict, dict]:
 
 
 @callback(
-    Output("setup-point-store", "data"),
+    Output("setup-point-store", "data", allow_duplicate=True),
     Output("setup-mode-error", "children"),
     Output("setup-wtn-error", "children"),
     Input("setup-map", "n_clicks"),
@@ -517,9 +526,10 @@ def update_marker_and_display(point: dict | None) -> tuple[list, str]:
 
 @callback(
     Output("setup-aquifer-picker", "options"),
-    Output("setup-aquifer-picker", "value"),
+    Output("setup-aquifer-picker", "value", allow_duplicate=True),
     Output("setup-aquifer-help", "children"),
     Input("setup-point-store", "data"),
+    prevent_initial_call="initial_duplicate",
 )
 def fetch_aquifers(point: dict | None) -> tuple[list[dict], int | None, str]:
     if not point:
@@ -620,7 +630,7 @@ def toggle_override_inputs(
 
 
 @callback(
-    Output("setup-duration", "value"),
+    Output("setup-duration", "value", allow_duplicate=True),
     [
         Input(f"setup-duration-preset-{int(days * 100)}", "n_clicks")
         for _, days in DURATION_PRESETS
@@ -750,3 +760,101 @@ clientside_callback(
     Input("setup-results-trigger", "data"),
     prevent_initial_call=True,
 )
+
+
+# --- Form hydration on Back-to-Setup ----------------------------------------
+#
+# The setup page re-mounts on every visit, so all `dcc.Input` / `dcc.Dropdown`
+# / `dcc.RadioItems` values reset to their hardcoded defaults. To avoid making
+# the officer re-key Q, duration, radius, etc. on every iteration, these two
+# callbacks read `analysis-inputs` (sessionStorage, populated by the last
+# successful Run Analysis) and replay it into the form.
+#
+# T/S override values are NOT restored. The existing
+# `toggle_override_inputs` callback unconditionally rewrites T/S from the
+# lookup whenever the override toggle or the lookup store changes, and
+# layering a one-shot replay on top of that is fragile. If you customised
+# T and S, re-tick "Override default T / S" and re-enter — uncommon
+# enough that the simpler logic wins.
+
+
+@callback(
+    Output("setup-point-store", "data", allow_duplicate=True),
+    Output("setup-input-mode", "value"),
+    Output("setup-latlon-lon", "value"),
+    Output("setup-latlon-lat", "value"),
+    Output("setup-q-value", "value"),
+    Output("setup-q-unit", "value"),
+    Output("setup-duration", "value", allow_duplicate=True),
+    Output("setup-radius", "value"),
+    Output("setup-filter-toggle", "value"),
+    Input("setup-mount-trigger", "data"),
+    State("analysis-inputs", "data"),
+    prevent_initial_call="initial_duplicate",
+)
+def hydrate_setup_form(
+    _trigger: dict[str, Any],
+    inputs_data: dict[str, Any] | None,
+) -> tuple[Any, ...]:
+    """Replay the last `analysis-inputs` into the form on page mount.
+
+    Fires once per /setup mount via the always-present
+    ``setup-mount-trigger`` Store. When the user has never run an
+    analysis (or their session has been cleared), `inputs_data` is
+    ``None`` and every output is `no_update`, so the form keeps its
+    hardcoded defaults.
+    """
+    if not inputs_data:
+        return tuple(no_update for _ in range(9))
+    point = {
+        "lon": float(inputs_data["pumping_lon"]),
+        "lat": float(inputs_data["pumping_lat"]),
+        "x": float(inputs_data["pumping_x_albers"]),
+        "y": float(inputs_data["pumping_y_albers"]),
+        # `mode` is informational on the marker label only; we don't
+        # remember which input mode the officer used last time.
+        "mode": "map",
+    }
+    return (
+        point,
+        "map",
+        float(inputs_data["pumping_lon"]),
+        float(inputs_data["pumping_lat"]),
+        float(inputs_data["Q_value"]),
+        inputs_data["Q_unit"],
+        float(inputs_data["duration_days"]),
+        float(inputs_data["buffer_radius_m"]),
+        ["filter"] if inputs_data.get("same_aquifer_filter") else [],
+    )
+
+
+@callback(
+    Output("setup-aquifer-picker", "value", allow_duplicate=True),
+    Output("setup-restore-pending", "data"),
+    Input("setup-aquifer-picker", "options"),
+    State("analysis-inputs", "data"),
+    State("setup-restore-pending", "data"),
+    prevent_initial_call=True,
+)
+def restore_saved_aquifer(
+    options: list[dict] | None,
+    inputs_data: dict[str, Any] | None,
+    pending: bool | None,
+) -> tuple[Any, Any]:
+    """Re-select the saved aquifer once `fetch_aquifers` populates options.
+
+    One-shot: ``setup-restore-pending`` flips to ``False`` after the
+    first try (success or not) so subsequent point changes go through
+    the normal auto-pick logic in `fetch_aquifers` instead of jumping
+    back to the previous run's aquifer.
+    """
+    if not pending:
+        return no_update, no_update
+    if not inputs_data or not options:
+        return no_update, False
+    saved_id = inputs_data.get("source_aquifer_id")
+    if saved_id is None:
+        return no_update, False
+    if any(o.get("value") == saved_id for o in options):
+        return saved_id, False
+    return no_update, False

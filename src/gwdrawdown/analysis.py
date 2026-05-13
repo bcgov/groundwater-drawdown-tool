@@ -30,21 +30,30 @@ import logging
 import math
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, Final
 
 from gwdrawdown.core.drawdown import (
+    DrawdownResult,
     DrawdownStatus,
     PumpingSource,
     cooper_jacob,
 )
 from gwdrawdown.core.flagging import WellStatus, flag
-from gwdrawdown.core.sad import SADStatus, compute_sad
+from gwdrawdown.core.sad import SADResult, SADStatus, compute_sad
 from gwdrawdown.core.units import feet_to_metres, us_gpm_to_m3_per_day
 from gwdrawdown.core.well_classification import classify_aquifer_material
 from gwdrawdown.data_access import get_connection
 from gwdrawdown.data_access import queries as q
 
 logger = logging.getLogger(__name__)
+
+
+OVERRIDABLE_FIELDS: Final[tuple[str, ...]] = (
+    "static_water_level_m",
+    "finished_well_depth_m",
+    "stickup_m",
+    "top_of_fracture_or_aquifer_or_screen_m",
+)
 
 
 @dataclass(frozen=True)
@@ -93,11 +102,11 @@ class WellResult:
     total_depth_drilled_m: float | None
     bedrock_depth_m: float | None
     static_water_level_m: float | None
-    # Stickup is not in BCGW (DATA_REFERENCE.md §12); always None until
-    # 4c.2 exposes a per-well override sourced from the driller's log.
+    # Stickup is not in BCGW (DATA_REFERENCE.md §12); populated only
+    # when the officer enters an override on the per-well table.
     stickup_m: float | None
     # Per-well override of "top of fracture / aquifer / screen" used by
-    # SAD. Always None in 4c.1; 4c.2 turns this into an editable cell.
+    # SAD. None unless the officer overrode it on the per-well table.
     top_of_fracture_or_aquifer_or_screen_m: float | None
     yield_m3_per_day: float | None
     well_class: str | None
@@ -117,6 +126,21 @@ class WellResult:
     x_albers: float
     y_albers: float
 
+    def to_json(self) -> dict[str, Any]:
+        d = asdict(self)
+        d["drawdown_status"] = self.drawdown_status.value
+        d["sad_status"] = self.sad_status.value
+        d["well_status"] = self.well_status.value
+        return d
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> WellResult:
+        data = {**data}
+        data["drawdown_status"] = DrawdownStatus(data["drawdown_status"])
+        data["sad_status"] = SADStatus(data["sad_status"])
+        data["well_status"] = WellStatus(data["well_status"])
+        return cls(**data)
+
 
 @dataclass(frozen=True)
 class AnalysisResult:
@@ -133,9 +157,90 @@ class AnalysisResult:
     max_drawdown_m: float | None = None
     run_timestamp: datetime = field(default_factory=datetime.now)
 
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "inputs": self.inputs.to_json(),
+            "wells": [w.to_json() for w in self.wells],
+            "n_total": self.n_total,
+            "n_at_risk": self.n_at_risk,
+            "n_ok": self.n_ok,
+            "n_insufficient_data": self.n_insufficient_data,
+            "n_suspect_data": self.n_suspect_data,
+            "n_outside_validity": self.n_outside_validity,
+            "max_drawdown_m": self.max_drawdown_m,
+            "run_timestamp": self.run_timestamp.isoformat(),
+        }
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> AnalysisResult:
+        return cls(
+            inputs=AnalysisInputs.from_json(data["inputs"]),
+            wells=[WellResult.from_json(w) for w in data["wells"]],
+            n_total=data["n_total"],
+            n_at_risk=data["n_at_risk"],
+            n_ok=data["n_ok"],
+            n_insufficient_data=data["n_insufficient_data"],
+            n_suspect_data=data["n_suspect_data"],
+            n_outside_validity=data["n_outside_validity"],
+            max_drawdown_m=data["max_drawdown_m"],
+            run_timestamp=datetime.fromisoformat(data["run_timestamp"]),
+        )
+
 
 def _to_si_or_none(value: float | None, converter) -> float | None:
     return None if value is None else converter(value)
+
+
+def _compute_drawdown_sad_status(
+    *,
+    distance_m: float,
+    finished_well_depth_m: float | None,
+    static_water_level_m: float | None,
+    stickup_m: float | None,
+    top_of_fracture_or_aquifer_or_screen_m: float | None,
+    transmissivity_m2_per_day: float,
+    storativity: float,
+    Q_m3_per_day: float,
+    duration_days: float,
+    u_threshold: float,
+    at_risk_fraction: float,
+) -> tuple[DrawdownResult, SADResult, WellStatus, float | None]:
+    """Cooper-Jacob + SAD + flag for one well at a known distance.
+
+    Shared kernel between the initial pipeline pass (BCGW row -> result)
+    and per-row override recompute. Distance is supplied; the four SAD
+    inputs and the global pumping parameters do the rest. Returns the
+    raw DrawdownResult and SADResult so the caller can populate
+    ``drawdown_m``, ``u_max``, ``available_drawdown_m`` etc. without
+    rebuilding the dataclasses.
+    """
+    drawdown_result = cooper_jacob(
+        [
+            PumpingSource(
+                Q_m3_per_day=Q_m3_per_day,
+                T_m2_per_day=transmissivity_m2_per_day,
+                S=storativity,
+                r_m=distance_m,
+            )
+        ],
+        t_days=duration_days,
+        u_threshold=u_threshold,
+    )
+    sad_result = compute_sad(
+        finished_well_depth_m=finished_well_depth_m,
+        non_pumping_water_level_m=static_water_level_m,
+        stickup_m=stickup_m,
+        top_of_fracture_or_aquifer_or_screen_m=top_of_fracture_or_aquifer_or_screen_m,
+    )
+    well_status = flag(drawdown_result, sad_result, at_risk_fraction)
+    impact_fraction: float | None = None
+    if (
+        drawdown_result.status == DrawdownStatus.VALID
+        and sad_result.value_m is not None
+        and sad_result.value_m > 0
+    ):
+        impact_fraction = drawdown_result.drawdown_m / sad_result.value_m
+    return drawdown_result, sad_result, well_status, impact_fraction
 
 
 def _compute_well_result(
@@ -172,38 +277,25 @@ def _compute_well_result(
         aquifer_material_from_gwells=well_row.get("AQUIFER_MATERIAL"),
     )
 
-    drawdown_result = cooper_jacob(
-        [
-            PumpingSource(
-                Q_m3_per_day=Q_m3_per_day,
-                T_m2_per_day=transmissivity_m2_per_day,
-                S=storativity,
-                r_m=distance_m,
-            )
-        ],
-        t_days=duration_days,
-        u_threshold=u_threshold,
-    )
-
     # CLIENT_TBD: BCGW does not expose a STICKUP column on
-    # GW_WATER_WELLS_WRBC_SVW (DATA_REFERENCE.md §12). Stickup defaults
-    # to 0; per-well overrides via the results-page table land in 4c.
-    sad_result = compute_sad(
-        finished_well_depth_m=finished_m,
-        non_pumping_water_level_m=swl_m,
-        stickup_m=None,
-        top_of_fracture_or_aquifer_or_screen_m=None,
+    # GW_WATER_WELLS_WRBC_SVW (DATA_REFERENCE.md §12). Stickup is None
+    # at the initial pass; the results-page editable table is the only
+    # path that fills it in.
+    drawdown_result, sad_result, well_status, impact_fraction = (
+        _compute_drawdown_sad_status(
+            distance_m=distance_m,
+            finished_well_depth_m=finished_m,
+            static_water_level_m=swl_m,
+            stickup_m=None,
+            top_of_fracture_or_aquifer_or_screen_m=None,
+            transmissivity_m2_per_day=transmissivity_m2_per_day,
+            storativity=storativity,
+            Q_m3_per_day=Q_m3_per_day,
+            duration_days=duration_days,
+            u_threshold=u_threshold,
+            at_risk_fraction=at_risk_fraction,
+        )
     )
-
-    well_status = flag(drawdown_result, sad_result, at_risk_fraction)
-
-    impact_fraction: float | None = None
-    if (
-        drawdown_result.status == DrawdownStatus.VALID
-        and sad_result.value_m is not None
-        and sad_result.value_m > 0
-    ):
-        impact_fraction = drawdown_result.drawdown_m / sad_result.value_m
 
     return WellResult(
         well_tag_number=int(well_row["WELL_TAG_NUMBER"]),
@@ -237,6 +329,170 @@ def _compute_well_result(
     )
 
 
+def recompute_well(
+    base: WellResult,
+    overrides: dict[str, float | None],
+    *,
+    transmissivity_m2_per_day: float,
+    storativity: float,
+    Q_m3_per_day: float,
+    duration_days: float,
+    u_threshold: float,
+    at_risk_fraction: float,
+) -> WellResult:
+    """Apply per-cell overrides to a `WellResult` and re-flag it.
+
+    Distance, x/y, well metadata, and yield are unchanged — overrides
+    only touch the four fields used by SAD (NPL, finished depth,
+    stickup, top of fracture/aquifer/screen). Cooper-Jacob also reruns
+    because the validity threshold and pumping parameters live with
+    this kernel; the distance hasn't changed so the drawdown number is
+    stable, but ``u_max`` and ``drawdown_status`` are recomputed for
+    consistency.
+
+    Args:
+        base: The untouched ``WellResult`` from the initial pipeline.
+        overrides: Subset of ``OVERRIDABLE_FIELDS`` mapped to the
+            officer's value (in metres). Use ``None`` for "revert to
+            base" — missing keys are equivalent.
+        transmissivity_m2_per_day, storativity, Q_m3_per_day,
+        duration_days, u_threshold, at_risk_fraction: Same semantics
+            as `_compute_well_result`; supplied by the caller from
+            ``AnalysisInputs``.
+
+    Returns:
+        A fresh ``WellResult`` with the override fields populated and
+        SAD/status rederived. Pure — no DB, no UI imports.
+    """
+    def pick(field_name: str, fallback: float | None) -> float | None:
+        if field_name in overrides:
+            v = overrides[field_name]
+            return v if v is not None else fallback
+        return fallback
+
+    finished = pick("finished_well_depth_m", base.finished_well_depth_m)
+    swl = pick("static_water_level_m", base.static_water_level_m)
+    stickup = pick("stickup_m", base.stickup_m)
+    top = pick(
+        "top_of_fracture_or_aquifer_or_screen_m",
+        base.top_of_fracture_or_aquifer_or_screen_m,
+    )
+
+    drawdown_result, sad_result, well_status, impact_fraction = (
+        _compute_drawdown_sad_status(
+            distance_m=base.distance_m,
+            finished_well_depth_m=finished,
+            static_water_level_m=swl,
+            stickup_m=stickup,
+            top_of_fracture_or_aquifer_or_screen_m=top,
+            transmissivity_m2_per_day=transmissivity_m2_per_day,
+            storativity=storativity,
+            Q_m3_per_day=Q_m3_per_day,
+            duration_days=duration_days,
+            u_threshold=u_threshold,
+            at_risk_fraction=at_risk_fraction,
+        )
+    )
+
+    return WellResult(
+        well_tag_number=base.well_tag_number,
+        aquifer_id=base.aquifer_id,
+        distance_m=base.distance_m,
+        finished_well_depth_m=finished,
+        total_depth_drilled_m=base.total_depth_drilled_m,
+        bedrock_depth_m=base.bedrock_depth_m,
+        static_water_level_m=swl,
+        stickup_m=stickup,
+        top_of_fracture_or_aquifer_or_screen_m=top,
+        yield_m3_per_day=base.yield_m3_per_day,
+        well_class=base.well_class,
+        intended_water_use=base.intended_water_use,
+        licence_status=base.licence_status,
+        well_details_url=base.well_details_url,
+        aquifer_material_gwells=base.aquifer_material_gwells,
+        reassigned_material=base.reassigned_material,
+        drawdown_m=drawdown_result.drawdown_m,
+        drawdown_status=drawdown_result.status,
+        u_max=drawdown_result.u_max,
+        sad_m=sad_result.value_m,
+        sad_status=sad_result.status,
+        available_drawdown_m=sad_result.available_drawdown_m,
+        impact_fraction=impact_fraction,
+        well_status=well_status,
+        x_albers=base.x_albers,
+        y_albers=base.y_albers,
+    )
+
+
+def apply_overrides(
+    base: AnalysisResult,
+    overrides_by_wtn: dict[int, dict[str, float | None]],
+) -> AnalysisResult:
+    """Rebuild an `AnalysisResult` with per-WTN overrides applied.
+
+    Walks ``base.wells``, calls `recompute_well` on any well whose WTN
+    appears in ``overrides_by_wtn``, leaves the rest untouched, and
+    re-totals the status counts and max drawdown. Pure — used by the
+    results-page render callback to avoid a fresh BCGW round-trip on
+    every override edit.
+    """
+    if not overrides_by_wtn:
+        return base
+    inputs = base.inputs
+    u_threshold = effective_u_threshold(inputs)
+    rebuilt: list[WellResult] = []
+    for w in base.wells:
+        cell_overrides = overrides_by_wtn.get(w.well_tag_number)
+        if not cell_overrides:
+            rebuilt.append(w)
+            continue
+        rebuilt.append(
+            recompute_well(
+                w,
+                cell_overrides,
+                transmissivity_m2_per_day=inputs.transmissivity_m2_per_day,
+                storativity=inputs.storativity,
+                Q_m3_per_day=inputs.Q_m3_per_day,
+                duration_days=inputs.duration_days,
+                u_threshold=u_threshold,
+                at_risk_fraction=inputs.at_risk_fraction,
+            )
+        )
+    counts: dict[WellStatus, int] = {s: 0 for s in WellStatus}
+    valid_drawdowns: list[float] = []
+    for w in rebuilt:
+        counts[w.well_status] += 1
+        if w.drawdown_status == DrawdownStatus.VALID:
+            valid_drawdowns.append(w.drawdown_m)
+    max_drawdown = max(valid_drawdowns) if valid_drawdowns else None
+    return AnalysisResult(
+        inputs=inputs,
+        wells=rebuilt,
+        n_total=len(rebuilt),
+        n_at_risk=counts[WellStatus.AT_RISK],
+        n_ok=counts[WellStatus.OK],
+        n_insufficient_data=counts[WellStatus.INSUFFICIENT_DATA],
+        n_suspect_data=counts[WellStatus.SUSPECT_DATA],
+        n_outside_validity=counts[WellStatus.OUTSIDE_VALIDITY],
+        max_drawdown_m=max_drawdown,
+        run_timestamp=base.run_timestamp,
+    )
+
+
+def effective_u_threshold(inputs: AnalysisInputs) -> float:
+    """Return the Cooper-Jacob u-threshold the pipeline should actually use.
+
+    Pipeline-level bypass for CLIENT_TBD Q?: the math still computes
+    ``u_max`` per source for diagnostics, but no well is flagged
+    OUTSIDE_VALIDITY pending client confirmation. To re-enable the
+    check, return ``inputs.u_threshold`` from this function. Both
+    ``run_analysis`` and the per-row override recompute consult this
+    helper, so the bypass flips in one place.
+    """
+    del inputs  # bypass active; replace with `return inputs.u_threshold` to re-enable
+    return float("inf")
+
+
 def run_analysis(inputs: AnalysisInputs) -> AnalysisResult:
     """Run the full pipeline against the live BCGW pool.
 
@@ -261,13 +517,7 @@ def run_analysis(inputs: AnalysisInputs) -> AnalysisResult:
             aquifer_id=aquifer_filter,
         )
 
-    # CLIENT_TBD: Cooper-Jacob u < 0.01 validity check is bypassed at
-    # the pipeline level pending client confirmation. The check still
-    # exists in core.drawdown.cooper_jacob and u_max is preserved on
-    # every WellResult for diagnostics, but no well will be flagged
-    # OUTSIDE_VALIDITY here. Revert by replacing this with
-    # `inputs.u_threshold` to re-enable.
-    effective_u_threshold = float("inf")
+    u_threshold = effective_u_threshold(inputs)
 
     wells = [
         _compute_well_result(
@@ -278,7 +528,7 @@ def run_analysis(inputs: AnalysisInputs) -> AnalysisResult:
             storativity=inputs.storativity,
             Q_m3_per_day=inputs.Q_m3_per_day,
             duration_days=inputs.duration_days,
-            u_threshold=effective_u_threshold,
+            u_threshold=u_threshold,
             at_risk_fraction=inputs.at_risk_fraction,
         )
         for row in rows
