@@ -22,34 +22,101 @@ import logging
 
 import dash
 import oracledb
-from dash import Input, Output, State, callback, dcc, html, no_update
+from dash import (
+    Input,
+    Output,
+    State,
+    callback,
+    clientside_callback,
+    dcc,
+    html,
+    no_update,
+)
 
 from gwdrawdown import config, data_access
 from gwdrawdown.ui import session
 from gwdrawdown.ui.components.footer import make_footer
+from gwdrawdown.ui.components.header import make_header
 
 dash.register_page(__name__, path="/login", name="Sign in")
 
 logger = logging.getLogger(__name__)
 
-_PAGE_STYLE = {
-    "fontFamily": "sans-serif",
-    "padding": "2rem",
-    "maxWidth": "440px",
-    "margin": "3rem auto",
-}
 _FIELD_STYLE = {"display": "block", "width": "100%", "padding": "0.5rem", "marginBottom": "1rem"}
 _LABEL_STYLE = {"display": "block", "fontSize": "0.9rem", "marginBottom": "0.25rem"}
 _BUTTON_STYLE = {
     "padding": "0.6rem 1.2rem",
     "fontSize": "1rem",
-    "backgroundColor": "#1565c0",
+    "backgroundColor": "#003366",
     "color": "white",
     "border": "none",
-    "borderRadius": "3px",
+    "borderRadius": "4px",
     "cursor": "pointer",
 }
 _ERROR_STYLE = {"color": "#b00020", "marginTop": "1rem", "minHeight": "1.2rem"}
+# Eye-toggle button: positioned inside the password input on the right
+# edge. Transparent background so the underlying `_FIELD_STYLE` border
+# reads as the field's border; the input gets extra right-padding so
+# the value never sits under the icon.
+_EYE_BUTTON_STYLE = {
+    "position": "absolute",
+    "right": "0.5rem",
+    "top": "50%",
+    "transform": "translateY(-50%)",
+    "background": "transparent",
+    "border": "none",
+    "padding": "0.25rem",
+    "cursor": "pointer",
+    "color": "#606060",
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+}
+
+
+def _eye_icon(visible: bool) -> html.Span:
+    """Return an inline SVG eye icon.
+
+    `visible=True` shows the "eye-open" glyph (i.e. password is
+    currently visible — click to hide); `visible=False` shows the
+    "eye-closed" glyph (password is hidden — click to reveal).
+    """
+    if visible:
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" '
+            'viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+            '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/>'
+            '<circle cx="12" cy="12" r="3"/></svg>'
+        )
+    else:
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" '
+            'viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+            '<path d="M17.94 17.94A10.5 10.5 0 0 1 12 19c-6.5 0-10-7-10-7'
+            ' a17.5 17.5 0 0 1 4.06-5.06"/>'
+            '<path d="M9.9 4.24A10 10 0 0 1 12 4c6.5 0 10 7 10 7'
+            ' a17.5 17.5 0 0 1-2.16 3.19"/>'
+            '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>'
+            '<line x1="2" y1="2" x2="22" y2="22"/></svg>'
+        )
+    import urllib.parse
+
+    return html.Img(
+        src=f"data:image/svg+xml;utf8,{urllib.parse.quote(svg)}",
+        style={"width": "20px", "height": "20px", "display": "block"},
+        alt="",
+    )
+
+
+_CARD_STYLE = {
+    "backgroundColor": "var(--bc-surface, #FFFFFF)",
+    "border": "1px solid var(--bc-border, #D9D9D9)",
+    "borderRadius": "var(--bc-radius-lg, 6px)",
+    "padding": "2rem",
+    "boxShadow": "var(--bc-shadow-md, 0 2px 6px rgba(0,0,0,0.08))",
+}
 
 
 def layout(**_kwargs: object) -> html.Div:
@@ -59,47 +126,146 @@ def layout(**_kwargs: object) -> html.Div:
         )
     return html.Div(
         [
-            html.H1("Groundwater Drawdown Tool"),
-            html.P("Sign in with your BCGW credentials to begin."),
-            html.Form(
-                [
-                    html.Label("Connection target", style=_LABEL_STYLE),
-                    dcc.Input(
-                        id="login-dsn",
-                        type="text",
-                        value=config.BCGW_DSN,
-                        disabled=True,
-                        style={**_FIELD_STYLE, "backgroundColor": "#f0f0f0"},
-                    ),
-                    html.Label("BCGW username", style=_LABEL_STYLE),
-                    dcc.Input(
-                        id="login-username",
-                        type="text",
-                        autoComplete="username",
-                        style=_FIELD_STYLE,
-                    ),
-                    html.Label("BCGW password", style=_LABEL_STYLE),
-                    dcc.Input(
-                        id="login-password",
-                        type="password",
-                        autoComplete="current-password",
-                        style=_FIELD_STYLE,
-                    ),
-                    html.Button(
-                        "Sign in",
-                        id="login-submit",
-                        n_clicks=0,
-                        type="button",
-                        style=_BUTTON_STYLE,
-                    ),
-                ],
+            make_header(),
+            html.Main(
+                html.Div(
+                    [
+                        html.H1("Sign in"),
+                        html.P(
+                            "Use your BCGW credentials to access the tool.",
+                            style={"color": "var(--bc-text-muted, #606060)"},
+                        ),
+                        html.Form(
+                            [
+                                html.Label("Connection target", style=_LABEL_STYLE),
+                                dcc.Input(
+                                    id="login-dsn",
+                                    type="text",
+                                    value=config.BCGW_DSN,
+                                    disabled=True,
+                                    style={**_FIELD_STYLE, "backgroundColor": "#f0f0f0"},
+                                ),
+                                html.Label("BCGW username", style=_LABEL_STYLE),
+                                dcc.Input(
+                                    id="login-username",
+                                    type="text",
+                                    autoComplete="username",
+                                    style=_FIELD_STYLE,
+                                ),
+                                html.Label("BCGW password", style=_LABEL_STYLE),
+                                html.Div(
+                                    [
+                                        dcc.Input(
+                                            id="login-password",
+                                            type="password",
+                                            autoComplete="current-password",
+                                            style={**_FIELD_STYLE, "paddingRight": "2.5rem"},
+                                        ),
+                                        html.Button(
+                                            _eye_icon(visible=False),
+                                            id="login-password-toggle",
+                                            type="button",
+                                            title="Show password",
+                                            **{"aria-label": "Show password"},
+                                            n_clicks=0,
+                                            style=_EYE_BUTTON_STYLE,
+                                        ),
+                                    ],
+                                    style={"position": "relative", "marginBottom": "1rem"},
+                                ),
+                                html.Button(
+                                    "Sign in",
+                                    id="login-submit",
+                                    n_clicks=0,
+                                    type="button",
+                                    style=_BUTTON_STYLE,
+                                ),
+                            ],
+                        ),
+                        html.Div(id="login-error", style=_ERROR_STYLE),
+                        dcc.Location(id="login-redirect", refresh=True),
+                    ],
+                    style=_CARD_STYLE,
+                ),
+                className="bc-page__content bc-page__content--narrow",
             ),
-            html.Div(id="login-error", style=_ERROR_STYLE),
-            dcc.Location(id="login-redirect", refresh=True),
             make_footer(),
         ],
-        style=_PAGE_STYLE,
+        className="bc-page",
     )
+
+
+# Clientside toggle: flip the password input between type="password"
+# and type="text" on each click of the eye button, and swap the icon
+# + accessibility label so the user can see whether the password is
+# currently visible. Kept clientside so the password never round-trips
+# the server just to toggle visibility.
+clientside_callback(
+    """
+    function(n_clicks, currentType) {
+        if (!n_clicks) {
+            return [window.dash_clientside.no_update,
+                    window.dash_clientside.no_update,
+                    window.dash_clientside.no_update];
+        }
+        const showing = currentType === 'text';
+        const nextType = showing ? 'password' : 'text';
+        const label = showing ? 'Show password' : 'Hide password';
+        return [nextType, label, label];
+    }
+    """,
+    Output("login-password", "type"),
+    Output("login-password-toggle", "title"),
+    Output("login-password-toggle", "aria-label"),
+    Input("login-password-toggle", "n_clicks"),
+    State("login-password", "type"),
+    prevent_initial_call=True,
+)
+
+
+# A second clientside callback swaps the eye icon SVG to match the
+# new state. Kept separate from the type/label toggle so the icon
+# render can derive purely from the input's `type` — that means a
+# future server-side override of the type prop still gets the right
+# icon, with no extra wiring.
+clientside_callback(
+    """
+    function(currentType) {
+        const showing = currentType === 'text';
+        const openSvg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"' +
+            ' viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+            ' stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/>' +
+            '<circle cx="12" cy="12" r="3"/></svg>'
+        );
+        const closedSvg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"' +
+            ' viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+            ' stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M17.94 17.94A10.5 10.5 0 0 1 12 19c-6.5 0-10-7-10-7' +
+            ' a17.5 17.5 0 0 1 4.06-5.06"/>' +
+            '<path d="M9.9 4.24A10 10 0 0 1 12 4c6.5 0 10 7 10 7' +
+            ' a17.5 17.5 0 0 1-2.16 3.19"/>' +
+            '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>' +
+            '<line x1="2" y1="2" x2="22" y2="22"/></svg>'
+        );
+        const svg = showing ? openSvg : closedSvg;
+        const encoded = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+        return {
+            type: 'Img',
+            namespace: 'dash_html_components',
+            props: {
+                src: encoded,
+                alt: '',
+                style: {width: '20px', height: '20px', display: 'block'}
+            }
+        };
+    }
+    """,
+    Output("login-password-toggle", "children"),
+    Input("login-password", "type"),
+)
 
 
 def _verify_credentials(username: str, password: str) -> None:

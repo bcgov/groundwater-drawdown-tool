@@ -60,6 +60,7 @@ from gwdrawdown.core import aquifer_lookup, crs_utils, units
 from gwdrawdown.data_access import get_connection
 from gwdrawdown.data_access import queries as q
 from gwdrawdown.ui.components.footer import make_footer
+from gwdrawdown.ui.components.header import make_header
 from gwdrawdown.ui.session import is_authenticated
 
 dash.register_page(__name__, path="/setup", name="Setup")
@@ -81,33 +82,28 @@ MAP_ZOOM = 7
 
 # --- Styles ------------------------------------------------------------------
 
-_PAGE_STYLE = {
-    "fontFamily": "sans-serif",
-    "padding": "1.5rem 2rem",
-    "maxWidth": "1100px",
-    "margin": "0 auto",
-}
 _SECTION_STYLE = {
-    "border": "1px solid #d0d0d0",
-    "borderRadius": "4px",
+    "border": "1px solid var(--bc-border, #D9D9D9)",
+    "borderRadius": "var(--bc-radius-lg, 6px)",
     "padding": "1rem 1.25rem",
     "marginBottom": "1rem",
-    "backgroundColor": "#fafafa",
+    "backgroundColor": "var(--bc-surface, #FFFFFF)",
+    "boxShadow": "var(--bc-shadow-sm, 0 1px 2px rgba(0,0,0,0.06))",
 }
 _LABEL_STYLE = {"display": "block", "fontSize": "0.85rem", "marginBottom": "0.25rem"}
 _INPUT_STYLE = {"padding": "0.4rem", "marginRight": "0.5rem"}
 _BUTTON_STYLE = {
     "padding": "0.45rem 0.9rem",
     "marginRight": "0.5rem",
-    "border": "1px solid #1565c0",
+    "border": "1px solid #003366",
     "backgroundColor": "white",
-    "color": "#1565c0",
-    "borderRadius": "3px",
+    "color": "#003366",
+    "borderRadius": "4px",
     "cursor": "pointer",
 }
 _PRIMARY_BUTTON_STYLE = {
     **_BUTTON_STYLE,
-    "backgroundColor": "#1565c0",
+    "backgroundColor": "#003366",
     "color": "white",
     "padding": "0.6rem 1.5rem",
     "fontSize": "1rem",
@@ -147,7 +143,10 @@ def layout(**_kwargs: object) -> html.Div:
 
     return html.Div(
         [
-            html.H1("Define analysis"),
+            make_header(),
+            html.Main(
+                [
+                    html.H1("Define analysis"),
             # ------------------------------------------------------------------
             # Pumping point input
             # ------------------------------------------------------------------
@@ -402,9 +401,12 @@ def layout(**_kwargs: object) -> html.Div:
             # `fetch_aquifers` takes over again.
             dcc.Store(id="setup-restore-pending", storage_type="memory", data=True),
             html.Div(id="setup-results-noop", style={"display": "none"}),
+                ],
+                className="bc-page__content bc-page__content--medium",
+            ),
             make_footer(),
         ],
-        style=_PAGE_STYLE,
+        className="bc-page",
     )
 
 

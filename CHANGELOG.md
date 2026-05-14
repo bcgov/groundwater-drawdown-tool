@@ -12,6 +12,28 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+### Phase 5a.1 — Visual identity
+
+#### Added
+
+- The tool now follows the BC government visual identity. Every
+  page has a dark-blue header with the "British Columbia"
+  wordmark, a thin gold stripe, the app title, and (once signed in)
+  your username with a Logout button. Matching dark-blue footer
+  with the version, your username, and a "screening tool" reminder.
+- A **show / hide password** button (eye icon) on the sign-in
+  screen, in case you want to double-check what you typed.
+
+#### Changed
+
+- The status tiles on the results page (Total wells, At risk, OK,
+  etc.) have been redesigned. White tiles with a coloured left
+  edge and a larger number, in place of the pale pastel
+  backgrounds — easier to read at a glance and consistent with the
+  rest of the new BC theme.
+- Buttons, section panels, and link colours updated to match the
+  BC navy and gold palette.
+
 ## [0.4.0] — 2026-05-14
 
 First milestone release. Phase 4 complete: end-to-end interactive

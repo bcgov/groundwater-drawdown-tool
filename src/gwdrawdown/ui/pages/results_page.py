@@ -83,6 +83,7 @@ from gwdrawdown.analysis import (
 )
 from gwdrawdown.ui.components.dd_chart import make_distance_drawdown_figure
 from gwdrawdown.ui.components.footer import make_footer
+from gwdrawdown.ui.components.header import make_header
 from gwdrawdown.ui.components.impact_chart import make_impact_chart
 from gwdrawdown.ui.components.results_map import (
     build_map_skeleton,
@@ -104,18 +105,12 @@ dash.register_page(__name__, path="/results", name="Results")
 
 logger = logging.getLogger(__name__)
 
-_PAGE_STYLE = {
-    "fontFamily": "sans-serif",
-    "padding": "1.5rem 2rem",
-    "maxWidth": "1400px",
-    "margin": "0 auto",
-}
 _SUMMARY_STYLE = {
-    "border": "1px solid #d0d0d0",
-    "borderRadius": "4px",
+    "border": "1px solid var(--bc-border, #D9D9D9)",
+    "borderRadius": "var(--bc-radius-lg, 6px)",
     "padding": "0.75rem 1rem",
     "marginBottom": "1.5rem",
-    "backgroundColor": "#fafafa",
+    "backgroundColor": "var(--bc-surface, #FFFFFF)",
     "fontSize": "0.9rem",
     "lineHeight": 1.6,
 }
@@ -143,20 +138,33 @@ def layout(**_kwargs: object) -> html.Div:
         )
     return html.Div(
         [
-            html.Div(
+            make_header(),
+            html.Main(
                 [
-                    html.H1(
-                        "Results",
-                        style={"display": "inline-block", "marginRight": "1.5rem"},
+                    html.Div(
+                        [
+                            html.H1(
+                                "Results",
+                                style={
+                                    "display": "inline-block",
+                                    "marginRight": "1.5rem",
+                                },
+                            ),
+                            dcc.Link(
+                                "← Back to Setup",
+                                href="/setup",
+                                style={
+                                    "color": "var(--bc-link, #1A5A96)",
+                                    "textDecoration": "none",
+                                },
+                            ),
+                        ],
+                        style={
+                            "display": "flex",
+                            "alignItems": "baseline",
+                            "gap": "1rem",
+                        },
                     ),
-                    dcc.Link(
-                        "← Back to Setup",
-                        href="/setup",
-                        style={"color": "#1565c0", "textDecoration": "none"},
-                    ),
-                ],
-                style={"display": "flex", "alignItems": "baseline", "gap": "1rem"},
-            ),
             # Either the empty/error message OR the results content is
             # shown at any time; the render callback toggles each via
             # its ``style.display``.
@@ -219,9 +227,12 @@ def layout(**_kwargs: object) -> html.Div:
             # with a window resize event the moment results-content
             # becomes visible.
             html.Div(id="results-map-resize-noop", style={"display": "none"}),
+                ],
+                className="bc-page__content",
+            ),
             make_footer(),
         ],
-        style=_PAGE_STYLE,
+        className="bc-page",
     )
 
 

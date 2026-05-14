@@ -1,0 +1,314 @@
+/* BC Gov-aligned theme for the Groundwater Drawdown Tool.
+ *
+ * Phase 5a.1: design tokens + base typography + page chrome (header,
+ * footer, body background, content well). Per-component classes
+ * (.btn-primary, .form-input, .card) land in 5a.2 when inline-style
+ * dicts in the page modules are migrated out.
+ *
+ * Tokens are CSS custom properties on :root so they can be themed at
+ * runtime later (e.g. a high-contrast mode) without touching Python.
+ * Reference: gov.bc.ca design system, GWELLS app chrome.
+ *
+ * Auto-loaded by Dash from src/gwdrawdown/assets/ alongside styles.css.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Design tokens
+ * ------------------------------------------------------------------------- */
+
+:root {
+    /* Brand */
+    --bc-brand: #003366;            /* BC Blue — primary band, primary buttons */
+    --bc-brand-hover: #1A5A96;      /* hover/active for primary actions */
+    --bc-brand-soft: #38598A;       /* secondary navy, used sparingly */
+    --bc-gold: #FCBA19;             /* BC Gold — accent stripe, focus ring */
+
+    /* Surfaces */
+    --bc-page-bg: #F2F2F2;          /* page background outside the content well */
+    --bc-surface: #FFFFFF;          /* card / content-well background */
+    --bc-surface-alt: #FAFAFA;      /* section panels */
+
+    /* Text */
+    --bc-text: #313132;             /* primary body text */
+    --bc-text-muted: #606060;       /* secondary / supporting text */
+    --bc-text-inverse: #FFFFFF;     /* text on brand-colored surfaces */
+
+    /* Lines */
+    --bc-border: #D9D9D9;           /* general border */
+    --bc-border-strong: #B0B0B0;    /* stronger border */
+
+    /* Feedback */
+    --bc-error: #B00020;
+    --bc-link: #1A5A96;
+
+    /* Radius / spacing scale */
+    --bc-radius: 4px;
+    --bc-radius-lg: 6px;
+    --bc-space-1: 0.25rem;
+    --bc-space-2: 0.5rem;
+    --bc-space-3: 0.75rem;
+    --bc-space-4: 1rem;
+    --bc-space-5: 1.5rem;
+    --bc-space-6: 2rem;
+
+    /* Typography */
+    --bc-font-sans: "BC Sans", "Noto Sans", -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --bc-font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo,
+        Courier, monospace;
+
+    /* Chrome dimensions */
+    --bc-header-height: 64px;
+    --bc-accent-stripe-height: 4px;
+
+    /* Shadow */
+    --bc-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --bc-shadow-md: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* ---------------------------------------------------------------------------
+ * Base typography + body
+ * ------------------------------------------------------------------------- */
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bc-page-bg);
+    color: var(--bc-text);
+    font-family: var(--bc-font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4 {
+    color: var(--bc-text);
+    font-weight: 700;
+    line-height: 1.25;
+    margin-top: 0;
+}
+
+h1 { font-size: 1.75rem; margin-bottom: var(--bc-space-4); }
+h2 { font-size: 1.35rem; margin-bottom: var(--bc-space-3); }
+h3 { font-size: 1.1rem; margin-bottom: var(--bc-space-2); }
+
+p { margin-top: 0; }
+
+a {
+    color: var(--bc-link);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+a:hover { color: var(--bc-brand-hover); }
+
+/* Inherit our typography into Dash's own root divs so the font cascade
+ * applies through the page tree. */
+#react-entry-point,
+#_dash-app-content,
+#_pages_content {
+    font-family: var(--bc-font-sans);
+    color: var(--bc-text);
+}
+
+/* Form inputs default to `content-box` sizing, which means a
+ * `width: 100%` input with extra `padding-right` (e.g. the password
+ * field with room for the eye toggle) overflows its parent. Force
+ * border-box across text-like inputs and textareas so width includes
+ * padding + border, and `width: 100%` fits inside any container. */
+input[type="text"],
+input[type="password"],
+input[type="number"],
+input[type="email"],
+input[type="search"],
+textarea,
+select {
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+/* ---------------------------------------------------------------------------
+ * Page chrome: header
+ * ------------------------------------------------------------------------- */
+
+.bc-header {
+    background-color: var(--bc-brand);
+    color: var(--bc-text-inverse);
+    border-bottom: var(--bc-accent-stripe-height) solid var(--bc-gold);
+    /* Lifted slightly so the gold stripe reads as a stripe, not a border. */
+    box-shadow: var(--bc-shadow-sm);
+}
+
+.bc-header__inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 var(--bc-space-5);
+    height: var(--bc-header-height);
+    display: flex;
+    align-items: center;
+    gap: var(--bc-space-5);
+}
+
+.bc-header__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--bc-space-4);
+    text-decoration: none;
+    color: var(--bc-text-inverse);
+    flex-shrink: 0;
+    min-width: 0;
+}
+.bc-header__brand:hover { color: var(--bc-text-inverse); }
+
+/* Wordmark: typographic, plain HTML so BC Sans applies. Two stacked
+ * lines — bold "British Columbia" on top, smaller "Government of
+ * B.C." underneath. A gold bar on the left edge echoes the accent
+ * stripe under the header. Every element here is flex-shrink:0 +
+ * nowrap so the wordmark always renders on its own lines regardless
+ * of how narrow the viewport gets. */
+.bc-wordmark {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex-shrink: 0;
+    line-height: 1.15;
+    padding: 4px 0 4px 12px;
+    border-left: 3px solid var(--bc-gold);
+}
+.bc-wordmark__primary {
+    font-family: var(--bc-font-sans);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--bc-text-inverse);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    text-transform: none;
+    line-height: 1.15;
+}
+.bc-wordmark__secondary {
+    font-family: var(--bc-font-sans);
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    margin-top: 2px;
+    line-height: 1.15;
+}
+
+.bc-header__divider {
+    width: 1px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
+}
+
+.bc-header__title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--bc-text-inverse);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.bc-header__spacer { flex: 1 1 auto; }
+
+.bc-header__user {
+    display: flex;
+    align-items: center;
+    gap: var(--bc-space-3);
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.bc-header__logout {
+    color: var(--bc-text-inverse);
+    text-decoration: none;
+    padding: 0.4rem 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: var(--bc-radius);
+    font-size: 0.85rem;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.bc-header__logout:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: var(--bc-text-inverse);
+    color: var(--bc-text-inverse);
+    text-decoration: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Page chrome: content well
+ * ------------------------------------------------------------------------- */
+
+.bc-page {
+    min-height: calc(100vh - var(--bc-header-height) - var(--bc-accent-stripe-height));
+    display: flex;
+    flex-direction: column;
+}
+
+.bc-page__content {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--bc-space-5) var(--bc-space-5);
+    box-sizing: border-box;
+}
+
+/* Narrower variant for the login page so the form stays compact. */
+.bc-page__content--narrow {
+    max-width: 480px;
+    padding-top: var(--bc-space-6);
+}
+
+/* Mid-width for setup; results uses full --max-width. */
+.bc-page__content--medium {
+    max-width: 1100px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Page chrome: footer
+ * ------------------------------------------------------------------------- */
+
+.bc-footer {
+    background-color: var(--bc-brand);
+    color: rgba(255, 255, 255, 0.9);
+    border-top: var(--bc-accent-stripe-height) solid var(--bc-gold);
+    margin-top: var(--bc-space-6);
+}
+
+.bc-footer__inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--bc-space-4) var(--bc-space-5);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--bc-space-5);
+    font-size: 0.85rem;
+}
+
+.bc-footer__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--bc-space-4);
+    align-items: center;
+}
+
+.bc-footer__disclaimer {
+    flex: 1 1 auto;
+    min-width: 240px;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.8rem;
+    line-height: 1.4;
+}

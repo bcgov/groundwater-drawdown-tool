@@ -92,6 +92,14 @@ def create_app() -> dash.Dash:
         use_pages=True,
         pages_folder=str(pages_folder),
         suppress_callback_exceptions=True,
+        # BC Sans from the official BC Gov font CDN. If the CDN is
+        # unreachable from the user's workstation (offline, VPN
+        # blocked) the @font-face simply fails to load and the page
+        # falls back to the system-sans stack declared in
+        # `assets/theme.css`. No tool-level error path needed.
+        external_stylesheets=[
+            "https://static.gov.bc.ca/fonts/BCSans/css/BCSans.css",
+        ],
     )
     _configure_sessions(app.server)
     _register_routes(app.server)
