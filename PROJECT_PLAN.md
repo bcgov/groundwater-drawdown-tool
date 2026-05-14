@@ -208,13 +208,18 @@ SAD result, classify as:
   Excluded from the at-risk summary table because it is a data-quality
   channel, not an at-risk channel.
 - `OUTSIDE_VALIDITY` — Cooper-Jacob `u >= 0.01` at this distance/duration.
-  **Currently bypassed at the pipeline level** (`analysis.run_analysis`
-  passes `u_threshold=inf`) pending client confirmation. The math still
-  computes `u_max` per well for diagnostics; revert is one line.
+  **Advisory only** per client direction: `analysis.effective_u_threshold`
+  returns `inf` so no well's `well_status` is `OUTSIDE_VALIDITY`. The
+  status is whatever the SAD-vs-impact rules produce (`AT_RISK`, `OK`,
+  `INSUFFICIENT_DATA`, `SUSPECT_DATA`); a well that fails the validity
+  check (`u_max >= COOPER_JACOB_U_THRESHOLD`) is instead flagged
+  visually in the per-well table with a light-purple row tint. Reverting
+  to a hard-fail status is a one-line change in `effective_u_threshold`.
 
 Status precedence when more than one rule could apply:
-``OUTSIDE_VALIDITY`` > ``INSUFFICIENT_DATA`` > ``SUSPECT_DATA`` >
-``AT_RISK`` > ``OK``.
+``INSUFFICIENT_DATA`` > ``SUSPECT_DATA`` > ``AT_RISK`` > ``OK``.
+(`OUTSIDE_VALIDITY` is wired through the enum and the math kernel for
+future re-enablement, but is not emitted by the pipeline today.)
 
 The 30% threshold matches the legacy Excel (`Impact!V` formula and the
 summary table at `InputValues!B30`). Make the threshold a config key
@@ -270,14 +275,19 @@ Island dry season; see deck slide 5), with quick-pick presets for "30
 days", "100 days", "1 year", "10 years (perpetual licence)".
 **CLIENT_TBD: Q4, Q10**.
 
-**Single-aquifer filtering.** Once the pumping point is placed, the tool
-queries the aquifer polygon containing it and offers (default on) to
-filter the nearby-wells list to only wells with the same `AQUIFER_ID`.
-This automates a manual step from the legacy workflow (deck slide 19:
-"remove or otherwise flag all wells that are in a different aquifer").
-A toggle lets the user disable filtering to show all wells in the
-buffer with a clear visual distinction for "different aquifer".
-**CLIENT_TBD: Q12** — confirm preferred default behaviour.
+**Single-aquifer filtering (spatial, default OFF).** Once the pumping
+point is placed, the tool queries the aquifer polygon containing it.
+A toggle lets the user filter the nearby-wells list to only wells
+whose geometry falls **inside the source aquifer polygon** — a
+spatial test (`SDO_ANYINTERACT` against the source polygon), not a
+GWELLS `AQUIFER_ID` attribute match. This safeguards against
+erroneous GWELLS aquifer assignments and against future
+re-delineation of aquifer boundaries: a well's recorded
+`AQUIFER_ID` may be stale, but where it sits on the map is not.
+Default is OFF (return every well within the buffer) so the
+officer sees the full set first and chooses to narrow when
+appropriate. **CLIENT_TBD: Q12 — confirmed** (default-off,
+spatial).
 
 **`ui/pages/results_page.py`** — results dashboard. Layout, in priority
 order:
@@ -488,34 +498,102 @@ separately so the work stayed bisectable:
   as a copy-paste workflow. New `analysis.effective_u_threshold`
   centralises the Cooper-Jacob bypass so it flips in one place
   for both the initial pipeline and the override recompute.
-- **4c.3 — Distance-drawdown chart + colour-coded map**.
-  Implements `references/excel_chart_layout.md` (deck slide 21):
-  scatter chart with three series (red dots for wells with WTN
-  labels, smooth black Cooper-Jacob curve, vertical orange SAD
-  bars), inverted Y axis. Colour-coded `dash-leaflet` map with
-  marker size proportional to drawdown impact; cross-linked to
-  the chart (click one, highlight the other). After 4c.3, the
-  full Phase 4 acceptance is met.
+- **4c.3 — Distance-drawdown chart + colour-coded map +
+  spatial filter + advisory validity flag**. Implements
+  `references/excel_chart_layout.md` (deck slide 21): scatter
+  chart with three series (red dots for wells with WTN labels,
+  smooth black Cooper-Jacob curve, vertical orange SAD bars),
+  inverted Y axis. Colour-coded `dash-leaflet` map with marker
+  size proportional to drawdown impact; cross-linked to the
+  chart via a `selected-well` Store. The nearby-wells SQL is
+  reworked to filter spatially (`SDO_ANYINTERACT` against the
+  source aquifer polygon) instead of by GWELLS `AQUIFER_ID`,
+  with the filter default flipped OFF per the confirmed Q12
+  answer. The Cooper-Jacob `u<0.01` check is downgraded to a
+  per-row visual advisory (light-purple tint on the per-well
+  table); the `well_status` continues to reflect the SAD-based
+  classification. A small legend below the per-well table
+  explains the row tints (yellow = override, purple = outside
+  validity advisory) and reminds users the table paginates
+  after 10 rows. After 4c.3, the full Phase 4 acceptance is
+  met.
 
-**Acceptance (full Phase 4):** user launches the app, sees login page,
-enters BCGW credentials, lands on setup page, runs an analysis through
-to results, clicks logout, sees login page again. Wrong credentials
-show an inline error and don't redirect. The username appears in the
-UI footer (and in log entries) for the active session. The at-risk
-summary table and the distance-drawdown chart are visually equivalent
-to the legacy Excel output (deck slide 21).
+**Acceptance (full Phase 4) — met at v0.4.0 (2026-05-14):** user
+launches the app, sees login page, enters BCGW credentials, lands
+on setup page, runs an analysis through to results, clicks logout,
+sees login page again. Wrong credentials show an inline error and
+don't redirect. The username appears in the UI footer (and in log
+entries) for the active session. The at-risk summary table and the
+distance-drawdown chart are visually equivalent to the legacy Excel
+output (deck slide 21). An Impact-% bar chart and a colour-coded
+map sit beside the distance-drawdown chart and stay in sync via a
+shared `selected-well` Store. CSV export ships for both tables.
 
-### Phase 5 — Exports and polish
+### Phase 5 — Visual identity, map polish, exports, disclaimers
 
-- CSV, GeoJSON, PDF export buttons wired up via `dcc.Download`.
-- PDF includes: input parameters, T/S used (default vs manual override flagged),
-  Cooper-Jacob assumptions disclaimer, BCGW snapshot date if obtainable from
-  the database, timestamp, run ID (UUID), tool version (read from `version.txt`).
-- Logging configured to write to `./logs/gwdrawdown.log` rotating daily.
-- Final pass on caveat / disclaimer text in the UI.
+Phase 5 expands the original "Exports and polish" scope to absorb
+two things that v0.4.0 deferred: a coherent visual identity (the
+v0.4.0 UI ships with per-component inline styles and no real
+theming), and richer maps (the setup-page map ships with a single
+OSM basemap and no aquifer overlay, the results map likewise). PDF
+export rounds out the exports trio (CSV ships; GeoJSON and PDF
+don't), and a logging + disclaimer pass closes out the
+"professional polish" theme.
 
-**Acceptance:** all exports produce correctly-formatted files; logs capture
-each analysis run with input parameters and tool version.
+Sub-staged like Phase 4 so each step is browser-verifiable and
+bisectable:
+
+- **5a — Visual identity / theme.** Pull the per-component inline
+  style dicts out of Python and into a single CSS theme: design
+  tokens for colour, typography, spacing, and radius; a wordmark
+  / header chrome consistent with the BC government visual
+  language (target reference: gov.bc.ca and BC Data Catalogue);
+  consistent button/card/section/form styling; real footer
+  treatment with version + signed-in user + Logout. The status
+  palette in `ui/components/palette.py` already centralises one
+  axis; this stage centralises the rest. Probably the largest
+  sub-stage — design-token migrations always are. Wants a design
+  sketch / reference set before committing to a direction
+  (CLIENT_TBD: visual-direction conversation pending).
+- **5b — Setup-page map improvements.** Basemap layer switcher
+  (OSM / topographic / satellite imagery), an aquifer-polygon
+  overlay so the officer can see polygon boundaries when picking
+  the pumping point (lazy-loaded vector tiles or WMS against
+  BCGW where available), an existing-wells overlay drawn once
+  the point is placed so the officer can eyeball the buffer
+  contents before clicking Run Analysis. The results map
+  inherits the same basemap switcher and overlays as a
+  consistency win.
+- **5c — Exports.** CSV is already in (custom buttons on both
+  tables). Add GeoJSON export of the well set (one feature per
+  well, properties = full per-well row including overrides) and
+  PDF export of the full run. PDF stack: `reportlab` is already a
+  dep. Content per the legacy-Excel parity goal:
+  - Input parameters block (pumping point, source aquifer + subtype,
+    T/S with `(override)` tag when applicable, Q, duration, buffer,
+    spatial-filter on/off).
+  - Cooper-Jacob assumptions disclaimer.
+  - At-risk summary table.
+  - Distance-drawdown chart image.
+  - Impact-% bar chart image.
+  - Full per-well details table (with override markers).
+  - Footer: BCGW snapshot date (if obtainable), run timestamp,
+    run ID (UUID), tool version from `version.txt`, signed-in user.
+  - "Screening tool — not a replacement for qualified hydrogeologist
+    review" banner on every page.
+- **5d — Logging + caveat text + disclaimer.** Rotating daily log to
+  `./logs/gwdrawdown.log` (replaces the current `basicConfig`
+  setup in `app._configure_logging`). Final caveat / disclaimer
+  pass on /results, the PDF, and the login page (BCGW
+  credentials handling reassurance). Acceptance is light: logs
+  rotate, disclaimers are in place, no behavioural changes.
+
+**Acceptance (full Phase 5):** UI reads as a coherent, professionally
+branded tool rather than the Dash-default appearance. Setup-page map
+offers basemap and aquifer overlay choices. All three exports (CSV,
+GeoJSON, PDF) produce correctly-formatted files; PDF mirrors the
+legacy Excel artifact. Logs rotate daily; disclaimers are visible on
+every officer-facing surface.
 
 ### Phase 6 — Auto-update from network share
 
@@ -716,10 +794,11 @@ update.
   automated SAD for confined cases using top-of-aquifer data from BCGW
   (more complex — needs a separate data source for aquifer-top
   elevations).
-- **Q12** (single-aquifer filtering default) — v1 will offer the filter
-  default-on (auto-filter results to wells in the same aquifer as the
-  pumping point). Confirm that's the preferred default; an alternative
-  is default-off with a clear visual indicator on out-of-aquifer wells.
+- **Q12** (single-aquifer filtering default) — **confirmed**:
+  default-OFF, and the filter is spatial (`SDO_ANYINTERACT` against
+  the source aquifer polygon), not a GWELLS `AQUIFER_ID` attribute
+  match. The spatial test safeguards against erroneous GWELLS aquifer
+  assignments and against future re-delineation of aquifer boundaries.
 - **Q13** (reassigned aquifer material rule) — v1 ports the legacy Excel
   rule verbatim: `if BedrockDepth populated AND (FinishedDepth -
   BedrockDepth) > 5 ft, classify as "Bedrock", else "Unconsolidated"`.

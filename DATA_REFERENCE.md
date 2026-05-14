@@ -135,9 +135,15 @@ and reused, not constructed per call.
 
 ### 6.1 Find nearby wells within radius (BC Albers)
 
-Two variants — with and without aquifer filtering. The setup page exposes a
-toggle (default on) for whether to restrict results to wells in the same
-aquifer as the pumping point. **CLIENT_TBD: Q12.**
+Two variants — with and without same-aquifer filtering. The setup page
+exposes a toggle (default **off** per the confirmed Q12 answer) that
+restricts results to wells whose geometry falls **spatially inside** the
+source aquifer polygon. The filter is a spatial test
+(`SDO_ANYINTERACT` against the polygon for the user-selected source
+`AQUIFER_ID`), not an attribute equality on `w.AQUIFER_ID`. This
+safeguards against erroneous GWELLS aquifer assignments and against
+future re-delineation of aquifer boundaries — a well's recorded
+`AQUIFER_ID` may be stale, but its geometry on the map is authoritative.
 
 The `GW_WATER_WELLS_WRBC_SVW` features are stored as point geometries with
 the `SDO_POINT` attribute populated. Reading `GEOMETRY.SDO_POINT.X` /
@@ -171,14 +177,23 @@ WHERE SDO_WITHIN_DISTANCE(
     SDO_GEOMETRY(2001, 3005, SDO_POINT_TYPE(:x, :y, NULL), NULL, NULL),
     'distance=' || :radius_m || ' unit=meter'
 ) = 'TRUE'
-  AND (:aquifer_id IS NULL OR w.AQUIFER_ID = :aquifer_id)
+  AND (:aquifer_id IS NULL OR EXISTS (
+        SELECT 1
+        FROM WHSE_WATER_MANAGEMENT.GW_AQUIFERS_CLASSIFICATION_SVW a
+        WHERE a.AQUIFER_ID = :aquifer_id
+          AND SDO_ANYINTERACT(a.GEOMETRY, w.GEOMETRY) = 'TRUE'
+      ))
 ```
 
-Bind parameters, never string-format. The same-aquifer filter is implemented
-as the trailing `OR w.AQUIFER_ID = :aquifer_id` so a single SQL template
-handles both cases (pass `NULL` to disable filtering). Distance from the
-pumping point is computed Python-side using `(X_ALBERS, Y_ALBERS)` —
-plain Euclidean, matching the legacy Excel.
+Bind parameters, never string-format. The spatial filter is implemented as
+a correlated `EXISTS` subquery so a single SQL template handles both cases
+(pass `NULL` to disable filtering). `SDO_ANYINTERACT` is the
+relationship-agnostic predicate (point on the boundary still counts as
+inside); for point-in-polygon it behaves identically to `SDO_INSIDE` /
+`SDO_CONTAINS` while being more forgiving of polygon-edge cases at
+aquifer boundaries. Distance from the pumping point is computed
+Python-side using `(X_ALBERS, Y_ALBERS)` — plain Euclidean, matching
+the legacy Excel.
 
 ### 6.2 Find containing aquifer for a point
 

@@ -12,6 +12,20 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-05-14
+
+First milestone release. Phase 4 complete: end-to-end interactive
+workflow from BCGW login through to a results dashboard with two
+charts, a colour-coded map, an at-risk summary table, and an
+editable per-well details table with live recompute. The tool now
+runs the same canonical example case as the legacy Excel and
+produces visually-equivalent output (deck slide 21 reference).
+
+Not yet released to end users — the auto-update mechanism (Phase 6)
+isn't built, so installation is still a manual checkout. Treat 0.4.0
+as the milestone version against which Phase 5 polish and exports
+will land.
+
 ### Added
 
 - Initial project scaffolding.
@@ -107,6 +121,35 @@ Changed, Fixed, Removed.
   round-trip on `WellResult` and `AnalysisResult` preserves the
   three enum fields. 110 pytest tests passing (14 new); ruff
   clean.
+- Phase 4c.3 distance-drawdown chart, results map, spatial source-
+  aquifer filter, and advisory Cooper-Jacob validity flag. The
+  /results page now leads with a Plotly distance-drawdown chart
+  (red dots with WTN labels, smooth black Cooper-Jacob curve,
+  vertical orange SAD bars, inverted Y axis) matching the legacy
+  Excel chart from deck slide 21, followed by a `dash-leaflet` map
+  with the pumping well, a translucent buffer-radius circle, and a
+  `CircleMarker` per observation well coloured by status and sized
+  by predicted impact. Chart and map are cross-linked through a
+  page-scoped `selected-well` Store: clicking a chart point or a
+  map marker highlights the matching well in both views.
+- Source-aquifer filter is now **spatial** and **default off**
+  (CLIENT_TBD Q12 confirmed). When enabled, the nearby-wells query
+  filters with an `SDO_ANYINTERACT` correlated subquery against
+  the source aquifer polygon geometry rather than comparing
+  `w.AQUIFER_ID` to the source id. This safeguards against stale
+  GWELLS aquifer assignments and against future re-delineation of
+  aquifer boundaries — a well's recorded `AQUIFER_ID` may drift,
+  but its point geometry is authoritative. Filter label updated
+  to "Filter out wells spatially outside source aquifer".
+- Cooper-Jacob u<0.01 validity check is now an **advisory** rather
+  than a hard status (per client direction). Wells failing the
+  check keep their SAD-based status (`AT_RISK`, `OK`, etc.) and
+  the math still computes `u_max` per row, but the per-well table
+  tints the affected rows light purple so the officer can spot
+  them at a glance. Purple takes precedence over the yellow
+  override tint on rows that trip both. A small legend above the
+  per-well table explains the row tints and reminds users that
+  the table paginates after 10 rows.
 - Setup page now restores the last-run inputs on Back-to-Setup.
   Point, lat/lon, Q + unit, duration, buffer radius, same-aquifer
   filter, and the source-aquifer pick all replay from
@@ -148,6 +191,7 @@ Changed, Fixed, Removed.
   entered through the login UI at runtime. Override variables are
   documented in `README.md`.
 
-## [0.1.0] — TBD
+## [0.1.0] — superseded
 
-First development version. Not yet released to users.
+Initial scaffolding version, never released; rolled into 0.4.0
+above when Phase 4 closed out.

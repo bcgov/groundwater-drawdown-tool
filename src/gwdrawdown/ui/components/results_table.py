@@ -32,9 +32,16 @@ from dash import Input, Output, State, callback, dash_table, dcc, html, no_updat
 
 from gwdrawdown.analysis import OVERRIDABLE_FIELDS, AnalysisResult, WellResult
 from gwdrawdown.core.flagging import WellStatus
+from gwdrawdown.ui.components.palette import STATUS_PALETTE
 
 # Light yellow row tint for any well that has an active override.
 _OVERRIDE_ROW_BG = "#fff8e1"
+# Light purple row tint for wells failing the Cooper-Jacob u<threshold
+# advisory. Purple takes precedence over the yellow override tint
+# (validity advisory is more important to surface than "you edited
+# this row"), so the rule is appended AFTER the override rule in
+# `style_data_conditional`.
+_OUTSIDE_VALIDITY_ROW_BG = "#f3e5f5"
 
 _EXPORT_BUTTON_STYLE = {
     "padding": "0.4rem 0.9rem",
@@ -109,13 +116,9 @@ _NUMERIC_FORMAT_BY_COLUMN: dict[str, str] = {
 # `analysis.OVERRIDABLE_FIELDS` exactly — keep the constant in lockstep.
 _EDITABLE_COLUMNS: tuple[str, ...] = OVERRIDABLE_FIELDS
 
-_STATUS_PALETTE: dict[WellStatus, tuple[str, str]] = {
-    WellStatus.OK: ("#e8f5e9", "#2e7d32"),
-    WellStatus.AT_RISK: ("#ffebee", "#c62828"),
-    WellStatus.INSUFFICIENT_DATA: ("#f5f5f5", "#616161"),
-    WellStatus.SUSPECT_DATA: ("#fff3e0", "#ef6c00"),
-    WellStatus.OUTSIDE_VALIDITY: ("#f3e5f5", "#7b1fa2"),
-}
+# Status cell colour palette is defined once in `palette.py` so the
+# table, stat cards, and map markers can't drift out of sync.
+_STATUS_PALETTE = STATUS_PALETTE
 
 # Per-column widths for the full per-well table. Numeric columns are
 # tightened so the table fits a 1366-wide screen with horizontal scroll
@@ -208,8 +211,9 @@ def _per_well_row_dict(
     base: WellResult,
     column_ids: list[str],
     active_overrides: dict[str, float | None],
+    u_threshold: float,
 ) -> dict[str, Any]:
-    """Build the per-well table row, including override markers.
+    """Build the per-well table row, including override and advisory markers.
 
     Editable cells carry the post-override formatted value as a plain
     numeric string. Each row also carries:
@@ -222,7 +226,13 @@ def _per_well_row_dict(
       ``style_data_conditional`` filter `{edited_fields} ne ""`;
     - hidden ``<col>_base`` cells holding the BCGW base value, used
       by `capture_overrides` to detect "edited back to original"
-      without consulting the store.
+      without consulting the store;
+    - a hidden ``_outside_validity`` cell ("yes" / "") driven by
+      ``u_max >= u_threshold``. The pipeline's ``well_status`` no
+      longer flips to ``OUTSIDE_VALIDITY`` (advisory-only per the
+      client direction), so the row tint is the user-visible signal
+      that Cooper-Jacob's small-``u`` assumption is being stretched
+      at that distance/duration.
     """
     row: dict[str, Any] = {
         col: _format_cell(col, _well_value(current, col))
@@ -236,6 +246,7 @@ def _per_well_row_dict(
     )
     for col in _EDITABLE_COLUMNS:
         row[f"{col}_base"] = _format_cell(col, _well_value(base, col))
+    row["_outside_validity"] = "yes" if current.u_max >= u_threshold else ""
     return row
 
 
@@ -292,8 +303,10 @@ def _override_row_styles() -> list[dict]:
     the same cell value, so they update together or not at all
     (previously the tint depended on an undeclared ``_overridden``
     cell, which dash_table doesn't reliably re-evaluate when the
-    server pushes new ``data``). Listed before the status-cell rules
-    so the status colour still wins on the Status column.
+    server pushes new ``data``). Listed before the outside-validity
+    and status-cell rules so purple wins over yellow on rows that
+    trip both, and the status colour still wins on the Status
+    column.
     """
     return [
         {
@@ -301,6 +314,26 @@ def _override_row_styles() -> list[dict]:
                 "filter_query": '{edited_fields} ne ""',
             },
             "backgroundColor": _OVERRIDE_ROW_BG,
+        },
+    ]
+
+
+def _outside_validity_row_styles() -> list[dict]:
+    """Row-level light-purple tint for the Cooper-Jacob advisory.
+
+    Wells whose ``u_max`` meets or exceeds ``inputs.u_threshold`` get
+    a purple tint regardless of their ``well_status``. The status
+    cell itself is left for the status palette so officers can still
+    read AT_RISK / OK at a glance — purple is a "treat this number
+    cautiously" hint, not a status. Listed AFTER ``_override_row_styles``
+    so purple visibly wins over yellow on rows that carry both.
+    """
+    return [
+        {
+            "if": {
+                "filter_query": '{_outside_validity} = "yes"',
+            },
+            "backgroundColor": _OUTSIDE_VALIDITY_ROW_BG,
         },
     ]
 
@@ -367,6 +400,16 @@ def build_at_risk_section() -> html.Div:
             html.Div(
                 id="at-risk-table-wrapper",
                 children=[
+                    html.Div(
+                        "Note: the table paginates at 10 rows per page — "
+                        "use the page controls at the bottom to see the rest.",
+                        style={
+                            "fontSize": "0.8rem",
+                            "color": "#555",
+                            "fontStyle": "italic",
+                            "marginBottom": "0.4rem",
+                        },
+                    ),
                     dash_table.DataTable(
                         id="at-risk-summary",
                         columns=_columns_for(_AT_RISK_COLUMNS),
@@ -413,19 +456,22 @@ def make_per_well_rows(
     """Just the data rows for the per-well details table.
 
     Pure projection of `current.wells` -> dash_table row dicts, sorted
-    ascending by distance. Hidden ``<col>_base`` shadows and the
-    ``edited_fields`` summary are populated by `_per_well_row_dict`;
-    the render callback feeds the result directly into
-    ``per-well-details.data``.
+    ascending by distance. Hidden ``<col>_base`` shadows, the
+    ``edited_fields`` summary, and the ``_outside_validity`` advisory
+    flag (driven by ``inputs.u_threshold``) are populated by
+    `_per_well_row_dict`; the render callback feeds the result
+    directly into ``per-well-details.data``.
     """
     column_ids = [c[0] for c in _FULL_COLUMNS]
     sorted_wells = sorted(current.wells, key=lambda w: w.distance_m)
+    u_threshold = current.inputs.u_threshold
     return [
         _per_well_row_dict(
             w,
             base_wells_by_wtn.get(w.well_tag_number, w),
             column_ids,
             overrides_by_wtn.get(w.well_tag_number, {}),
+            u_threshold,
         )
         for w in sorted_wells
     ]
@@ -440,10 +486,62 @@ _PER_WELL_HELPER_CHILDREN = [
     "Reset all overrides to clear every edit at once. Drawdown "
     "(m) is not affected by these edits — it depends on Q, T, S, "
     "duration, and the well's distance from the pumping point. "
-    "Rows with active overrides are tinted yellow and the rightmost "
-    "\"Edited\" column lists which fields you adjusted (carried "
-    "through to the CSV export).",
+    "The rightmost \"Edited\" column lists which fields you "
+    "adjusted (carried through to the CSV export).",
 ]
+
+
+def _legend_swatch(color: str) -> html.Span:
+    return html.Span(
+        style={
+            "display": "inline-block",
+            "width": "0.9rem",
+            "height": "0.9rem",
+            "backgroundColor": color,
+            "border": "1px solid #bbb",
+            "verticalAlign": "middle",
+            "marginRight": "0.35rem",
+        }
+    )
+
+
+_PER_WELL_LEGEND_STYLE = {
+    "fontSize": "0.8rem",
+    "color": "#555",
+    "marginTop": "0.4rem",
+    "marginBottom": "0.5rem",
+    "lineHeight": 1.6,
+}
+
+
+def _per_well_legend() -> html.Div:
+    """Row-tint legend + pagination reminder, shown above the table.
+
+    The per-well table mounts with ``page_size=10`` (``page_action="native"``);
+    officers reading a long buffer query for the first time can miss
+    that there are additional pages, so the reminder lives next to the
+    colour legend, in the same line of sight as the table itself.
+    """
+    return html.Div(
+        [
+            html.Span("Row tints: ", style={"fontWeight": "500"}),
+            _legend_swatch(_OVERRIDE_ROW_BG),
+            html.Span("manual override active", style={"marginRight": "1rem"}),
+            _legend_swatch(_OUTSIDE_VALIDITY_ROW_BG),
+            html.Span(
+                "outside Cooper-Jacob validity (advisory — "
+                "drawdown number shown but should be treated with "
+                "caution at this distance / duration).",
+            ),
+            html.Br(),
+            html.Span(
+                "Note: the table paginates at 10 rows per page — "
+                "use the page controls at the bottom to see the rest.",
+                style={"fontStyle": "italic"},
+            ),
+        ],
+        style=_PER_WELL_LEGEND_STYLE,
+    )
 
 
 def build_per_well_section() -> html.Div:
@@ -492,6 +590,7 @@ def build_per_well_section() -> html.Div:
             html.Div(
                 id="per-well-table-wrapper",
                 children=[
+                    _per_well_legend(),
                     dash_table.DataTable(
                         id="per-well-details",
                         columns=_full_columns_with_editing(),
@@ -530,10 +629,15 @@ def build_per_well_section() -> html.Div:
                             "borderBottom": "2px solid #ccc",
                             "whiteSpace": "normal",
                         },
-                        # Row tint must come first so the per-cell status palette
-                        # paints over it on the Status column.
+                        # Order matters: yellow override tint, then
+                        # purple outside-validity tint (so purple wins
+                        # on rows tripping both), then the status
+                        # palette (per-column, so it always wins on
+                        # the Status column).
                         style_data_conditional=(
-                            _override_row_styles() + _status_conditional_styles()
+                            _override_row_styles()
+                            + _outside_validity_row_styles()
+                            + _status_conditional_styles()
                         ),
                     ),
                 ],

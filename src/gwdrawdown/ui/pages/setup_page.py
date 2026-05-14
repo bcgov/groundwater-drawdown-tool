@@ -25,8 +25,10 @@ Other inputs:
 - Pumping duration: numeric, default 100 d (legacy Excel
   convention; CLIENT_TBD: Q4, Q10), with quick presets.
 - Buffer radius: 1000 m by default (matches the legacy deck).
-- Same-aquifer filter: on by default per CLIENT_TBD: Q12; passes
-  ``aquifer_id=None`` to ``nearby_wells`` when off.
+- Same-aquifer filter: **off by default** (Q12 confirmed). When on,
+  it's a SPATIAL filter — wells whose geometry lies inside the
+  source aquifer polygon — not a GWELLS ``AQUIFER_ID`` attribute
+  match. Passes ``aquifer_id=None`` to ``nearby_wells`` when off.
 
 "Run Analysis" validates everything, packs an ``AnalysisInputs``
 into the app-level ``analysis-inputs`` store, and navigates to
@@ -349,11 +351,17 @@ def layout(**_kwargs: object) -> html.Div:
                         id="setup-filter-toggle",
                         options=[
                             {
-                                "label": " Filter nearby wells to the same aquifer",
+                                "label": (
+                                    " Filter out wells spatially outside "
+                                    "source aquifer"
+                                ),
                                 "value": "filter",
                             }
                         ],
-                        value=["filter"],
+                        # Default off (Q12 confirmed). The officer
+                        # sees every well in the buffer first and
+                        # opts in to the spatial filter when needed.
+                        value=[],
                         style={"marginTop": "0.5rem"},
                     ),
                 ],

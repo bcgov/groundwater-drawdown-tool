@@ -1,48 +1,59 @@
-"""Results page — sub-stage 4c.2 dashboard with editable overrides.
+"""Results page — sub-stage 4c.3 dashboard with chart, map and overrides.
 
 Layout from top:
 
 1. Header — H1 + "Back to Setup" link.
 2. Run summary — timestamp, signed-in user, source aquifer, T/S used
    (with "(override)" tag when applicable), Q in m³/day, duration,
-   buffer radius, filter on/off.
+   buffer radius, source-aquifer filter on/off (spatial).
 3. Stat cards — six status counts + max drawdown.
-4. At-risk wells table — filtered to ``WellStatus.AT_RISK`` only.
-5. Per-well details table — full 17-column table with sort, filter,
+4. Distance-drawdown chart — three traces (wells, Cooper-Jacob
+   curve, SAD bars), inverted Y, log-spaced X. Click a point to
+   select it; the map highlights the matching marker.
+5. Colour-coded map — pumping well + buffer + per-well markers
+   (status colour, impact-magnitude radius). Click a marker to
+   select it; the chart highlights the matching point.
+6. At-risk wells table — filtered to ``WellStatus.AT_RISK`` only.
+7. Per-well details table — full 17-column table with sort, filter,
    pagination (10/page), CSV export, four editable columns (NPL,
    finished depth, stickup, top of fracture/screen), and a Reset
    button. Status cell colour-coded per `WellStatus`. Rows with
-   active overrides are tinted light yellow; the rightmost "Edited"
-   column lists which fields each row has overridden (carried
-   through to CSV export).
-6. Footer.
+   active overrides are tinted light yellow; rows failing the
+   Cooper-Jacob u<threshold advisory are tinted light purple
+   (purple wins on rows tripping both). A row-tint legend +
+   pagination reminder sit just above the table.
+8. Footer.
 
-Render flow (rebuilt in 4c.2 to fix a dash_table reconciliation
-issue): the layout in `layout()` is a *static skeleton* —
+Render flow: the layout in `layout()` is a *static skeleton* —
 named-id containers (`summary-block-container`, `stat-cards-container`,
-the at-risk and per-well sections built by
-`results_table.build_*_section`) — that exists from page mount. The
-dash_table components live inside that skeleton from the start, so
-their props (especially ``data``) can be updated in isolation by
-the render callback rather than via a full ``children`` rebuild.
+``dd-chart``, the map skeleton from `results_map.build_map_skeleton`,
+the at-risk and per-well sections from `results_table`) — that
+exists from page mount. The dash_table components, the chart, and
+the map's LayerGroups stay mounted across renders so their props
+update in isolation.
 
-Two callbacks drive the page:
+Five page-level callbacks drive the page:
 
 - `run_pipeline_if_needed` reads `analysis-inputs`, calls
   `run_analysis` only when the inputs change, and writes the
   JSON-serialised `AnalysisResult` to `analysis-result`. Also resets
-  `well-overrides` on a new run so edits from a previous analysis
-  don't leak across the wells.
+  `well-overrides` and `selected-well` on a new run so state from a
+  previous analysis doesn't leak across the wells.
 - `render` reads `analysis-result` + `well-overrides`, applies
-  overrides via `analysis.apply_overrides`, and writes each dynamic
-  region directly (summary block, stat cards, at-risk heading/helper/
-  data, per-well heading, per-well data). No BCGW round-trip happens
-  here — overrides edit the cached result in place — and crucially
-  the two dash_tables stay mounted across renders, which keeps cell
-  clears and Edited-column refreshes consistent.
-
-Sub-stage 4c.3 will plug the distance-drawdown chart and the colour-
-coded map into the same render callback.
+  overrides via `analysis.apply_overrides`, and writes the summary
+  block, stat cards, and both tables. No BCGW round-trip happens
+  here — overrides edit the cached result in place.
+- `render_chart_and_map` reads the same inputs plus
+  `selected-well`, applies overrides, and writes the chart figure
+  and the map's pumping and wells layers. Selection changes don't
+  re-touch the tables.
+- `centre_map_on_new_result` flies the map to the new pumping
+  point exactly once per `analysis-result` change — selection or
+  override edits don't disturb the officer's pan/zoom.
+- `select_from_chart` / `select_from_map` capture chart clickData
+  and marker n_clicks (pattern-matching) and update
+  `selected-well`. Both chart and map listen on this store, so the
+  highlight stays in sync.
 """
 
 from __future__ import annotations
@@ -52,7 +63,17 @@ import logging
 from typing import Any
 
 import dash
-from dash import Input, Output, callback, dcc, html, no_update
+from dash import (
+    ALL,
+    Input,
+    Output,
+    callback,
+    clientside_callback,
+    ctx,
+    dcc,
+    html,
+    no_update,
+)
 
 from gwdrawdown.analysis import (
     AnalysisInputs,
@@ -60,7 +81,15 @@ from gwdrawdown.analysis import (
     apply_overrides,
     run_analysis,
 )
+from gwdrawdown.ui.components.dd_chart import make_distance_drawdown_figure
 from gwdrawdown.ui.components.footer import make_footer
+from gwdrawdown.ui.components.impact_chart import make_impact_chart
+from gwdrawdown.ui.components.results_map import (
+    build_map_skeleton,
+    make_pumping_layer,
+    make_well_markers,
+    map_viewport_for,
+)
 from gwdrawdown.ui.components.results_table import (
     at_risk_helper_text,
     build_at_risk_section,
@@ -138,10 +167,58 @@ def layout(**_kwargs: object) -> html.Div:
                 children=[
                     html.Div(id="summary-block-container"),
                     html.Div(id="stat-cards-container"),
+                    html.H2(
+                        "Distance-drawdown",
+                        style={"marginTop": "1rem", "marginBottom": "0.5rem"},
+                    ),
+                    dcc.Graph(
+                        id="dd-chart",
+                        config={"displaylogo": False},
+                        style={"marginBottom": "1.5rem"},
+                    ),
+                    html.H2(
+                        "Impact % per well",
+                        style={"marginTop": "1rem", "marginBottom": "0.5rem"},
+                    ),
+                    html.P(
+                        "Horizontal bars sorted worst-to-best so the "
+                        "wells nearest the at-risk threshold sit at the "
+                        "top. The dashed red line marks the at-risk "
+                        "threshold. Wells with no computable impact "
+                        "(missing NPL or depth) are excluded — see the "
+                        "per-well details table below for those rows.",
+                        style={"fontSize": "0.85rem", "color": "#555"},
+                    ),
+                    dcc.Graph(
+                        id="impact-chart",
+                        config={"displaylogo": False},
+                        style={"marginBottom": "1.5rem"},
+                    ),
+                    html.H2(
+                        "Map",
+                        style={"marginTop": "1rem", "marginBottom": "0.5rem"},
+                    ),
+                    html.P(
+                        "Marker colour matches the Status column; marker size "
+                        "scales with predicted impact. Click a marker to "
+                        "highlight the matching point on the chart above.",
+                        style={"fontSize": "0.85rem", "color": "#555"},
+                    ),
+                    build_map_skeleton(),
                     build_at_risk_section(),
                     build_per_well_section(),
                 ],
             ),
+            # selected-well is page-scoped (memory) so navigating away
+            # and back clears the highlight; analysis-inputs changes
+            # also explicitly reset it in `run_pipeline_if_needed`.
+            dcc.Store(id="selected-well", storage_type="memory"),
+            # Noop sink for the map-resize clientside callback. Leaflet
+            # tiles fail to render when their container is `display:
+            # none` at mount (no measurable size); we kick the map
+            # with a window resize event the moment results-content
+            # becomes visible.
+            html.Div(id="results-map-resize-noop", style={"display": "none"}),
             make_footer(),
         ],
         style=_PAGE_STYLE,
@@ -190,7 +267,7 @@ def _summary_block(result: AnalysisResult) -> html.Div:
             ),
             row("Duration:", f"{inputs.duration_days:g} days"),
             row("Buffer radius:", f"{inputs.buffer_radius_m:g} m"),
-            row("Same-aquifer filter:", filter_tag),
+            row("Source-aquifer filter (spatial):", filter_tag),
         ],
         style=_SUMMARY_STYLE,
     )
@@ -209,35 +286,36 @@ def _inputs_fingerprint(inputs_data: dict[str, Any]) -> str:
 @callback(
     Output("analysis-result", "data"),
     Output("well-overrides", "data", allow_duplicate=True),
+    Output("selected-well", "data", allow_duplicate=True),
     Input("analysis-inputs", "data"),
     prevent_initial_call="initial_duplicate",
 )
 def run_pipeline_if_needed(
     inputs_data: dict[str, Any] | None,
-) -> tuple[Any, Any]:
+) -> tuple[Any, Any, Any]:
     """Run the BCGW pipeline when `analysis-inputs` changes.
 
     Caches the result in `analysis-result` so override edits and tab
     refreshes don't replay the pipeline. Also clears `well-overrides`
-    on a new run — the previous overrides referenced WTNs that may
-    not appear in the new well set.
+    and `selected-well` on a new run — the previous state referenced
+    WTNs that may not appear in the new well set.
     """
     if not inputs_data:
-        return no_update, no_update
+        return no_update, no_update, no_update
     try:
         inputs = AnalysisInputs.from_json(inputs_data)
     except (TypeError, KeyError) as exc:
         logger.exception("Bad analysis-inputs payload")
-        return {"_error": f"Invalid stored inputs: {exc}"}, {}
+        return {"_error": f"Invalid stored inputs: {exc}"}, {}, None
     try:
         result = run_analysis(inputs)
     except Exception as exc:
         # Surface any pipeline failure to the UI rather than 500-ing.
         logger.exception("Pipeline failed")
-        return {"_error": f"Pipeline error: {exc}"}, {}
+        return {"_error": f"Pipeline error: {exc}"}, {}, None
     payload = result.to_json()
     payload["_fingerprint"] = _inputs_fingerprint(inputs_data)
-    return payload, {}
+    return payload, {}, None
 
 
 def _coerce_overrides(
@@ -371,3 +449,216 @@ def render(
         _SHOW if per_well_rows else _HIDE,
         _HIDE if per_well_rows else _EMPTY_VISIBLE,
     )
+
+
+# --- Chart + map render -----------------------------------------------------
+
+
+def _resolve_current(
+    result_data: dict[str, Any] | None,
+    overrides_data: dict[str, Any] | None,
+) -> AnalysisResult | None:
+    """Return the override-applied `AnalysisResult`, or None.
+
+    Shared between the chart/map render and the viewport callback so
+    deserialisation lives in one place. Bad payloads return None;
+    the caller emits `no_update`.
+    """
+    if not result_data or "_error" in result_data:
+        return None
+    try:
+        base = AnalysisResult.from_json(result_data)
+    except (TypeError, KeyError, ValueError):
+        logger.exception("Bad analysis-result payload (chart/map)")
+        return None
+    overrides = _coerce_overrides(overrides_data)
+    return apply_overrides(base, overrides)
+
+
+@callback(
+    Output("dd-chart", "figure"),
+    Output("impact-chart", "figure"),
+    Output("results-map-pumping", "children"),
+    Output("results-map-wells", "children"),
+    Input("analysis-result", "data"),
+    Input("well-overrides", "data"),
+    Input("selected-well", "data"),
+)
+def render_chart_and_map(
+    result_data: dict[str, Any] | None,
+    overrides_data: dict[str, Any] | None,
+    selected_data: int | dict[str, Any] | None,
+) -> tuple[Any, Any, Any, Any]:
+    """Redraw both charts and the well-marker layer.
+
+    Independent of the tables/summary render so that clicking a chart
+    point or a map marker (which updates ``selected-well`` only) does
+    not retrigger dash_table reconciliation. The two charts and the
+    map all consume the same `selected-well` so selection stays in
+    sync across views.
+    """
+    current = _resolve_current(result_data, overrides_data)
+    if current is None:
+        return no_update, no_update, no_update, no_update
+    selected_wtn = _coerce_selected_wtn(selected_data)
+    dd_figure = make_distance_drawdown_figure(current, selected_wtn=selected_wtn)
+    impact_figure = make_impact_chart(current, selected_wtn=selected_wtn)
+    pumping_layer = make_pumping_layer(current)
+    well_markers = make_well_markers(current, selected_wtn=selected_wtn)
+    return dd_figure, impact_figure, pumping_layer, well_markers
+
+
+@callback(
+    Output("results-map", "viewport"),
+    Input("analysis-result", "data"),
+    prevent_initial_call=True,
+)
+def centre_map_on_new_result(
+    result_data: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Fly the map to the pumping well exactly once per new pipeline run.
+
+    Inputs are only `analysis-result`, not `well-overrides` or
+    `selected-well` — overrides and selections must not snap the
+    officer back to the pumping well after they've panned around.
+    """
+    if not result_data or "_error" in result_data:
+        return no_update
+    try:
+        base = AnalysisResult.from_json(result_data)
+    except (TypeError, KeyError, ValueError):
+        return no_update
+    return map_viewport_for(base)
+
+
+# --- Selection (chart <-> map cross-linking) --------------------------------
+
+
+def _coerce_selected_wtn(value: int | dict[str, Any] | None) -> int | None:
+    """Normalise the `selected-well` store payload to int | None.
+
+    sessionStorage round-trips can stringify; pattern-matching IDs
+    arrive as dicts. Drop anything that doesn't resolve to a clean
+    int so a malformed store value doesn't crash the renderer.
+    """
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        value = value.get("wtn")
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def _wtn_from_click(click_data: dict[str, Any] | None) -> Any:
+    """Pull a WTN out of a Plotly ``clickData`` payload, or no_update.
+
+    Both charts carry the integer WTN in ``customdata`` on their
+    well-bearing trace, so the same coercion logic works for both
+    and lets us share a body across the two click callbacks.
+    """
+    if not click_data:
+        return no_update
+    points = click_data.get("points") or []
+    if not points:
+        return no_update
+    wtn = points[0].get("customdata")
+    if wtn is None:
+        return no_update
+    try:
+        return int(wtn)
+    except (TypeError, ValueError):
+        return no_update
+
+
+@callback(
+    Output("selected-well", "data", allow_duplicate=True),
+    Input("dd-chart", "clickData"),
+    prevent_initial_call=True,
+)
+def select_from_dd_chart(click_data: dict[str, Any] | None) -> Any:
+    """Capture a click on a well point in the distance-drawdown chart.
+
+    Each Wells-trace point carries the WTN in ``customdata``; clicks
+    on the curve or SAD bars have no customdata and are ignored, so
+    the user can pan/zoom without accidentally clearing the highlight.
+    """
+    return _wtn_from_click(click_data)
+
+
+@callback(
+    Output("selected-well", "data", allow_duplicate=True),
+    Input("impact-chart", "clickData"),
+    prevent_initial_call=True,
+)
+def select_from_impact_chart(click_data: dict[str, Any] | None) -> Any:
+    """Capture a click on a bar in the Impact-% chart.
+
+    The impact-bar trace carries the WTN as ``customdata`` so this
+    routes through the same kernel as the distance-drawdown click —
+    clicking a bar selects the well across all three views (this
+    chart, the distance-drawdown chart, and the map).
+    """
+    return _wtn_from_click(click_data)
+
+
+@callback(
+    Output("selected-well", "data", allow_duplicate=True),
+    Input(
+        {"type": "well-marker", "wtn": ALL, "status": ALL},
+        "n_clicks",
+    ),
+    prevent_initial_call=True,
+)
+def select_from_map(_n_clicks_list: list[int | None]) -> Any:
+    """Capture a click on a well marker and write its WTN to the store.
+
+    Uses pattern-matching IDs (``{"type": "well-marker", "wtn":
+    <int>, "status": <str>}``) so the callback fires for any marker
+    without enumerating every well as an explicit Input. The
+    ``status`` key in the marker id is what makes
+    `results_map.make_well_markers` remount a marker when an
+    override flips its status — we route on the same key here so
+    the wider id pattern still matches. ``ctx.triggered_id`` carries
+    the clicked marker's dict id; falls through to no_update for the
+    "all markers freshly mounted" initial broadcast.
+    """
+    triggered = ctx.triggered_id
+    if not isinstance(triggered, dict):
+        return no_update
+    wtn = triggered.get("wtn")
+    if wtn is None:
+        return no_update
+    try:
+        return int(wtn)
+    except (TypeError, ValueError):
+        return no_update
+
+
+# Kick Leaflet to recompute its tile layout the moment the
+# results-content container becomes visible. Leaflet measures its
+# container at mount time; if the container is `display: none`, the
+# map ends up with zero usable size and most tiles never load,
+# leaving the user with a mostly-grey rectangle. Dispatching a
+# window resize event triggers Leaflet's built-in resize listener,
+# which calls invalidateSize() and reloads tiles correctly.
+#
+# Fires on every change to `results-content.style`; the inner guard
+# (`style.display !== 'none'`) makes the transition-to-hidden a noop.
+# The 50 ms timeout lets the browser apply the style change before
+# we ask for the new dimensions.
+clientside_callback(
+    """
+    function(style) {
+        if (style && style.display !== 'none') {
+            setTimeout(function() {
+                window.dispatchEvent(new Event('resize'));
+            }, 50);
+        }
+        return '';
+    }
+    """,
+    Output("results-map-resize-noop", "children"),
+    Input("results-content", "style"),
+)

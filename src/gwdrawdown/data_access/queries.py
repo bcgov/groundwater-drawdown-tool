@@ -36,11 +36,19 @@ import oracledb
 
 # --- SQL templates -----------------------------------------------------------
 
-# Query 6.1: nearby wells. The same-aquifer filter is implemented as a
-# trailing OR so a single template covers both filtered and unfiltered
-# cases — pass aquifer_id=None to disable. Reading SDO_POINT.X/.Y is
-# faster than SDO_UTIL.TO_WKTGEOMETRY for these point features
-# (DATA_REFERENCE.md §6.1).
+# Query 6.1: nearby wells. The same-aquifer filter is a SPATIAL test —
+# wells whose point geometry intersects the source aquifer polygon —
+# not a GWELLS attribute match on w.AQUIFER_ID. The attribute filter
+# misses two cases the spatial filter catches: wells with a stale or
+# erroneous GWELLS aquifer assignment, and wells correctly tagged
+# today but inside a polygon BC has since re-delineated. Implemented
+# as a correlated EXISTS subquery so a single SQL template still
+# covers both filtered and unfiltered cases — pass aquifer_id=None
+# to disable. SDO_ANYINTERACT is forgiving of polygon-edge cases at
+# aquifer boundaries and behaves identically to SDO_INSIDE /
+# SDO_CONTAINS for typical point-in-polygon queries. Reading
+# SDO_POINT.X/.Y is faster than SDO_UTIL.TO_WKTGEOMETRY for these
+# point features (DATA_REFERENCE.md §6.1).
 _SQL_NEARBY_WELLS = """
 SELECT
     w.WELL_TAG_NUMBER,
@@ -66,7 +74,12 @@ WHERE SDO_WITHIN_DISTANCE(
         SDO_GEOMETRY(2001, 3005, SDO_POINT_TYPE(:x, :y, NULL), NULL, NULL),
         'distance=' || :radius_m || ' unit=meter'
       ) = 'TRUE'
-  AND (:aquifer_id IS NULL OR w.AQUIFER_ID = :aquifer_id)
+  AND (:aquifer_id IS NULL OR EXISTS (
+        SELECT 1
+        FROM WHSE_WATER_MANAGEMENT.GW_AQUIFERS_CLASSIFICATION_SVW a
+        WHERE a.AQUIFER_ID = :aquifer_id
+          AND SDO_ANYINTERACT(a.GEOMETRY, w.GEOMETRY) = 'TRUE'
+      ))
 """
 
 # Query 6.2: containing aquifer polygons.
@@ -144,9 +157,15 @@ def nearby_wells(
         x_albers: Easting in EPSG:3005 metres.
         y_albers: Northing in EPSG:3005 metres.
         radius_m: Buffer radius in metres.
-        aquifer_id: Optional same-aquifer filter. ``None`` returns all
-            wells in the buffer regardless of aquifer (UI toggle off);
-            a value restricts to wells whose ``AQUIFER_ID`` matches.
+        aquifer_id: Optional **spatial** same-aquifer filter. ``None``
+            returns all wells in the buffer regardless of aquifer (UI
+            toggle off — the default); a value restricts to wells whose
+            point geometry lies inside the polygon for that
+            ``AQUIFER_ID`` in ``GW_AQUIFERS_CLASSIFICATION_SVW``. This
+            is intentionally a spatial check, not ``w.AQUIFER_ID =
+            :aquifer_id``, so stale GWELLS aquifer assignments or
+            re-delineated boundaries don't drop wells that physically
+            sit inside the source aquifer today.
 
     Returns:
         A list of dicts; one per well. Distance from the pumping point
