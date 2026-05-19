@@ -1,17 +1,21 @@
 # Groundwater Drawdown Tool — Installation Guide
 
 This guide is for end users (Water Officers and support staff) installing the
-tool on a Windows machine. There are only two steps after you have the folder.
+tool on a Windows machine. **One download, two double-clicks.**
 
 ## What gets installed
 
 The tool runs locally on your computer. It is not a website or a server.
 First-time setup downloads:
 
-- `uv` — the Python project manager (~30 MB), installed to your user folder.
+- The tool itself (Python source + data files) — into your user folder.
+- `uv` — a Python project manager (~30 MB), installed to your user folder.
 - Python 3.13 — managed by `uv`, installed to your user folder.
 - The tool's Python dependencies — installed into an isolated environment
   inside the tool's folder.
+
+Default install location: `%USERPROFILE%\Tools\groundwater-drawdown-tool\`
+(for example: `C:\Users\<your_idir>\Tools\groundwater-drawdown-tool\`).
 
 Total disk usage: roughly 150 MB. Nothing is installed system-wide; nothing
 requires administrator rights.
@@ -22,39 +26,48 @@ to fetch well and aquifer data, which it does over your normal network).
 ## Prerequisites
 
 - Windows 10 or Windows 11.
-- An internet connection for first-time setup.
+- An internet connection for first-time setup and for future updates.
 - A personal BCGW account (Oracle username and password).
 - Network access to BCGW (usually via the BC government network or VPN).
 
-## Step 1 — Get the tool
+## Step 1 — Download `setup.bat`
 
-Place the tool folder somewhere stable on your machine, for example:
+Download this file:
 
-```
-C:\Users\<your_idir>\Tools\groundwater-drawdown-tool\
-```
+**<https://github.com/bcgov/groundwater-drawdown-tool/releases/latest/download/setup.bat>**
 
-Do not put it on a network drive or a synced folder (OneDrive, Dropbox).
-Local disk only.
+Save it anywhere convenient (your Desktop or your Downloads folder is fine).
+You only need this one file — `setup.bat` will fetch everything else.
 
-## Step 2 — First-time setup
+## Step 2 — Run `setup.bat`
 
 Double-click `setup.bat`.
 
-A console window opens and runs the following automatically:
+A console window opens and the installer runs automatically:
 
-1. Install `uv` if it isn't already installed.
-2. Use `uv` to download Python 3.13 and create an isolated environment.
-3. Install the tool's dependencies into that environment.
+1. Checks GitHub for the latest released version.
+2. Downloads the tool package and extracts it to
+   `%USERPROFILE%\Tools\groundwater-drawdown-tool\`.
+3. Installs `uv` if it isn't already installed.
+4. Uses `uv` to download Python 3.13 and create an isolated environment.
+5. Installs the tool's Python dependencies.
 
-This takes a few minutes the first time. When it finishes, the console
-shows "Setup complete." and pauses.
+This takes a few minutes the first time. When it finishes, the console shows
+**"Setup complete."** and pauses.
 
-You only need to do this once per machine. **No editing any files.**
+**No editing any files. No administrator rights needed.**
 
 ## Step 3 — Run the tool
 
-Double-click `run.bat`.
+Open the install folder:
+
+```
+%USERPROFILE%\Tools\groundwater-drawdown-tool\
+```
+
+Double-click `run.bat`. Optionally, right-click it once and choose
+"Send to → Desktop (create shortcut)" so you have it on your Desktop next
+time.
 
 A console window opens (leave it running — closing it stops the tool) and
 the tool launches. After a few seconds, your default browser opens to
@@ -65,6 +78,30 @@ and, on success, brings you to the analysis page.
 
 If your browser doesn't open automatically, open any browser and go to:
 `http://localhost:8050`
+
+## Updating to a new version
+
+When a new release is published, **re-run the same `setup.bat` you
+downloaded the first time** (or download a fresh copy from the URL above —
+the URL always points to the latest version).
+
+`setup.bat` detects your existing install, compares versions, and updates
+the tool's files in place:
+
+- If you're already on the latest version: it tells you and exits in under
+  a second.
+- If a newer version is available: it downloads it, refreshes the
+  dependencies, and you're done in roughly 30 seconds.
+
+The following are **preserved** across updates and never overwritten:
+
+- `.env` — if you have one (most users don't).
+- `outputs\` — any reports or CSVs you've exported.
+- `logs\` — historical logs.
+- `flask_session\` — your active sign-in session.
+
+You do not need to delete your install folder, copy any files manually, or
+worry about losing your data.
 
 ## About your password
 
@@ -89,13 +126,19 @@ is normal.
 Right-click `setup.bat` → Properties → check "Unblock" if it appears, then
 click OK and try again.
 
-**`setup.bat` fails to download Python or packages.**
-Your network may block downloads from `astral.sh` or `pypi.org`. Contact
-IT to confirm these hosts are accessible. The full list of required hosts:
+**`setup.bat` says it can't reach GitHub.**
+Your network may block `github.com` or `api.github.com`. Confirm you have
+internet access, then contact IT if it still fails. The full list of
+required hosts for setup:
 
+- `api.github.com` and `github.com` (release lookup and download)
 - `astral.sh` (uv installer)
-- `github.com` (Python distributions, via uv)
+- `objects.githubusercontent.com` (Python distributions, via uv)
 - `pypi.org` and `files.pythonhosted.org` (Python packages)
+
+**`setup.bat` fails to install Python or packages.**
+Same hosts as above — `pypi.org` is the most common one blocked on
+locked-down networks. Contact IT.
 
 **Sign-in says "authentication failed" but my password is correct.**
 First, confirm you can sign in to BCGW from another tool (e.g. SQL Developer)
@@ -111,16 +154,18 @@ If it still doesn't load, check the console window for error messages.
 The first lines after launch are usually informational, not errors. Only
 worry if the tool stops or the browser fails to load.
 
-## Updating the tool
+**I want to install somewhere other than `%USERPROFILE%\Tools\...`.**
+The default location is recommended (no admin rights, no OneDrive sync
+issues). If you need a different location, contact your project lead —
+this is a developer-mode install, not the standard end-user path.
 
-When you receive a new version of the tool, replace the entire folder
-(or delete the `.venv` subfolder inside it and run `setup.bat` again).
+## Uninstalling
 
-> **Coming soon:** the tool will check a shared network folder for updates
-> automatically each time you launch it. When that's available, you won't
-> need to do anything — new versions will install themselves the next time
-> you double-click `run.bat`. Until then, your project lead will let you
-> know when a new version is ready.
+Delete the folder `%USERPROFILE%\Tools\groundwater-drawdown-tool\`. That's it.
+
+`uv` itself remains installed in `%USERPROFILE%\.local\bin\` — if you also
+want to remove `uv`, delete that folder. (It's harmless to leave; other
+Python tools may use it.)
 
 ## Getting help
 

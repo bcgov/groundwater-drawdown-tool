@@ -595,152 +595,209 @@ GeoJSON, PDF) produce correctly-formatted files; PDF mirrors the
 legacy Excel artifact. Logs rotate daily; disclaimers are visible on
 every officer-facing surface.
 
-### Phase 6 — Auto-update from network share
+### Phase 6 — Distribution and updates via GitHub Releases
 
-Goal: end users running an older version automatically receive the latest version
-the next time they double-click `run.bat`. Zero clicks beyond the normal launch.
-Users are non-technical; the mechanism must be invisible when there's nothing to
-do, and self-explanatory when there is.
+Goal: end users get the tool by downloading one file from a URL, and future
+releases reach them with at most one re-run of that same file. The mechanism
+must be invisible when there's nothing to do, and self-explanatory when there
+is. Users are non-technical.
 
-#### 6.1 The publishing layout
+This section was originally scoped as "auto-update from a BC government
+network share". Pivoted in Phase 5a to **GitHub Releases** as the
+distribution channel — public repo (`bcgov/groundwater-drawdown-tool`),
+zero IT-provisioning to set up, stable forever-URLs via
+`releases/latest/download/<asset>`. The bulk of the work (publish workflow,
+install/update via `setup.bat`) lands ahead of Phase 5b; the auto-update-on-
+launch wrapper is the remaining Phase 6 work.
 
-A folder on a BC government network share that all Water Officers can read and
-the developer can write to. Layout:
+#### 6.1 The release layout
+
+Each tagged release on GitHub carries two assets:
+
+- **`setup.bat`** — the one file end users download. Self-contained:
+  detects bootstrap vs local mode and either fetches the release zip or
+  installs Python dependencies. The same file is also the in-place updater
+  on subsequent runs.
+- **`groundwater-drawdown-tool.zip`** — the tool payload. Contains
+  `src/`, `data/`, `pyproject.toml`, `uv.lock`, `.python-version`,
+  `setup.bat`, `run.bat`, `version.txt`, `CHANGELOG.md`, and the project
+  docs (`README.md`, `CLIENT_INSTALL.md`, `PROJECT_PLAN.md`,
+  `DATA_REFERENCE.md`, `DESIGN_NOTES.md`, `references/excel_chart_layout.md`).
+  Explicitly excluded: `.venv/`, `outputs/`, `logs/`, `flask_session/`,
+  `.env`, `.git/`, `__pycache__/`, `*.pyc`, `tests/`, `scripts/`,
+  client-confidential reference materials.
+
+Both assets are exposed at stable URLs that always resolve to the latest
+release:
 
 ```
-\\<share>\<path>\groundwater-drawdown-tool\
-├── version.txt              # single line: latest published version, e.g. 0.4.2
-├── CHANGELOG.md             # latest changelog (mirror of repo)
-└── releases\
-    └── latest\              # contents of the latest release (tool folder
-        │                    # without .env, outputs/, logs/, .venv)
-        ├── version.txt
-        ├── pyproject.toml
-        ├── uv.lock
-        ├── src/
-        ├── data/
-        ├── run.bat
-        ├── setup.bat
-        ├── update.bat
-        └── ...
+https://github.com/bcgov/groundwater-drawdown-tool/releases/latest/download/setup.bat
+https://github.com/bcgov/groundwater-drawdown-tool/releases/latest/download/groundwater-drawdown-tool.zip
 ```
 
-The `version.txt` at the share root exists so the updater can read it cheaply
-(one small file) before deciding whether to copy anything.
-
-A separate `releases\archive\<version>\` folder retains previous releases for
-rollback. The updater never reads from `archive/`; it exists for manual recovery.
+The release tag follows `v<version>` (e.g. `v0.5.0`); release notes are the
+matching section from `CHANGELOG.md`.
 
 #### 6.2 The publish workflow (developer side)
 
-A `scripts/publish_release.bat` (or `.ps1`) script that:
+`scripts/publish_release.ps1` runs from a developer workstation with `gh` CLI
+installed (`winget install GitHub.cli`, then `gh auth login` once):
 
 1. Reads `version.txt` from the local repo.
 2. Confirms the local repo is clean (no uncommitted changes) and on the main
    branch — abort if not.
-3. Runs `uv run pytest` — abort if any test fails.
-4. Tags the git commit with the version (`git tag v<version>`).
-5. Robocopies the repo to `\\<share>\...\releases\latest\`, excluding `.env`,
-   `.venv\`, `outputs\`, `logs\`, `__pycache__\`, `.git\`, `tests\`,
-   `*.pyc`, and any other dev-only files.
-6. Copies the same files to `\\<share>\...\releases\archive\<version>\`.
-7. Updates the `version.txt` and `CHANGELOG.md` at the share root last (so the
-   version flip is the final atomic step — users are never pointed at an
-   incomplete release folder).
+3. Confirms the `v<version>` tag does not already exist locally or on origin
+   — abort if it does. Forces a `version.txt` bump for each release.
+4. Runs `uv run pytest` — abort if any test fails. `-SkipTests` flag exists
+   for emergency use; discouraged.
+5. Stages the release files into a temp directory, stripping `__pycache__/`
+   and `*.pyc`. Compresses to `groundwater-drawdown-tool.zip`.
+6. Tags the git commit with `v<version>` and pushes the tag to origin.
+7. Extracts the matching CHANGELOG section (falls back to `[Unreleased]`
+   with a warning if the publisher forgot to cut the version header).
+8. `gh release create v<version> --title "v<version>" --notes-file <…>
+   groundwater-drawdown-tool.zip setup.bat`.
 
-The publish script is run by the developer from a connected workstation. No
-CI/CD in Stage 1 — manual is fine for one developer and one client team.
+A `-Draft` flag creates the release in draft state for pre-release review.
 
-#### 6.3 The update workflow (user side)
+No CI/CD in Stage 1 — manual is fine for one developer and one client team.
+The publish script is the only contract.
 
-A new `update.bat` (idempotent, callable directly or by `run.bat`):
+#### 6.3 The end-user install / update workflow (`setup.bat`)
 
-1. Read remote `version.txt` from the share path. If unreachable (offline,
-   VPN down, share not mapped): log a warning, exit 0 (do not block launch).
-2. Read local `version.txt`. If equal to remote: exit 0 silently.
-3. If remote is newer: show a small console window: "A new version (X.Y.Z) is
-   available. Updating... please wait." Display the relevant section of the
-   remote `CHANGELOG.md` so the user sees what changed.
-4. Robocopy `releases\latest\` over the local install. Exclude (preserve)
-   `.env`, `outputs\`, `logs\`, `.venv\`. Use `/MIR` mode but with explicit
-   `/XD` and `/XF` for the preserved paths.
-5. Run `uv sync` so any dependency changes in the new release are applied.
-6. Show "Updated to version X.Y.Z. Launching..."
-7. Exit 0; the calling `run.bat` proceeds to launch the app.
+`setup.bat` auto-detects two modes based on whether `pyproject.toml` and
+`src/gwdrawdown/__init__.py` exist next to it:
 
-`run.bat` is modified to call `update.bat` as its first step, then proceed
-to launch the Dash app regardless of update outcome (a failed update should
-not prevent the user running the previous version).
+**Bootstrap mode** (no `pyproject.toml` next to setup.bat — i.e., a
+standalone copy in `Downloads\` or on the Desktop):
 
-A `--no-update` flag on `run.bat` skips the update check, in case the share
-is intermittently slow and a user wants to launch quickly. Document this in
-`CLIENT_INSTALL.md` for IT/support reference; don't surface it as a normal
-option to end users.
+1. Calls the GitHub Releases API (`api.github.com/repos/<repo>/releases/latest`)
+   to read the latest tag. Aborts with a clear error if GitHub is
+   unreachable.
+2. Checks for an existing install at `%USERPROFILE%\Tools\groundwater-drawdown-tool\`.
+   - **No existing install** → fresh install: `mkdir`, download
+     `groundwater-drawdown-tool.zip`, `Expand-Archive` to the install dir.
+   - **Existing install, same version** → prints "already up to date",
+     exits.
+   - **Existing install, older version** → in-place update: download zip,
+     `Expand-Archive -Force` over the install dir. Because the zip
+     contains only tool files, `Expand-Archive -Force` overwrites tool
+     files but leaves `.env`, `outputs/`, `logs/`, `flask_session/`, and
+     `.venv/` untouched (they aren't in the zip).
+3. Chains into the install dir's own `setup.bat` (which then runs in local
+   mode) to install or refresh Python dependencies.
+
+**Local mode** (`pyproject.toml` present — running from inside the install
+folder, or from a developer clone):
+
+1. Installs `uv` if missing (via the upstream `astral.sh` installer).
+2. Runs `uv sync` to install or refresh Python dependencies from
+   `uv.lock`. No GitHub calls in this mode.
+
+The dual-mode design means there is exactly one entry point for both first
+install and future updates, and exactly one entry point for developer-clone
+setup — the same file.
 
 #### 6.4 What gets preserved across updates
 
-These paths are never overwritten by the updater:
+These paths are never present in the release zip and therefore never touched
+by `Expand-Archive -Force`:
 
 - `.env` — if it exists. Most users won't have one (the tool runs without
-  it); but if a user has created one to override defaults, it must be
-  preserved.
-- `flask_session/` — server-side session store. Preserving it across update
-  avoids forcing every user to re-login on every release.
+  it); a power user's override file is preserved.
+- `flask_session/` — server-side session store. Preserved so users don't
+  re-login on every release.
 - `outputs/` — exports the user has generated.
-- `logs/` — historical logs (rotated separately).
-- `.venv/` — `uv sync` manages this, never the file copy.
+- `logs/` — historical logs.
+- `.venv/` — `uv sync` manages this; never touched by the file extraction.
 
-A user-data directory is reserved for future use (e.g. saved analysis sessions
-in v2). When introduced, add to the preserve list.
+`Expand-Archive -Force` overwrites existing tool files and creates new ones,
+but does **not** delete files in the target that aren't in the zip. The
+side-effect is that files removed in a new release will linger as orphans
+in the install dir — acceptable for v1 (tool files are stable and the
+inventory rarely shrinks). If this becomes a problem, the updater can be
+hardened to do a `Compare-Object` pre-extract and prune orphans listed in
+a release `MANIFEST.txt`.
 
-#### 6.5 Failure modes and behaviour
+A future user-data directory (e.g. saved analysis sessions in v2) should
+be added to the preserve list when introduced. The way preservation works
+here — by what is *not* in the zip — means the preserve list is enforced
+on the publish side, not the user side.
+
+#### 6.5 Failure modes
 
 | Situation | Behaviour |
 |---|---|
-| Share unreachable | Log warning, launch local version, no error to user |
-| Remote `version.txt` malformed | Log warning, launch local version |
-| Remote version older than local (developer rolled back) | Treat as "up to date", do not downgrade silently |
-| Robocopy partial failure (file locked, etc.) | Log error, launch local version, don't leave a half-updated install |
-| `uv sync` fails (network, PyPI down) | Log error, launch local version. Files are updated but venv is stale; on next launch `uv sync` retries via setup |
-| User launches while previous update is in progress | `update.bat` uses a lockfile to detect concurrent runs and skips |
+| GitHub unreachable during install | `setup.bat` prints "Could not reach GitHub", exits non-zero. User can retry when online. |
+| GitHub unreachable during update | Same — but the existing install continues to work, since the local files are untouched. |
+| GitHub release zip malformed or partial | `Expand-Archive` fails, error message is shown. Existing files in install dir are still consistent (no partial overwrite — `Expand-Archive` is not atomic per-file but extracts to a temp dir first by default behaviour of PowerShell 5.1+). |
+| Remote version equals local | Treated as "up to date"; exit fast. |
+| Remote version older than local (developer rolled back a release) | Strict equality check; setup.bat does not update unless versions differ. Downgrade requires manual deletion of the install folder. |
+| `uv sync` fails (network, PyPI down) | Files are updated but venv is stale; the chained local-mode call reports the error. Re-running setup.bat retries the sync. |
+| User runs setup.bat twice in quick succession | Each invocation is independent; the second will find the files installed and exit fast or no-op the extraction. No lockfile needed for the current single-user model. |
 
-In every failure case, the user can still run yesterday's version of the tool.
-The updater can never leave the user with no working tool.
+In every failure case, the user can still run their previously-installed
+version of the tool. The installer can never leave the user with no working
+copy: it either succeeds in updating, or leaves the prior install untouched.
 
-#### 6.6 Configuration
+#### 6.6 Phase 6 proper — auto-update on launch (deferred)
 
-New key in `.env.example` and `config.py`:
+Sub-stages 6.1–6.5 deliver "one URL, double-click, install or update". The
+remaining piece — making updates happen *without the user noticing* — is
+the Phase 6 work that lands after Phase 5.
 
-```
-# Path to the network share where releases are published.
-# Leave empty to disable auto-update (e.g. for offline or testing use).
-UPDATE_CHECK_SHARE=
-```
+Design:
 
-The path is read by `update.bat`, not by Python — but it's documented in
-`config.py` for completeness so all configuration is discoverable from one
-place.
+- `run.bat` calls `setup.bat --silent-update` (or equivalent) as its first
+  step before launching the Dash app.
+- In silent-update mode, `setup.bat` skips the pause prompts, suppresses
+  the console UI for the up-to-date path, and only surfaces output if it
+  actually performed an update.
+- A failed update (GitHub unreachable, etc.) is logged but does not block
+  launch — the user still gets the prior version.
+- A `--no-update` flag on `run.bat` skips the check entirely for users
+  with intermittently slow networks.
+
+The mechanism is otherwise unchanged from §6.3 — same install dir, same
+preserve list, same release artifacts. It's a thin invocation wrapper on
+top of the already-built installer.
 
 #### 6.7 What gets surfaced in the UI
 
-A footer line on every page: `Version 0.4.2 — last updated 2026-05-05`.
-Clicking it opens a modal showing the recent changelog entries, so users can
-see what changed without touching files. This is also where you handle
+A footer line on every page: `Version 0.5.0 — last updated 2026-05-19`.
+Clicking it opens a modal showing the recent CHANGELOG entries, so users
+can see what changed without touching files. This is also where you handle
 "my colleague says feature X exists but I don't see it" — they're on
-different versions, the footer tells them.
+different versions, the footer tells them. Implementation is a small
+addition to `ui/components/footer.py` and lands alongside the §6.6 launch-
+update wrapper.
+
+#### 6.8 Configuration
+
+No new keys required. The repo is hardcoded in `setup.bat` as
+`bcgov/groundwater-drawdown-tool` because, like the BCGW DSN, it is not
+user-tunable — pointing the installer at a fork is a code release.
+
+A future `--release-channel` flag could let beta-testers track a non-`latest`
+release tag (e.g. `pre-release` releases on GitHub), but Stage 1 doesn't
+need this.
 
 **Acceptance:**
 
-- A user with version 0.1.0 installed launches `run.bat`. The updater detects
-  version 0.2.0 on the share, copies the new files (preserving `.env` if
-  present, plus `flask_session/`, `outputs/`, `logs/`), runs `uv sync`,
-  and the app launches as 0.2.0. Total time under 30 seconds.
-- The same user, run again: the updater detects same version and exits in
-  under a second. Launch is indistinguishable from no auto-update.
-- The same user, with the share unreachable: the app launches as 0.2.0 with
-  a warning logged. No error popup.
-- Developer runs `publish_release.bat` with uncommitted changes: aborts, no
-  files written to the share.
+- A new user downloads `setup.bat` from the latest-release URL, double-
+  clicks it. Tool installs to `%USERPROFILE%\Tools\groundwater-drawdown-tool\`,
+  uv + Python 3.13 + dependencies installed. Total time under 3 minutes
+  on a typical office machine. `run.bat` launches the app.
+- An existing user re-runs the same `setup.bat`. If a newer release has
+  been published, the tool is updated in place (preserving `.env`,
+  `outputs/`, `logs/`, `flask_session/`) in roughly 30 seconds. If the
+  current version is already latest, setup.bat exits in under a second
+  with "already up to date".
+- Developer runs `publish_release.ps1` with uncommitted changes: aborts,
+  no tag created, no release published.
+- Developer bumps `version.txt`, commits, runs `publish_release.ps1`:
+  tests pass, tag pushed, GitHub release created with both assets
+  uploaded, release notes populated from the CHANGELOG version section.
 
 ## 7. Open questions, kept visible in the codebase
 

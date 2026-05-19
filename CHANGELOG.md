@@ -12,6 +12,37 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+### Phase 5a.3 — Distribution via GitHub Releases
+
+#### Changed
+
+- The tool now ships through GitHub Releases instead of being handed
+  out as a folder. End users download **one file** —
+  `setup.bat` from
+  <https://github.com/bcgov/groundwater-drawdown-tool/releases/latest/download/setup.bat>
+  — and double-click it. The installer pulls the matching release
+  zip, extracts it to `%USERPROFILE%\Tools\groundwater-drawdown-tool\`,
+  installs `uv` + Python 3.13, and runs `uv sync`. No editing files,
+  no admin rights.
+- Re-running the same `setup.bat` checks for newer releases and
+  updates the install in place. `.env`, `outputs\`, `logs\`, and
+  `flask_session\` are preserved across updates so users don't lose
+  exports or have to re-login on every release. Update time is
+  roughly 30 seconds; "already up to date" exits in under a second.
+- `CLIENT_INSTALL.md` rewritten end-to-end for the one-URL flow.
+
+#### Added
+
+- `scripts/publish_release.ps1` — developer-side release script.
+  Verifies a clean tree on `main`, runs `uv run pytest`, builds
+  `groundwater-drawdown-tool.zip` excluding dev cruft, tags the
+  commit, pushes the tag, and creates the GitHub release with the
+  zip and `setup.bat` as assets. Release notes are extracted from
+  the matching `CHANGELOG.md` section. `-Draft` flag for pre-release
+  review; `-SkipTests` for emergency use.
+- README publish-workflow section covering `gh` CLI setup and the
+  release cut steps.
+
 ### Phase 5a.2 — Setup-page polish and form styling
 
 #### Added
