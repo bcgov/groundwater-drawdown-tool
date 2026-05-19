@@ -4,7 +4,7 @@ This module is the **only** place SQL strings exist in the codebase
 (working agreement, PROJECT_PLAN.md §8). Every query uses bind
 variables; never f-string user input into SQL.
 
-The four queries match DATA_REFERENCE.md §6:
+The queries match DATA_REFERENCE.md §6:
 
 1. ``nearby_wells`` — find wells within a buffer (BC Albers), with an
    optional same-aquifer filter (DATA_REFERENCE.md §6.1).
@@ -12,9 +12,12 @@ The four queries match DATA_REFERENCE.md §6:
    Returns a list because aquifer polygons can stack vertically (e.g.
    bedrock under sand-and-gravel) and both layers are returned by
    ``SDO_CONTAINS`` for the same XY (DATA_REFERENCE.md §6.2).
-3. ``subtype_code_for_aquifer`` — map AQUIFER_ID to AQUIFER_SUBTYPE_CODE
+3. ``aquifers_near_point`` — fallback for ``aquifers_at_point`` when no
+   polygon contains the point: returns polygons within a search radius
+   with their distance, sorted nearest first.
+4. ``subtype_code_for_aquifer`` — map AQUIFER_ID to AQUIFER_SUBTYPE_CODE
    for the T/S lookup (DATA_REFERENCE.md §6.3).
-4. ``well_by_tag`` — fetch one well by its provincial tag number
+5. ``well_by_tag`` — fetch one well by its provincial tag number
    (DATA_REFERENCE.md §6.4).
 
 All spatial parameters are BC Albers metres (EPSG:3005). The caller is
@@ -91,6 +94,32 @@ WHERE SDO_CONTAINS(
         a.GEOMETRY,
         SDO_GEOMETRY(2001, 3005, SDO_POINT_TYPE(:x, :y, NULL), NULL, NULL)
       ) = 'TRUE'
+"""
+
+# Nearby-aquifer fallback. Returns polygons within ``radius_m`` of the
+# point with their distance in metres, sorted nearest first. Only used
+# by the setup page when ``aquifers_at_point`` returns no hits — wells
+# that fall just outside the polygon they should be associated with
+# are common at re-delineated boundaries, so the picker surfaces these
+# as fallback choices rather than blocking the workflow.
+# ``SDO_GEOM.SDO_DISTANCE`` returns 0 for touching/overlapping
+# geometries; the 0.005-metre tolerance is the geometry simplification
+# tolerance used during the distance computation, not a buffer.
+_SQL_AQUIFERS_NEAR_POINT = """
+SELECT a.AQUIFER_ID, a.NAME, a.SUBTYPE, a.MATERIAL,
+       a.VULNERABILITY, a.PRODUCTIVITY, a.DEMAND,
+       SDO_GEOM.SDO_DISTANCE(
+           a.GEOMETRY,
+           SDO_GEOMETRY(2001, 3005, SDO_POINT_TYPE(:x, :y, NULL), NULL, NULL),
+           0.005
+       ) AS DISTANCE_M
+FROM WHSE_WATER_MANAGEMENT.GW_AQUIFERS_CLASSIFICATION_SVW a
+WHERE SDO_WITHIN_DISTANCE(
+        a.GEOMETRY,
+        SDO_GEOMETRY(2001, 3005, SDO_POINT_TYPE(:x, :y, NULL), NULL, NULL),
+        'distance=' || :radius_m || ' unit=meter'
+      ) = 'TRUE'
+ORDER BY DISTANCE_M
 """
 
 # Query 6.3: subtype-code lookup.
@@ -202,6 +231,42 @@ def aquifers_at_point(
     """
     with conn.cursor() as cur:
         cur.execute(_SQL_AQUIFERS_AT_POINT, {"x": x_albers, "y": y_albers})
+        return _rows_as_dicts(cur)
+
+
+def aquifers_near_point(
+    conn: oracledb.Connection,
+    *,
+    x_albers: float,
+    y_albers: float,
+    radius_m: float,
+) -> list[dict[str, Any]]:
+    """Return aquifer polygons within ``radius_m`` of the BC Albers point.
+
+    Fallback for ``aquifers_at_point`` when no polygon contains the
+    click location. Used by the setup page to offer "nearby" choices
+    when the user's well sits just outside a polygon (a common case at
+    re-delineated aquifer boundaries) rather than blocking the
+    workflow.
+
+    Args:
+        conn: Live Oracle connection.
+        x_albers: Easting in EPSG:3005 metres.
+        y_albers: Northing in EPSG:3005 metres.
+        radius_m: Search radius in metres.
+
+    Returns:
+        A list of dicts, sorted ascending by ``DISTANCE_M`` (metres).
+        Empty when no polygons fall within the radius — the caller is
+        expected to fall back to the manual-entry option in that case.
+        Boundary touches return ``DISTANCE_M = 0`` and may appear when
+        the click was on a polygon edge that ``SDO_CONTAINS`` rejected.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            _SQL_AQUIFERS_NEAR_POINT,
+            {"x": x_albers, "y": y_albers, "radius_m": radius_m},
+        )
         return _rows_as_dicts(cur)
 
 

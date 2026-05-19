@@ -230,12 +230,44 @@ def layout(**_kwargs: object) -> html.Div:
     )
 
 
+_MANUAL_BANNER_STYLE = {
+    "border": "1px solid #cc6600",
+    "borderLeft": "4px solid #cc6600",
+    "backgroundColor": "rgba(204, 102, 0, 0.08)",
+    "color": "#5c2e00",
+    "padding": "0.75rem 1rem",
+    "borderRadius": "var(--bc-radius-lg, 6px)",
+    "marginBottom": "1rem",
+    "fontSize": "0.9rem",
+    "lineHeight": 1.5,
+}
+
+
+def _manual_entry_banner(material: str | None) -> html.Div:
+    """Warning banner shown above the run summary in manual-entry mode.
+
+    Surfaces the fact that the run was based on user-supplied material
+    and T/S rather than a mapped aquifer polygon. The reviewer sees
+    this on /results, and the same text is carried into the PDF
+    export when that ships (Phase 5c).
+    """
+    material_txt = material or "unspecified"
+    return html.Div(
+        [
+            html.Strong("Manual-entry analysis. "),
+            "No mapped aquifer contains the pumping-well location. "
+            f"Material ({material_txt}) and T / S values were supplied by "
+            "the user.",
+        ],
+        style=_MANUAL_BANNER_STYLE,
+    )
+
+
 def _summary_block(result: AnalysisResult) -> html.Div:
     inputs = result.inputs
     user = current_user() or "—"
     ts = result.run_timestamp.strftime("%Y-%m-%d %H:%M:%S")
     ts_tag = " (override)" if inputs.ts_overridden else ""
-    filter_tag = "ON" if inputs.same_aquifer_filter else "off"
 
     def row(label: str, value: str) -> html.Div:
         return html.Div(
@@ -252,15 +284,21 @@ def _summary_block(result: AnalysisResult) -> html.Div:
             ]
         )
 
-    return html.Div(
+    if inputs.is_manual_mode:
+        source_text = f"{inputs.source_aquifer_name} (no mapped aquifer)"
+        filter_tag = "n/a (manual entry)"
+    else:
+        source_text = (
+            f"{inputs.source_aquifer_name} (id {inputs.source_aquifer_id}, "
+            f"subtype {inputs.source_subtype_code or '—'})"
+        )
+        filter_tag = "ON" if inputs.same_aquifer_filter else "off"
+
+    summary_card = html.Div(
         [
             row("Run timestamp:", ts),
             row("BCGW user:", user),
-            row(
-                "Source aquifer:",
-                f"{inputs.source_aquifer_name} (id {inputs.source_aquifer_id}, "
-                f"subtype {inputs.source_subtype_code or '—'})",
-            ),
+            row("Source aquifer:", source_text),
             row(
                 "T / S used:",
                 f"T = {inputs.transmissivity_m2_per_day} m²/day, "
@@ -276,6 +314,12 @@ def _summary_block(result: AnalysisResult) -> html.Div:
         ],
         style=_SUMMARY_STYLE,
     )
+
+    if inputs.is_manual_mode:
+        return html.Div(
+            [_manual_entry_banner(inputs.manual_material), summary_card]
+        )
+    return summary_card
 
 
 def _inputs_fingerprint(inputs_data: dict[str, Any]) -> str:

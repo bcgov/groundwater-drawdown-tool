@@ -12,6 +12,33 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+### Phase 4d — Aquifer selection fallback + manual entry
+
+#### Added
+
+- **Nearby-aquifer fallback** on the setup page. When the pumping
+  point doesn't sit inside a mapped aquifer polygon, the tool now
+  searches a 1000 m radius for nearby aquifers and lists the three
+  closest as fallback choices, each labelled with its distance
+  (e.g. "Aquifer 123 — 47 m away") and tagged as "(nearby — not
+  directly overlapping)" so it's clear they aren't direct hits.
+  Helpful for wells that fall just outside a re-delineated aquifer
+  boundary.
+- **Manual-entry mode** for remote areas the Province hasn't
+  mapped. A "No mapped aquifer at this location — enter materials
+  manually" option appears at the bottom of the picker in the same
+  fallback list. Choosing it reveals an aquifer-material dropdown
+  (Unconsolidated or Bedrock) and requires you to enter T and S
+  values directly. The same-aquifer filter is disabled in this
+  mode (there's no polygon to filter against), and the results
+  page shows an orange banner above the run summary so reviewers
+  can see at a glance the run was based on user-supplied
+  materials and T/S rather than mapped data.
+- If no aquifers are found within 1000 m **and** none contain the
+  point, the picker shows just the manual-entry option with a
+  note explaining nothing nearby was found, so the workflow is
+  never blocked by missing aquifer coverage.
+
 ### Phase 5a.3 — Distribution via GitHub Releases
 
 #### Changed
