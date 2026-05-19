@@ -379,7 +379,7 @@ def build_at_risk_section() -> html.Div:
         [
             html.H2(
                 id="at-risk-heading",
-                style={"marginTop": "0.5rem"},
+                className="bc-results-heading",
             ),
             html.P(
                 id="at-risk-helper",
@@ -400,16 +400,6 @@ def build_at_risk_section() -> html.Div:
             html.Div(
                 id="at-risk-table-wrapper",
                 children=[
-                    html.Div(
-                        "Note: the table paginates at 10 rows per page — "
-                        "use the page controls at the bottom to see the rest.",
-                        style={
-                            "fontSize": "0.8rem",
-                            "color": "#555",
-                            "fontStyle": "italic",
-                            "marginBottom": "0.4rem",
-                        },
-                    ),
                     dash_table.DataTable(
                         id="at-risk-summary",
                         columns=_columns_for(_AT_RISK_COLUMNS),
@@ -438,6 +428,16 @@ def build_at_risk_section() -> html.Div:
                             "fontWeight": "bold",
                             "borderBottom": "2px solid #ccc",
                             "whiteSpace": "normal",
+                        },
+                    ),
+                    html.Div(
+                        "Note: the table paginates at 10 rows per page — "
+                        "use the page controls at the bottom to see the rest.",
+                        style={
+                            "fontSize": "0.8rem",
+                            "color": "#555",
+                            "fontStyle": "italic",
+                            "marginTop": "0.4rem",
                         },
                     ),
                 ],
@@ -478,16 +478,16 @@ def make_per_well_rows(
 
 
 _PER_WELL_HELPER_CHILDREN = [
-    "Sortable / filterable. ",
-    html.Strong("Editable: "),
-    "NPL, Finished Depth, Stickup, Top of Frac/Screen. "
-    "Edits update SAD, Impact %, and Status live for that "
-    "row; clear a cell to revert to the BCGW value, or use "
-    "Reset all overrides to clear every edit at once. Drawdown "
+    html.Strong("Editable columns: "),
+    "NPL, Finished Depth, Stickup, Top of Frac/Screen.",
+    html.Br(),
+    "Sortable and filterable. Edits update SAD, Impact %, and Status "
+    "live for that row; clear a cell to revert to the BCGW value, or "
+    "use Reset all overrides to clear every edit at once. Drawdown "
     "(m) is not affected by these edits — it depends on Q, T, S, "
-    "duration, and the well's distance from the pumping point. "
-    "The rightmost \"Edited\" column lists which fields you "
-    "adjusted (carried through to the CSV export).",
+    "duration, and the well's distance from the pumping point. The "
+    "rightmost \"Edited\" column lists which fields you adjusted "
+    "(carried through to the CSV export).",
 ]
 
 
@@ -515,12 +515,12 @@ _PER_WELL_LEGEND_STYLE = {
 
 
 def _per_well_legend() -> html.Div:
-    """Row-tint legend + pagination reminder, shown above the table.
+    """Row-tint legend, shown above the table.
 
-    The per-well table mounts with ``page_size=10`` (``page_action="native"``);
-    officers reading a long buffer query for the first time can miss
-    that there are additional pages, so the reminder lives next to the
-    colour legend, in the same line of sight as the table itself.
+    The pagination reminder used to sit on a second line here; it has
+    moved below the table (next to the page controls themselves) so
+    the legend stays focused on row-tint meaning and the reminder
+    sits where the reader's eye naturally lands at end-of-table.
     """
     return html.Div(
         [
@@ -532,12 +532,6 @@ def _per_well_legend() -> html.Div:
                 "outside Cooper-Jacob validity (advisory — "
                 "drawdown number shown but should be treated with "
                 "caution at this distance / duration).",
-            ),
-            html.Br(),
-            html.Span(
-                "Note: the table paginates at 10 rows per page — "
-                "use the page controls at the bottom to see the rest.",
-                style={"fontStyle": "italic"},
             ),
         ],
         style=_PER_WELL_LEGEND_STYLE,
@@ -558,7 +552,7 @@ def build_per_well_section() -> html.Div:
         [
             html.H2(
                 id="per-well-heading",
-                style={"marginTop": "0.5rem"},
+                className="bc-results-heading",
             ),
             html.P(
                 _PER_WELL_HELPER_CHILDREN,
@@ -639,6 +633,16 @@ def build_per_well_section() -> html.Div:
                             + _outside_validity_row_styles()
                             + _status_conditional_styles()
                         ),
+                    ),
+                    html.Div(
+                        "Note: the table paginates at 10 rows per page — "
+                        "use the page controls at the bottom to see the rest.",
+                        style={
+                            "fontSize": "0.8rem",
+                            "color": "#555",
+                            "fontStyle": "italic",
+                            "marginTop": "0.4rem",
+                        },
                     ),
                 ],
             ),

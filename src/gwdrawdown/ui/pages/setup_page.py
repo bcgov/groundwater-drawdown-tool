@@ -61,6 +61,7 @@ from gwdrawdown.data_access import get_connection
 from gwdrawdown.data_access import queries as q
 from gwdrawdown.ui.components.footer import make_footer
 from gwdrawdown.ui.components.header import make_header
+from gwdrawdown.ui.components.icons import icon
 from gwdrawdown.ui.session import is_authenticated
 
 dash.register_page(__name__, path="/setup", name="Setup")
@@ -71,7 +72,8 @@ logger = logging.getLogger(__name__)
 
 DURATION_PRESETS: list[tuple[str, float]] = [
     ("30 d", 30.0),
-    ("100 d", 100.0),
+    ("90 d", 90.0),
+    ("180 d", 180.0),
     ("1 yr", 365.25),
     ("10 yr", 3652.5),
 ]
@@ -80,35 +82,17 @@ DURATION_PRESETS: list[tuple[str, float]] = [
 MAP_CENTER = [48.8, -123.5]
 MAP_ZOOM = 7
 
-# --- Styles ------------------------------------------------------------------
 
-_SECTION_STYLE = {
-    "border": "1px solid var(--bc-border, #D9D9D9)",
-    "borderRadius": "var(--bc-radius-lg, 6px)",
-    "padding": "1rem 1.25rem",
-    "marginBottom": "1rem",
-    "backgroundColor": "var(--bc-surface, #FFFFFF)",
-    "boxShadow": "var(--bc-shadow-sm, 0 1px 2px rgba(0,0,0,0.06))",
-}
-_LABEL_STYLE = {"display": "block", "fontSize": "0.85rem", "marginBottom": "0.25rem"}
-_INPUT_STYLE = {"padding": "0.4rem", "marginRight": "0.5rem"}
-_BUTTON_STYLE = {
-    "padding": "0.45rem 0.9rem",
-    "marginRight": "0.5rem",
-    "border": "1px solid #003366",
-    "backgroundColor": "white",
-    "color": "#003366",
-    "borderRadius": "4px",
-    "cursor": "pointer",
-}
-_PRIMARY_BUTTON_STYLE = {
-    **_BUTTON_STYLE,
-    "backgroundColor": "#003366",
-    "color": "white",
-    "padding": "0.6rem 1.5rem",
-    "fontSize": "1rem",
-}
-_ERROR_STYLE = {"color": "#b00020", "marginTop": "0.5rem", "minHeight": "1.2rem"}
+def _section_heading(icon_name: str, label: str) -> html.H3:
+    """Render an icon + label as a section heading (h3).
+
+    Uses the .bc-form-section__heading flex layout so the icon and
+    text share a baseline.
+    """
+    return html.H3(
+        [icon(icon_name, size=22), html.Span(label)],
+        className="bc-form-section__heading",
+    )
 
 
 def _build_pumping_rate_options() -> list[dict[str, str]]:
@@ -147,243 +131,384 @@ def layout(**_kwargs: object) -> html.Div:
             html.Main(
                 [
                     html.H1("Define analysis"),
-            # ------------------------------------------------------------------
-            # Pumping point input
-            # ------------------------------------------------------------------
-            html.Div(
-                [
-                    html.H3("Pumping well location", style={"marginTop": 0}),
-                    dcc.RadioItems(
-                        id="setup-input-mode",
-                        options=[
-                            {"label": "Map click", "value": "map"},
-                            {"label": "Lat / Lon", "value": "latlon"},
-                            {"label": "Well tag number", "value": "wtn"},
-                        ],
-                        value="map",
-                        inline=True,
-                        labelStyle={"marginRight": "1rem"},
-                        style={"marginBottom": "0.75rem"},
-                    ),
-                    # Lat/Lon panel
-                    html.Div(
+                    # ----------------------------------------------------------
+                    # Pumping point input
+                    # ----------------------------------------------------------
+                    html.Section(
                         [
-                            dcc.Input(
-                                id="setup-latlon-lon",
-                                type="number",
-                                placeholder="Longitude (e.g. -123.682)",
-                                step="any",
-                                style={**_INPUT_STYLE, "width": "12rem"},
+                            _section_heading("location", "Pumping well location"),
+                            html.Div(
+                                dcc.RadioItems(
+                                    id="setup-input-mode",
+                                    options=[
+                                        {"label": "Map click", "value": "map"},
+                                        {"label": "Lat / Lon", "value": "latlon"},
+                                        {"label": "Well tag number", "value": "wtn"},
+                                    ],
+                                    value="map",
+                                    inline=True,
+                                ),
+                                className="bc-segmented",
+                                style={"marginBottom": "0.75rem"},
                             ),
-                            dcc.Input(
-                                id="setup-latlon-lat",
-                                type="number",
-                                placeholder="Latitude (e.g. 48.759)",
-                                step="any",
-                                style={**_INPUT_STYLE, "width": "12rem"},
+                            # Lat/Lon panel. Inputs are compact and
+                            # fixed-width (12rem each); the action
+                            # button sits on its own row below with
+                            # margin so it reads as the explicit
+                            # commit step, not as a third column.
+                            html.Div(
+                                [
+                                    html.Div(
+                                        [
+                                            dcc.Input(
+                                                id="setup-latlon-lon",
+                                                type="number",
+                                                placeholder="Longitude (e.g. -123.682)",
+                                                step="any",
+                                                className="bc-form-input",
+                                                style={"width": "12rem"},
+                                            ),
+                                            dcc.Input(
+                                                id="setup-latlon-lat",
+                                                type="number",
+                                                placeholder="Latitude (e.g. 48.759)",
+                                                step="any",
+                                                className="bc-form-input",
+                                                style={"width": "12rem"},
+                                            ),
+                                        ],
+                                        style={
+                                            "display": "flex",
+                                            "gap": "0.5rem",
+                                            "flexWrap": "wrap",
+                                            "marginBottom": "0.75rem",
+                                        },
+                                    ),
+                                    html.Button(
+                                        "Place",
+                                        id="setup-latlon-submit",
+                                        n_clicks=0,
+                                        type="button",
+                                        className="bc-btn bc-btn--secondary",
+                                    ),
+                                ],
+                                id="setup-latlon-panel",
+                                style={"display": "none", "marginBottom": "0.75rem"},
                             ),
-                            html.Button(
-                                "Place",
-                                id="setup-latlon-submit",
-                                n_clicks=0,
-                                style=_BUTTON_STYLE,
+                            # WTN panel — same shape as Lat/Lon: a
+                            # compact input above and the Look up
+                            # button on its own row below.
+                            html.Div(
+                                [
+                                    dcc.Input(
+                                        id="setup-wtn-input",
+                                        type="number",
+                                        placeholder="WELL_TAG_NUMBER",
+                                        className="bc-form-input",
+                                        style={
+                                            "width": "14rem",
+                                            "marginBottom": "0.75rem",
+                                            "display": "block",
+                                        },
+                                    ),
+                                    html.Button(
+                                        "Look up",
+                                        id="setup-wtn-lookup",
+                                        n_clicks=0,
+                                        type="button",
+                                        className="bc-btn bc-btn--secondary",
+                                    ),
+                                    html.Span(
+                                        id="setup-wtn-error",
+                                        className="bc-form-error",
+                                        style={"marginLeft": "0.75rem"},
+                                    ),
+                                ],
+                                id="setup-wtn-panel",
+                                style={"display": "none", "marginBottom": "0.75rem"},
                             ),
-                        ],
-                        id="setup-latlon-panel",
-                        style={"display": "none", "marginBottom": "0.75rem"},
-                    ),
-                    # WTN panel
-                    html.Div(
-                        [
-                            dcc.Input(
-                                id="setup-wtn-input",
-                                type="number",
-                                placeholder="WELL_TAG_NUMBER",
-                                style={**_INPUT_STYLE, "width": "14rem"},
-                            ),
-                            html.Button(
-                                "Look up",
-                                id="setup-wtn-lookup",
-                                n_clicks=0,
-                                style=_BUTTON_STYLE,
-                            ),
-                            html.Span(id="setup-wtn-error", style=_ERROR_STYLE),
-                        ],
-                        id="setup-wtn-panel",
-                        style={"display": "none", "marginBottom": "0.75rem"},
-                    ),
-                    # Map (always visible)
-                    dl.Map(
-                        id="setup-map",
-                        center=MAP_CENTER,
-                        zoom=MAP_ZOOM,
-                        style={"height": "380px", "width": "100%", "marginBottom": "0.5rem"},
-                        children=[
-                            dl.TileLayer(),
-                            dl.LayerGroup(id="setup-marker-layer", children=[]),
-                        ],
-                    ),
-                    html.Div(id="setup-point-display", style={"fontSize": "0.85rem"}),
-                    html.Div(id="setup-mode-error", style=_ERROR_STYLE),
-                ],
-                style=_SECTION_STYLE,
-            ),
-            # ------------------------------------------------------------------
-            # Source aquifer + T/S
-            # ------------------------------------------------------------------
-            html.Div(
-                [
-                    html.H3("Source aquifer", style={"marginTop": 0}),
-                    html.Div(
-                        "Place a pumping point above to populate this section.",
-                        id="setup-aquifer-help",
-                        style={"color": "#777", "fontSize": "0.9rem"},
-                    ),
-                    dcc.RadioItems(
-                        id="setup-aquifer-picker",
-                        options=[],
-                        value=None,
-                        labelStyle={"display": "block", "marginBottom": "0.25rem"},
-                        style={"marginBottom": "0.5rem"},
-                    ),
-                    html.Div(
-                        id="setup-ts-default-display",
-                        style={"fontSize": "0.9rem", "marginBottom": "0.5rem"},
-                    ),
-                    dcc.Checklist(
-                        id="setup-ts-override-toggle",
-                        options=[{"label": " Override default T / S", "value": "override"}],
-                        value=[],
-                        style={"marginBottom": "0.5rem"},
-                    ),
-                    html.Div(
-                        [
-                            html.Label("Transmissivity T (m²/day)", style=_LABEL_STYLE),
-                            dcc.Input(
-                                id="setup-ts-T",
-                                type="number",
-                                step="any",
-                                disabled=True,
-                                style={**_INPUT_STYLE, "width": "10rem"},
-                            ),
-                            html.Label(
-                                "Storativity S (dimensionless)",
-                                style={**_LABEL_STYLE, "marginTop": "0.5rem"},
-                            ),
-                            dcc.Input(
-                                id="setup-ts-S",
-                                type="number",
-                                step="any",
-                                disabled=True,
-                                style={**_INPUT_STYLE, "width": "10rem"},
-                            ),
-                        ],
-                    ),
-                ],
-                style=_SECTION_STYLE,
-            ),
-            # ------------------------------------------------------------------
-            # Pumping rate, duration, buffer, filter
-            # ------------------------------------------------------------------
-            html.Div(
-                [
-                    html.H3("Pumping parameters", style={"marginTop": 0}),
-                    html.Label("Pumping rate Q", style=_LABEL_STYLE),
-                    html.Div(
-                        [
-                            dcc.Input(
-                                id="setup-q-value",
-                                type="number",
-                                value=3.97,
-                                step="any",
-                                min=0,
-                                style={**_INPUT_STYLE, "width": "8rem"},
-                            ),
-                            dcc.Dropdown(
-                                id="setup-q-unit",
-                                options=_build_pumping_rate_options(),
-                                value=_default_pumping_rate_unit(),
-                                clearable=False,
+                            # Map (always visible)
+                            dl.Map(
+                                id="setup-map",
+                                center=MAP_CENTER,
+                                zoom=MAP_ZOOM,
                                 style={
-                                    "width": "8rem",
-                                    "display": "inline-block",
-                                    "verticalAlign": "middle",
+                                    "height": "380px",
+                                    "width": "100%",
+                                    "marginBottom": "0.5rem",
+                                    "borderRadius": "var(--bc-radius, 4px)",
+                                },
+                                children=[
+                                    dl.TileLayer(),
+                                    dl.LayerGroup(id="setup-marker-layer", children=[]),
+                                ],
+                            ),
+                            html.Div(
+                                id="setup-point-display",
+                                className="bc-form-hint",
+                            ),
+                            html.Div(
+                                id="setup-mode-error",
+                                className="bc-form-error",
+                            ),
+                        ],
+                        className="bc-form-section",
+                    ),
+                    # ----------------------------------------------------------
+                    # Source aquifer + T/S
+                    # ----------------------------------------------------------
+                    html.Section(
+                        [
+                            _section_heading("layers", "Source aquifer"),
+                            html.Div(
+                                "Place a pumping point above to populate this section.",
+                                id="setup-aquifer-help",
+                                className="bc-form-section__hint",
+                                style={"marginBottom": "1rem"},
+                            ),
+                            # Aquifer picker — vertical radio list. More
+                            # vertical spacing per option (0.5rem) keeps
+                            # the choices from feeling stacked.
+                            html.Div(
+                                dcc.RadioItems(
+                                    id="setup-aquifer-picker",
+                                    options=[],
+                                    value=None,
+                                    labelStyle={
+                                        "display": "block",
+                                        "marginBottom": "0.5rem",
+                                    },
+                                ),
+                                className="bc-radio-group",
+                                style={"marginBottom": "1rem"},
+                            ),
+                            # Subtype + default T/S values, shown as a
+                            # soft tinted badge so it reads as a value
+                            # display rather than crowding the radios.
+                            html.Div(
+                                id="setup-ts-default-display",
+                                style={
+                                    "padding": "0.5rem 0.75rem",
+                                    "backgroundColor": "rgba(0, 51, 102, 0.04)",
+                                    "borderLeft": "3px solid var(--bc-brand)",
+                                    "borderRadius": "var(--bc-radius)",
+                                    "fontSize": "0.9rem",
+                                    "color": "var(--bc-text)",
+                                    "marginBottom": "1.25rem",
+                                    "minHeight": "0",
                                 },
                             ),
+                            # Override toggle — same iOS-style switch as
+                            # the same-aquifer filter for visual
+                            # consistency. Generous margin top/bottom
+                            # makes the gesture clearly distinct from
+                            # the value badge above and the editable
+                            # T/S inputs below.
+                            html.Div(
+                                dcc.Checklist(
+                                    id="setup-ts-override-toggle",
+                                    options=[
+                                        {
+                                            "label": "Override default T / S",
+                                            "value": "override",
+                                        }
+                                    ],
+                                    value=[],
+                                ),
+                                className="bc-toggle",
+                                style={"marginBottom": "1rem"},
+                            ),
+                            html.Div(
+                                [
+                                    html.Div(
+                                        [
+                                            html.Label(
+                                                "Transmissivity T (m²/day)",
+                                                className="bc-form-label",
+                                            ),
+                                            dcc.Input(
+                                                id="setup-ts-T",
+                                                type="number",
+                                                step="any",
+                                                disabled=True,
+                                                className="bc-form-input",
+                                            ),
+                                        ],
+                                        className="bc-form-field",
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.Label(
+                                                "Storativity S (dimensionless)",
+                                                className="bc-form-label",
+                                            ),
+                                            dcc.Input(
+                                                id="setup-ts-S",
+                                                type="number",
+                                                step="any",
+                                                disabled=True,
+                                                className="bc-form-input",
+                                            ),
+                                        ],
+                                        className="bc-form-field",
+                                    ),
+                                ],
+                                className="bc-form-grid",
+                            ),
                         ],
-                        style={"marginBottom": "0.75rem"},
+                        className="bc-form-section",
                     ),
-                    html.Label("Pumping duration (days)", style=_LABEL_STYLE),
+                    # ----------------------------------------------------------
+                    # Pumping rate, duration, buffer, filter
+                    # ----------------------------------------------------------
+                    html.Section(
+                        [
+                            _section_heading("sliders", "Pumping parameters"),
+                            html.Div(
+                                [
+                                    # Q value + unit
+                                    html.Div(
+                                        [
+                                            html.Label(
+                                                "Pumping rate Q",
+                                                className="bc-form-label",
+                                            ),
+                                            html.Div(
+                                                [
+                                                    dcc.Input(
+                                                        id="setup-q-value",
+                                                        type="number",
+                                                        value=200,
+                                                        step="any",
+                                                        min=0,
+                                                        className="bc-form-input",
+                                                        style={"flex": "1 1 6rem"},
+                                                    ),
+                                                    html.Div(
+                                                        dcc.Dropdown(
+                                                            id="setup-q-unit",
+                                                            options=_build_pumping_rate_options(),
+                                                            value=_default_pumping_rate_unit(),
+                                                            clearable=False,
+                                                        ),
+                                                        className="bc-dropdown",
+                                                        style={
+                                                            "flex": "1 1 7rem",
+                                                            "minWidth": "7rem",
+                                                        },
+                                                    ),
+                                                ],
+                                                style={
+                                                    "display": "flex",
+                                                    "gap": "0.5rem",
+                                                    "alignItems": "stretch",
+                                                },
+                                            ),
+                                        ],
+                                        className="bc-form-field",
+                                    ),
+                                    # Duration + presets
+                                    html.Div(
+                                        [
+                                            html.Label(
+                                                "Pumping duration (days)",
+                                                className="bc-form-label",
+                                            ),
+                                            html.Div(
+                                                [
+                                                    dcc.Input(
+                                                        id="setup-duration",
+                                                        type="number",
+                                                        value=config.DEFAULT_PUMPING_DURATION_DAYS,
+                                                        min=0.001,
+                                                        step="any",
+                                                        className="bc-form-input",
+                                                        style={
+                                                            "flex": "0 0 7rem",
+                                                            "marginRight": "0.5rem",
+                                                        },
+                                                    ),
+                                                    *[
+                                                        html.Button(
+                                                            label,
+                                                            id=f"setup-duration-preset-{int(days * 100)}",
+                                                            n_clicks=0,
+                                                            type="button",
+                                                            className="bc-btn bc-btn--preset",
+                                                        )
+                                                        for label, days in DURATION_PRESETS
+                                                    ],
+                                                ],
+                                                className="bc-btn-row",
+                                            ),
+                                        ],
+                                        className="bc-form-field bc-form-field--wide",
+                                    ),
+                                    # Buffer radius
+                                    html.Div(
+                                        [
+                                            html.Label(
+                                                "Buffer radius (m)",
+                                                className="bc-form-label",
+                                            ),
+                                            dcc.Input(
+                                                id="setup-radius",
+                                                type="number",
+                                                value=1000,
+                                                min=1,
+                                                step="any",
+                                                className="bc-form-input",
+                                            ),
+                                        ],
+                                        className="bc-form-field",
+                                    ),
+                                ],
+                                className="bc-form-grid",
+                                style={"marginBottom": "1rem"},
+                            ),
+                            # Same-aquifer filter — toggle switch. Default
+                            # off (Q12 confirmed). The officer sees every
+                            # well in the buffer first and opts in to the
+                            # spatial filter when needed.
+                            html.Div(
+                                dcc.Checklist(
+                                    id="setup-filter-toggle",
+                                    options=[
+                                        {
+                                            "label": "Filter out wells spatially outside source aquifer",
+                                            "value": "filter",
+                                        }
+                                    ],
+                                    value=[],
+                                ),
+                                className="bc-toggle",
+                            ),
+                        ],
+                        className="bc-form-section",
+                    ),
+                    # ----------------------------------------------------------
+                    # Run analysis
+                    # ----------------------------------------------------------
                     html.Div(
                         [
-                            dcc.Input(
-                                id="setup-duration",
-                                type="number",
-                                value=config.DEFAULT_PUMPING_DURATION_DAYS,
-                                min=0.001,
-                                step="any",
-                                style={**_INPUT_STYLE, "width": "8rem"},
-                            ),
-                        ]
-                        + [
                             html.Button(
-                                label,
-                                id=f"setup-duration-preset-{int(days * 100)}",
+                                [icon("play", size=18, color="#FFFFFF"), "Run Analysis"],
+                                id="setup-run",
                                 n_clicks=0,
-                                style=_BUTTON_STYLE,
-                            )
-                            for label, days in DURATION_PRESETS
+                                type="button",
+                                className="bc-btn bc-btn--primary bc-btn--large",
+                            ),
+                            html.Div(
+                                id="setup-run-error",
+                                className="bc-form-error",
+                                style={"margin": 0, "flex": "1 1 auto"},
+                            ),
                         ],
-                        style={"marginBottom": "0.75rem"},
+                        className="bc-action-bar",
                     ),
-                    html.Label("Buffer radius (m)", style=_LABEL_STYLE),
-                    dcc.Input(
-                        id="setup-radius",
-                        type="number",
-                        value=1000,
-                        min=1,
-                        step="any",
-                        style={**_INPUT_STYLE, "width": "8rem", "marginBottom": "0.75rem"},
-                    ),
-                    html.Br(),
-                    dcc.Checklist(
-                        id="setup-filter-toggle",
-                        options=[
-                            {
-                                "label": (
-                                    " Filter out wells spatially outside "
-                                    "source aquifer"
-                                ),
-                                "value": "filter",
-                            }
-                        ],
-                        # Default off (Q12 confirmed). The officer
-                        # sees every well in the buffer first and
-                        # opts in to the spatial filter when needed.
-                        value=[],
-                        style={"marginTop": "0.5rem"},
-                    ),
-                ],
-                style=_SECTION_STYLE,
-            ),
-            # ------------------------------------------------------------------
-            # Run analysis
-            # ------------------------------------------------------------------
-            html.Div(
-                [
-                    html.Button(
-                        "Run Analysis",
-                        id="setup-run",
-                        n_clicks=0,
-                        style=_PRIMARY_BUTTON_STYLE,
-                    ),
-                    html.Div(id="setup-run-error", style=_ERROR_STYLE),
-                ],
-                style={"marginTop": "1rem"},
-            ),
-            # Hidden state
-            dcc.Store(id="setup-point-store", storage_type="memory"),
-            dcc.Store(id="setup-lookup-ts-store", storage_type="memory"),
+                    # Hidden state
+                    dcc.Store(id="setup-point-store", storage_type="memory"),
+                    dcc.Store(id="setup-lookup-ts-store", storage_type="memory"),
             # Counter incremented on each successful Run Analysis click;
             # a clientside callback watches this and opens /results in
             # a new browser tab. The new tab inherits sessionStorage at

@@ -42,22 +42,10 @@ dash.register_page(__name__, path="/login", name="Sign in")
 
 logger = logging.getLogger(__name__)
 
-_FIELD_STYLE = {"display": "block", "width": "100%", "padding": "0.5rem", "marginBottom": "1rem"}
-_LABEL_STYLE = {"display": "block", "fontSize": "0.9rem", "marginBottom": "0.25rem"}
-_BUTTON_STYLE = {
-    "padding": "0.6rem 1.2rem",
-    "fontSize": "1rem",
-    "backgroundColor": "#003366",
-    "color": "white",
-    "border": "none",
-    "borderRadius": "4px",
-    "cursor": "pointer",
-}
-_ERROR_STYLE = {"color": "#b00020", "marginTop": "1rem", "minHeight": "1.2rem"}
-# Eye-toggle button: positioned inside the password input on the right
-# edge. Transparent background so the underlying `_FIELD_STYLE` border
-# reads as the field's border; the input gets extra right-padding so
-# the value never sits under the icon.
+# Eye-toggle button positioned inside the password input on the right
+# edge. Most of the look is driven by .bc-form-input (border, focus)
+# on the input itself; the toggle is just an absolutely-positioned
+# transparent button.
 _EYE_BUTTON_STYLE = {
     "position": "absolute",
     "right": "0.5rem",
@@ -67,7 +55,7 @@ _EYE_BUTTON_STYLE = {
     "border": "none",
     "padding": "0.25rem",
     "cursor": "pointer",
-    "color": "#606060",
+    "color": "var(--bc-text-muted, #606060)",
     "display": "flex",
     "alignItems": "center",
     "justifyContent": "center",
@@ -110,13 +98,21 @@ def _eye_icon(visible: bool) -> html.Span:
     )
 
 
-_CARD_STYLE = {
-    "backgroundColor": "var(--bc-surface, #FFFFFF)",
-    "border": "1px solid var(--bc-border, #D9D9D9)",
-    "borderRadius": "var(--bc-radius-lg, 6px)",
-    "padding": "2rem",
-    "boxShadow": "var(--bc-shadow-md, 0 2px 6px rgba(0,0,0,0.08))",
-}
+def _form_field(label: str, control: html.Div | dcc.Input) -> html.Div:
+    """Render a labeled form field as a `.bc-form-field` block.
+
+    Adds vertical spacing between fields by giving each block its own
+    bottom margin; the underlying `.bc-form-field` is a flex column
+    that stacks label above control.
+    """
+    return html.Div(
+        [
+            html.Label(label, className="bc-form-label"),
+            control,
+        ],
+        className="bc-form-field",
+        style={"marginBottom": "1rem"},
+    )
 
 
 def layout(**_kwargs: object) -> html.Div:
@@ -133,59 +129,76 @@ def layout(**_kwargs: object) -> html.Div:
                         html.H1("Sign in"),
                         html.P(
                             "Use your BCGW credentials to access the tool.",
-                            style={"color": "var(--bc-text-muted, #606060)"},
+                            style={
+                                "color": "var(--bc-text-muted, #606060)",
+                                "marginBottom": "1.5rem",
+                            },
                         ),
                         html.Form(
                             [
-                                html.Label("Connection target", style=_LABEL_STYLE),
-                                dcc.Input(
-                                    id="login-dsn",
-                                    type="text",
-                                    value=config.BCGW_DSN,
-                                    disabled=True,
-                                    style={**_FIELD_STYLE, "backgroundColor": "#f0f0f0"},
+                                _form_field(
+                                    "Connection target",
+                                    dcc.Input(
+                                        id="login-dsn",
+                                        type="text",
+                                        value=config.BCGW_DSN,
+                                        disabled=True,
+                                        className="bc-form-input",
+                                    ),
                                 ),
-                                html.Label("BCGW username", style=_LABEL_STYLE),
-                                dcc.Input(
-                                    id="login-username",
-                                    type="text",
-                                    autoComplete="username",
-                                    style=_FIELD_STYLE,
+                                _form_field(
+                                    "BCGW username",
+                                    dcc.Input(
+                                        id="login-username",
+                                        type="text",
+                                        autoComplete="username",
+                                        className="bc-form-input",
+                                    ),
                                 ),
-                                html.Label("BCGW password", style=_LABEL_STYLE),
-                                html.Div(
-                                    [
-                                        dcc.Input(
-                                            id="login-password",
-                                            type="password",
-                                            autoComplete="current-password",
-                                            style={**_FIELD_STYLE, "paddingRight": "2.5rem"},
-                                        ),
-                                        html.Button(
-                                            _eye_icon(visible=False),
-                                            id="login-password-toggle",
-                                            type="button",
-                                            title="Show password",
-                                            **{"aria-label": "Show password"},
-                                            n_clicks=0,
-                                            style=_EYE_BUTTON_STYLE,
-                                        ),
-                                    ],
-                                    style={"position": "relative", "marginBottom": "1rem"},
+                                _form_field(
+                                    "BCGW password",
+                                    html.Div(
+                                        [
+                                            dcc.Input(
+                                                id="login-password",
+                                                type="password",
+                                                autoComplete="current-password",
+                                                className="bc-form-input",
+                                                style={"paddingRight": "2.5rem"},
+                                            ),
+                                            html.Button(
+                                                _eye_icon(visible=False),
+                                                id="login-password-toggle",
+                                                type="button",
+                                                title="Show password",
+                                                **{"aria-label": "Show password"},
+                                                n_clicks=0,
+                                                style=_EYE_BUTTON_STYLE,
+                                            ),
+                                        ],
+                                        style={"position": "relative"},
+                                    ),
                                 ),
                                 html.Button(
                                     "Sign in",
                                     id="login-submit",
                                     n_clicks=0,
                                     type="button",
-                                    style=_BUTTON_STYLE,
+                                    className="bc-btn bc-btn--primary bc-btn--large",
                                 ),
                             ],
                         ),
-                        html.Div(id="login-error", style=_ERROR_STYLE),
+                        html.Div(id="login-error", className="bc-form-error"),
                         dcc.Location(id="login-redirect", refresh=True),
                     ],
-                    style=_CARD_STYLE,
+                    className="bc-login-card",
+                    style={
+                        "backgroundColor": "var(--bc-surface, #FFFFFF)",
+                        "border": "1px solid var(--bc-border, #D9D9D9)",
+                        "borderRadius": "var(--bc-radius-lg, 6px)",
+                        "padding": "2rem",
+                        "boxShadow": "var(--bc-shadow-md, 0 2px 6px rgba(0,0,0,0.08))",
+                    },
                 ),
                 className="bc-page__content bc-page__content--narrow",
             ),

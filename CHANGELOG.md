@@ -12,6 +12,54 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+### Phase 5a.2 — Setup-page polish and form styling
+
+#### Added
+
+- Section icons beside each setup-page section heading
+  (location pin, layers, sliders).
+- The setup page's source-aquifer "Override default T / S" and
+  "Filter out wells spatially outside source aquifer" controls
+  are now **on/off toggle switches** (instead of basic checkboxes)
+  so it's clearer at a glance whether they are on or off.
+- The setup-page input-mode selector (Map click / Lat-Lon / Well
+  tag number) is now a **segmented control** — one row of three
+  buttons rather than radio dots.
+- A new **m³/yr** pumping-rate unit, so multi-year licence-volume
+  estimates can be entered directly without pre-converting.
+
+#### Changed
+
+- Pumping-rate unit list reordered to lead with m³/d (now default),
+  followed by m³/min, m³/s, m³/yr, L/min, L/s. Imperial GPM and
+  US GPM removed (BC officers don't use them outside the legacy
+  BCGW YIELD column, which still flows through its own conversion).
+  Default Q value is now 200 m³/d (was 3.97 L/s).
+- Default pumping duration is **90 days** (was 100). Quick-pick
+  presets are now 30 d / 90 d / 180 d / 1 yr / 10 yr.
+- Results page now reads as a sequence of clearly-separated
+  sections (Distance-drawdown, Impact %, Map, At-risk, All wells)
+  with a faint divider line above each section heading. Headings
+  are smaller and more compact so the charts and tables get the
+  visual attention.
+- "Map" section heading renamed to **"Wells in buffer (map view)"**
+  so it describes what the map actually shows.
+- "Editable columns" line on the per-well details table is now
+  on its own bold line and lists the four columns directly, with
+  the longer usage notes below it.
+- The pagination reminder under the at-risk and per-well tables
+  moved from above the table to below — closer to the page
+  controls themselves.
+- Setup-page Lat / Lon and Well-tag-number input panels now have
+  compact, fixed-width inputs with the action button on its own
+  row below.
+
+#### Fixed
+
+- The footer no longer floats above the bottom of the screen on
+  short pages like the login screen — the page wrapper was
+  shortening itself by the header height it contained.
+
 ### Phase 5a.1 — Visual identity
 
 #### Added

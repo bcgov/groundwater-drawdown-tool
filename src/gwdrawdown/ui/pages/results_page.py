@@ -108,9 +108,10 @@ logger = logging.getLogger(__name__)
 _SUMMARY_STYLE = {
     "border": "1px solid var(--bc-border, #D9D9D9)",
     "borderRadius": "var(--bc-radius-lg, 6px)",
-    "padding": "0.75rem 1rem",
+    "padding": "1rem 1.25rem",
     "marginBottom": "1.5rem",
     "backgroundColor": "var(--bc-surface, #FFFFFF)",
+    "boxShadow": "var(--bc-shadow-sm, 0 1px 2px rgba(0,0,0,0.06))",
     "fontSize": "0.9rem",
     "lineHeight": 1.6,
 }
@@ -145,24 +146,19 @@ def layout(**_kwargs: object) -> html.Div:
                         [
                             html.H1(
                                 "Results",
-                                style={
-                                    "display": "inline-block",
-                                    "marginRight": "1.5rem",
-                                },
+                                style={"margin": 0, "flex": "1 1 auto"},
                             ),
                             dcc.Link(
                                 "← Back to Setup",
                                 href="/setup",
-                                style={
-                                    "color": "var(--bc-link, #1A5A96)",
-                                    "textDecoration": "none",
-                                },
+                                className="bc-btn bc-btn--secondary",
                             ),
                         ],
                         style={
                             "display": "flex",
-                            "alignItems": "baseline",
+                            "alignItems": "center",
                             "gap": "1rem",
+                            "marginBottom": "1rem",
                         },
                     ),
             # Either the empty/error message OR the results content is
@@ -177,7 +173,7 @@ def layout(**_kwargs: object) -> html.Div:
                     html.Div(id="stat-cards-container"),
                     html.H2(
                         "Distance-drawdown",
-                        style={"marginTop": "1rem", "marginBottom": "0.5rem"},
+                        className="bc-results-heading",
                     ),
                     dcc.Graph(
                         id="dd-chart",
@@ -186,16 +182,14 @@ def layout(**_kwargs: object) -> html.Div:
                     ),
                     html.H2(
                         "Impact % per well",
-                        style={"marginTop": "1rem", "marginBottom": "0.5rem"},
+                        className="bc-results-heading",
                     ),
                     html.P(
-                        "Horizontal bars sorted worst-to-best so the "
-                        "wells nearest the at-risk threshold sit at the "
-                        "top. The dashed red line marks the at-risk "
+                        "Sorted worst-to-best; dashed red line = at-risk "
                         "threshold. Wells with no computable impact "
                         "(missing NPL or depth) are excluded — see the "
-                        "per-well details table below for those rows.",
-                        style={"fontSize": "0.85rem", "color": "#555"},
+                        "details table below.",
+                        className="bc-results-helper",
                     ),
                     dcc.Graph(
                         id="impact-chart",
@@ -203,14 +197,14 @@ def layout(**_kwargs: object) -> html.Div:
                         style={"marginBottom": "1.5rem"},
                     ),
                     html.H2(
-                        "Map",
-                        style={"marginTop": "1rem", "marginBottom": "0.5rem"},
+                        "Wells in buffer (map view)",
+                        className="bc-results-heading",
                     ),
                     html.P(
                         "Marker colour matches the Status column; marker size "
                         "scales with predicted impact. Click a marker to "
                         "highlight the matching point on the chart above.",
-                        style={"fontSize": "0.85rem", "color": "#555"},
+                        className="bc-results-helper",
                     ),
                     build_map_skeleton(),
                     build_at_risk_section(),

@@ -299,7 +299,12 @@ def make_distance_drawdown_figure(
     )
 
     fig.update_layout(
-        title={"text": "Distance-Drawdown", "x": 0.5, "xanchor": "center"},
+        title={
+            "text": "Distance-Drawdown",
+            "x": 0.5,
+            "xanchor": "center",
+            "font": {"size": 13},
+        },
         # Linear X-axis to match the legacy Excel chart (deck slide
         # 21). The curve is sampled on a log-spaced X grid so the
         # near-pumping shape is rendered smoothly even on a linear

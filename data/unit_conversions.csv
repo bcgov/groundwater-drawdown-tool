@@ -1,8 +1,7 @@
 unit,m3_per_day,description,is_default
-Imp GPM,6.54624,Imperial gallons per minute,false
+m³/d,1.0,Cubic metres per day,true
+m³/min,1440.0,Cubic metres per minute,false
+m³/s,86400.0,Cubic metres per second,false
+m³/yr,0.00273785,Cubic metres per year,false
 L/min,1.44,Litres per minute,false
-L/s,86.4,Litres per second,true
-m3/d,1.0,Cubic metres per day,false
-m3/min,1440.0,Cubic metres per minute,false
-m3/s,86400.0,Cubic metres per second,false
-US GPM,5.45099,US gallons per minute,false
+L/s,86.4,Litres per second,false

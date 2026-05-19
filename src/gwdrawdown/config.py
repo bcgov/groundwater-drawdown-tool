@@ -59,10 +59,11 @@ DASH_DEBUG: Final[bool] = os.environ.get("DASH_DEBUG", "false").lower() in {
     "on",
 }
 
-# CLIENT_TBD: Q4, Q10 — confirm 100 days is appropriate outside east-coast
-# Vancouver Island. See PROJECT_PLAN.md §7.
+# CLIENT_TBD: Q4, Q10 — confirm 90 days is appropriate outside east-coast
+# Vancouver Island. (Legacy Excel used 100 d for the dry-season convention;
+# updated to 90 d after client direction in Phase 5.) See PROJECT_PLAN.md §7.
 DEFAULT_PUMPING_DURATION_DAYS: Final[float] = float(
-    os.environ.get("DEFAULT_PUMPING_DURATION_DAYS", "100")
+    os.environ.get("DEFAULT_PUMPING_DURATION_DAYS", "90")
 )
 
 # CLIENT_TBD: Q3 — at-risk threshold (matches legacy Excel `Impact!V` and

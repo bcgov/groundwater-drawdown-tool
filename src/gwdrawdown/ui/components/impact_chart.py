@@ -197,7 +197,14 @@ def make_impact_chart(
         )
 
     fig.update_layout(
-        title={"text": title_text, "x": 0.5, "xanchor": "center"},
+        # Smaller title font than Plotly's 17 px default so the chart
+        # title doesn't compete with the section heading above it.
+        title={
+            "text": title_text,
+            "x": 0.5,
+            "xanchor": "center",
+            "font": {"size": 13},
+        },
         xaxis={
             "title": "Impact (% of SAD)",
             "range": [0, max_pct],

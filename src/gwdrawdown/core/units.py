@@ -7,7 +7,12 @@ tool's math (Cooper-Jacob in `core/drawdown.py`) operates in SI throughout
 have one place to hide.
 
 The pumping-rate dropdown shown on the setup page is driven by
-`data/unit_conversions.csv` (matches legacy Excel `Lookup_DB!B3:I10`).
+`data/unit_conversions.csv`. The list is a curated subset of the
+legacy Excel `Lookup_DB!B3:I10`: GPM units (Imperial and US) were
+removed in Phase 5a.2 because BC officers don't use them outside
+the BCGW YIELD column (which still routes through
+`us_gpm_to_m3_per_day` separately); m³/yr was added so multi-year
+licence-volume estimates can be entered directly. Default is m³/d.
 See DATA_REFERENCE.md §11 for the full unit list and provenance.
 """
 
@@ -127,7 +132,7 @@ def pumping_rate_to_m3_per_day(value: float, unit: str) -> float:
     """Convert a pumping rate in any supported unit to m³/day.
 
     `unit` must match the `unit` column of `data/unit_conversions.csv`
-    exactly (case-sensitive, e.g. ``"L/s"``, ``"Imp GPM"``).
+    exactly (case-sensitive, e.g. ``"m³/d"``, ``"L/s"``).
     """
     for u in load_pumping_rate_units():
         if u.unit == unit:

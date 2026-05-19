@@ -53,17 +53,23 @@ def test_us_gpm_round_trip() -> None:
 # --- Pumping-rate units (CSV-driven) -----------------------------------------
 
 
-def test_load_pumping_rate_units_returns_seven_units() -> None:
+def test_load_pumping_rate_units_returns_six_units() -> None:
+    """Imperial / US GPM were dropped in Phase 5a.2 per client direction
+    (BC officers don't use GPM anywhere outside the legacy BCGW YIELD
+    column, which still flows through `us_gpm_to_m3_per_day` separately).
+    m³/yr was added so multi-year licence-volume estimates can be entered
+    directly without the officer pre-converting to daily.
+    """
     units.load_pumping_rate_units.cache_clear()
     table = units.load_pumping_rate_units()
-    assert len(table) == 7
-    expected_units = {"Imp GPM", "L/min", "L/s", "m3/d", "m3/min", "m3/s", "US GPM"}
+    assert len(table) == 6
+    expected_units = {"m³/d", "m³/min", "m³/s", "m³/yr", "L/min", "L/s"}
     assert {u.unit for u in table} == expected_units
 
 
-def test_default_pumping_rate_unit_is_litres_per_second() -> None:
+def test_default_pumping_rate_unit_is_cubic_metres_per_day() -> None:
     units.load_pumping_rate_units.cache_clear()
-    assert units.default_pumping_rate_unit().unit == "L/s"
+    assert units.default_pumping_rate_unit().unit == "m³/d"
 
 
 def test_only_one_default_unit_in_csv() -> None:
@@ -81,9 +87,11 @@ def test_pumping_rate_to_m3_per_day_canonical_legacy_excel_case() -> None:
 @pytest.mark.parametrize(
     ("value", "unit", "expected_m3_per_day"),
     [
-        (1.0, "m3/d", 1.0),
-        (1.0, "m3/min", 1440.0),
-        (1.0, "m3/s", 86400.0),
+        (1.0, "m³/d", 1.0),
+        (1.0, "m³/min", 1440.0),
+        (1.0, "m³/s", 86400.0),
+        # 1 m³/yr = 1/365.25 m³/day ≈ 0.00273785
+        (365.25, "m³/yr", 1.0),
         (1.0, "L/s", 86.4),
         (1.0, "L/min", 1.44),
         (60.0, "L/min", 86.4),  # 60 L/min == 1 L/s

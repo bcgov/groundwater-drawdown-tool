@@ -94,7 +94,7 @@ h4 {
 }
 
 h1 { font-size: 1.75rem; margin-bottom: var(--bc-space-4); }
-h2 { font-size: 1.35rem; margin-bottom: var(--bc-space-3); }
+h2 { font-size: 1.15rem; margin-bottom: var(--bc-space-3); font-weight: 600; }
 h3 { font-size: 1.1rem; margin-bottom: var(--bc-space-2); }
 
 p { margin-top: 0; }
@@ -251,7 +251,12 @@ select {
  * ------------------------------------------------------------------------- */
 
 .bc-page {
-    min-height: calc(100vh - var(--bc-header-height) - var(--bc-accent-stripe-height));
+    /* bc-page wraps header + main + footer, so it must span the full
+     * viewport. The earlier `calc(100vh - header - stripe)` was wrong
+     * — it shortened the page by the header it contained, which left
+     * a gap below the footer whenever content was shorter than the
+     * remaining viewport. */
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
 }
@@ -311,4 +316,485 @@ select {
     color: rgba(255, 255, 255, 0.75);
     font-size: 0.8rem;
     line-height: 1.4;
+}
+
+/* ---------------------------------------------------------------------------
+ * Form sections (card containers for grouped fields)
+ * ------------------------------------------------------------------------- */
+
+.bc-form-section {
+    background-color: var(--bc-surface);
+    border: 1px solid var(--bc-border);
+    border-radius: var(--bc-radius-lg);
+    padding: var(--bc-space-4) var(--bc-space-5);
+    margin-bottom: var(--bc-space-4);
+    box-shadow: var(--bc-shadow-sm);
+}
+
+.bc-form-section__heading {
+    display: flex;
+    align-items: center;
+    gap: var(--bc-space-2);
+    margin: 0 0 var(--bc-space-4) 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--bc-brand);
+}
+
+.bc-form-section__icon {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    color: var(--bc-brand);
+}
+
+.bc-form-section__hint {
+    margin-top: 0;
+    font-size: 0.85rem;
+    color: var(--bc-text-muted);
+}
+
+/* Responsive form grid: rows of fields that wrap to a single column
+ * on narrow viewports. Each child is `.bc-form-field`. */
+.bc-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--bc-space-4);
+}
+
+.bc-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--bc-space-1);
+    min-width: 0;
+}
+
+.bc-form-field--wide {
+    grid-column: 1 / -1;
+}
+
+/* ---------------------------------------------------------------------------
+ * Form inputs
+ * ------------------------------------------------------------------------- */
+
+.bc-form-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--bc-text);
+    margin-bottom: 2px;
+}
+
+.bc-form-hint {
+    font-size: 0.8rem;
+    color: var(--bc-text-muted);
+}
+
+.bc-form-input {
+    width: 100%;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--bc-border-strong);
+    border-radius: var(--bc-radius);
+    background-color: var(--bc-surface);
+    color: var(--bc-text);
+    font-family: inherit;
+    font-size: 0.95rem;
+    line-height: 1.3;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.bc-form-input:focus,
+.bc-form-input:focus-visible {
+    outline: none;
+    border-color: var(--bc-brand);
+    box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.18);
+}
+.bc-form-input:disabled {
+    background-color: #f0f0f0;
+    color: var(--bc-text-muted);
+    cursor: not-allowed;
+}
+
+.bc-form-error {
+    color: var(--bc-error);
+    font-size: 0.85rem;
+    margin-top: var(--bc-space-2);
+    min-height: 1.2rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Buttons
+ * ------------------------------------------------------------------------- */
+
+.bc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--bc-space-2);
+    padding: 0.5rem 1rem;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.2;
+    border-radius: var(--bc-radius);
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease,
+        color 0.15s ease, box-shadow 0.15s ease;
+}
+.bc-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(252, 186, 25, 0.5);
+}
+.bc-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.bc-btn--primary {
+    background-color: var(--bc-brand);
+    color: var(--bc-text-inverse);
+    border-color: var(--bc-brand);
+}
+.bc-btn--primary:hover:not(:disabled) {
+    background-color: var(--bc-brand-hover);
+    border-color: var(--bc-brand-hover);
+    color: var(--bc-text-inverse);
+}
+
+.bc-btn--secondary {
+    background-color: var(--bc-surface);
+    color: var(--bc-brand);
+    border-color: var(--bc-brand);
+}
+.bc-btn--secondary:hover:not(:disabled) {
+    background-color: rgba(0, 51, 102, 0.05);
+    color: var(--bc-brand);
+}
+
+/* Preset / chip-style button — same outline as secondary but smaller. */
+.bc-btn--preset {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.8rem;
+    background-color: var(--bc-surface);
+    color: var(--bc-brand);
+    border-color: var(--bc-border-strong);
+}
+.bc-btn--preset:hover:not(:disabled) {
+    background-color: rgba(0, 51, 102, 0.05);
+    border-color: var(--bc-brand);
+}
+
+.bc-btn--large {
+    padding: 0.65rem 1.5rem;
+    font-size: 1rem;
+}
+
+/* Inline row of buttons (e.g. duration presets). */
+.bc-btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--bc-space-2);
+    align-items: center;
+}
+
+/* Input + adjoining button (Place, Look up). The input fills, the
+ * button hugs its content; both share vertical alignment. */
+.bc-input-row {
+    display: flex;
+    gap: var(--bc-space-2);
+    align-items: stretch;
+    flex-wrap: wrap;
+}
+.bc-input-row > .bc-form-input { flex: 1 1 12rem; min-width: 0; }
+
+/* ---------------------------------------------------------------------------
+ * Radios — both classic and segmented-control variants
+ *
+ * Dash renders RadioItems as:
+ *   <div>
+ *     <label>
+ *       <input type="radio" />
+ *       <span>label text</span>
+ *     </label>
+ *     ...
+ *   </div>
+ * The wrappers below scope the styling so the rest of the page is
+ * untouched.
+ * ------------------------------------------------------------------------- */
+
+.bc-radio-group label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--bc-space-2);
+    margin-right: var(--bc-space-4);
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--bc-text);
+}
+.bc-radio-group input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--bc-border-strong);
+    border-radius: 50%;
+    margin: 0;
+    cursor: pointer;
+    background-color: var(--bc-surface);
+    transition: border-color 0.15s ease;
+}
+.bc-radio-group input[type="radio"]:checked {
+    border-color: var(--bc-brand);
+    /* Inner dot via radial-gradient — avoids a pseudo-element on a
+     * replaced <input>, which not every browser supports. */
+    background: radial-gradient(
+        circle,
+        var(--bc-brand) 0%,
+        var(--bc-brand) 40%,
+        var(--bc-surface) 45%,
+        var(--bc-surface) 100%
+    );
+}
+.bc-radio-group input[type="radio"]:focus-visible {
+    outline: 2px solid var(--bc-gold);
+    outline-offset: 2px;
+}
+
+/* Segmented control — radios styled as a button row.
+ * The native radio is hidden; the label takes the visual treatment. */
+.bc-segmented {
+    display: inline-flex;
+    border: 1px solid var(--bc-border-strong);
+    border-radius: var(--bc-radius);
+    overflow: hidden;
+    background-color: var(--bc-surface);
+}
+.bc-segmented label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--bc-space-2);
+    margin: 0;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--bc-text);
+    border-right: 1px solid var(--bc-border);
+    cursor: pointer;
+    background-color: var(--bc-surface);
+    transition: background-color 0.15s ease, color 0.15s ease;
+    user-select: none;
+}
+.bc-segmented label:last-child { border-right: none; }
+.bc-segmented label:hover {
+    background-color: rgba(0, 51, 102, 0.04);
+}
+.bc-segmented input[type="radio"] {
+    /* Hidden but still focusable for keyboard users. */
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    height: 0;
+}
+.bc-segmented label:has(input[type="radio"]:checked) {
+    background-color: var(--bc-brand);
+    color: var(--bc-text-inverse);
+    font-weight: 600;
+}
+.bc-segmented label:has(input[type="radio"]:focus-visible) {
+    box-shadow: inset 0 0 0 2px var(--bc-gold);
+}
+
+/* ---------------------------------------------------------------------------
+ * Toggle switch — Dash Checklist styled as an iOS-style switch.
+ *
+ * Dash renders Checklist similarly to RadioItems. We hide the native
+ * checkbox and rebuild the switch with a pseudo-element on the label.
+ * ------------------------------------------------------------------------- */
+
+.bc-toggle label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--bc-space-3);
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--bc-text);
+    user-select: none;
+}
+.bc-toggle input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    width: 38px;
+    height: 22px;
+    background-color: var(--bc-border-strong);
+    border-radius: 999px;
+    cursor: pointer;
+    margin: 0;
+    transition: background-color 0.15s ease;
+    flex-shrink: 0;
+}
+.bc-toggle input[type="checkbox"]::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background-color: white;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    transition: transform 0.15s ease;
+}
+.bc-toggle input[type="checkbox"]:checked {
+    background-color: var(--bc-brand);
+}
+.bc-toggle input[type="checkbox"]:checked::after {
+    transform: translateX(16px);
+}
+.bc-toggle input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--bc-gold);
+    outline-offset: 2px;
+}
+
+/* Plain checkbox (when the on/off semantic doesn't fit a switch). */
+.bc-checkbox label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--bc-space-2);
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--bc-text);
+}
+.bc-checkbox input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--bc-border-strong);
+    border-radius: 3px;
+    background-color: var(--bc-surface);
+    cursor: pointer;
+    margin: 0;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    flex-shrink: 0;
+}
+.bc-checkbox input[type="checkbox"]:checked {
+    background-color: var(--bc-brand);
+    border-color: var(--bc-brand);
+    /* Checkmark via inline-SVG background. */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M3 8.5L7 12.5L13.5 4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 14px 14px;
+}
+.bc-checkbox input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--bc-gold);
+    outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Dropdown (dcc.Dropdown → react-select)
+ *
+ * react-select uses generated class names with a `Select-` prefix
+ * (Dash's bundled v1) — relatively stable across patch releases.
+ * Wrap the dropdown in a `.bc-dropdown` div and these rules scope
+ * cleanly without bleeding into any other dropdowns the app may add.
+ * ------------------------------------------------------------------------- */
+
+.bc-dropdown .Select-control,
+.bc-dropdown .Select.is-focused > .Select-control {
+    border: 1px solid var(--bc-border-strong);
+    border-radius: var(--bc-radius);
+    background-color: var(--bc-surface);
+    min-height: 38px;
+    box-shadow: none;
+}
+.bc-dropdown .Select.is-focused:not(.is-open) > .Select-control {
+    border-color: var(--bc-brand);
+    box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.18);
+}
+.bc-dropdown .Select-placeholder,
+.bc-dropdown .Select-value-label {
+    color: var(--bc-text);
+    font-size: 0.95rem;
+    line-height: 36px !important;
+}
+.bc-dropdown .Select-menu-outer {
+    border: 1px solid var(--bc-border-strong);
+    border-radius: var(--bc-radius);
+    box-shadow: var(--bc-shadow-md);
+    margin-top: 2px;
+}
+.bc-dropdown .Select-option {
+    color: var(--bc-text);
+    background-color: var(--bc-surface);
+    padding: 0.45rem 0.7rem;
+    font-size: 0.9rem;
+}
+.bc-dropdown .Select-option.is-focused {
+    background-color: rgba(0, 51, 102, 0.08);
+    color: var(--bc-text);
+}
+.bc-dropdown .Select-option.is-selected {
+    background-color: var(--bc-brand);
+    color: var(--bc-text-inverse);
+}
+.bc-dropdown .Select-arrow-zone .Select-arrow {
+    border-color: var(--bc-text-muted) transparent transparent;
+}
+
+/* ---------------------------------------------------------------------------
+ * Run-analysis action bar
+ * ------------------------------------------------------------------------- */
+
+.bc-action-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--bc-space-4);
+    flex-wrap: wrap;
+    padding: var(--bc-space-3) 0;
+    margin-top: var(--bc-space-2);
+}
+
+/* Results-page section heading: small section title with a soft top
+ * separator. Doubles as the "light divider between elements" so the
+ * page reads as a sequence of distinct dashboard sections (chart,
+ * chart, map, table, table) rather than a long undifferentiated
+ * scroll.
+ *
+ * Reduced twice from the original 1.35 rem H2 — first to 1 rem,
+ * then to 0.9 rem after client feedback that it still read too
+ * large. ``!important`` on the size guarantees the class wins over
+ * the global ``h2`` rule even if specificity is shadowed by a
+ * downstream stylesheet. */
+.bc-results-heading {
+    font-size: 0.9rem !important;
+    font-weight: 700;
+    color: var(--bc-text);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: var(--bc-space-5);
+    margin-bottom: var(--bc-space-3);
+    padding-top: var(--bc-space-4);
+    border-top: 1px solid var(--bc-border);
+}
+
+/* First results heading on the page has no element above it to
+ * separate from; drop the top divider and tighten the gap. */
+.bc-results-heading:first-of-type {
+    margin-top: var(--bc-space-3);
+    padding-top: 0;
+    border-top: none;
+}
+
+/* Compact descriptive paragraph that sits between a heading and its
+ * chart / map. Slightly smaller and quieter than body text — meant
+ * to be read once, not re-scanned. */
+.bc-results-helper {
+    font-size: 0.78rem;
+    color: var(--bc-text-muted);
+    line-height: 1.4;
+    margin-top: 0;
+    margin-bottom: var(--bc-space-3);
 }
