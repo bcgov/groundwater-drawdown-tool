@@ -288,3 +288,89 @@ def test_analysis_result_json_roundtrip() -> None:
     assert restored.run_timestamp == base.run_timestamp
     assert [w.well_tag_number for w in restored.wells] == [1, 2, 3]
     assert restored.inputs == base.inputs
+
+
+# --- Manual-entry mode -------------------------------------------------------
+
+
+def _make_manual_inputs(material: str = "Bedrock") -> AnalysisInputs:
+    """Inputs that emulate the manual-aquifer path from setup_page."""
+    return AnalysisInputs(
+        pumping_lon=-123.6,
+        pumping_lat=48.7,
+        pumping_x_albers=PX,
+        pumping_y_albers=PY,
+        source_aquifer_id=None,
+        source_aquifer_name=f"Manual entry ({material})",
+        source_subtype_code=None,
+        transmissivity_m2_per_day=T,
+        storativity=S,
+        ts_overridden=True,
+        Q_value=3.97,
+        Q_unit="L/s",
+        Q_m3_per_day=Q,
+        duration_days=DURATION,
+        buffer_radius_m=1000.0,
+        same_aquifer_filter=False,
+        u_threshold=U_THRESH,
+        at_risk_fraction=THRESHOLD,
+        manual_material=material,
+    )
+
+
+def test_is_manual_mode_true_when_source_aquifer_id_is_none() -> None:
+    inputs = _make_manual_inputs()
+    assert inputs.is_manual_mode is True
+
+
+def test_is_manual_mode_false_for_normal_run() -> None:
+    inputs = _make_inputs()
+    assert inputs.is_manual_mode is False
+
+
+def test_manual_inputs_json_roundtrip_preserves_material() -> None:
+    inputs = _make_manual_inputs(material="Unconsolidated (sand and gravel)")
+    restored = AnalysisInputs.from_json(inputs.to_json())
+    assert restored == inputs
+    assert restored.source_aquifer_id is None
+    assert restored.manual_material == "Unconsolidated (sand and gravel)"
+    assert restored.is_manual_mode is True
+
+
+def test_legacy_inputs_payload_without_manual_material_field_loads_cleanly() -> None:
+    """Older sessionStorage payloads predate `manual_material`.
+
+    `from_json` defaults the field to None so an existing tab from a
+    prior run doesn't crash on deserialisation. Same backward-compat
+    posture as ``ts_overridden`` (pre-4c.1).
+    """
+    payload = _make_inputs().to_json()
+    payload.pop("manual_material", None)
+    restored = AnalysisInputs.from_json(payload)
+    assert restored.manual_material is None
+    assert restored.is_manual_mode is False
+
+
+def test_apply_overrides_works_in_manual_mode() -> None:
+    """Overrides on a manual-mode result still recompute SAD + status.
+
+    The override path doesn't care whether `source_aquifer_id` is
+    None — it only uses the T/S/Q/duration fields, which are present
+    in both modes. This pins that behaviour so a future refactor
+    that special-cases manual mode doesn't accidentally break edits.
+    """
+    base_well = _compute(_row())
+    base = AnalysisResult(
+        inputs=_make_manual_inputs(),
+        wells=[base_well],
+        n_total=1,
+        n_at_risk=1 if base_well.well_status == WellStatus.AT_RISK else 0,
+        n_ok=1 if base_well.well_status == WellStatus.OK else 0,
+        n_insufficient_data=0,
+        n_suspect_data=0,
+        n_outside_validity=0,
+        max_drawdown_m=base_well.drawdown_m,
+    )
+    out = apply_overrides(base, {12345: {"stickup_m": 1.0}})
+    assert out.wells[0].stickup_m == pytest.approx(1.0)
+    assert out.inputs.is_manual_mode is True

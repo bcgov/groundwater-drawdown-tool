@@ -13,11 +13,19 @@ follow-up queries fire:
 1. ``aquifers_at_point`` -> populate the source-aquifer picker. If
    one polygon contains the point it's auto-selected; for stacked
    polygons (e.g. bedrock under sand-and-gravel) the user picks one.
+   When **no** polygon contains the point, the tool falls back to
+   ``aquifers_near_point`` (1000 m radius, top 3 nearest) and also
+   pins a "No mapped aquifer at this location — enter materials
+   manually" option at the bottom of the picker. If no aquifers are
+   found within 1000 m either, the picker shows only the manual
+   option with a note explaining nothing nearby was found.
 2. Once a source aquifer is picked, ``subtype_code_for_aquifer`` +
    ``aquifer_lookup.lookup`` -> default T/S. The defaults are shown
    read-only with an "Override" checkbox to expose editable T/S
    inputs. When the lookup yields no default (e.g. subtype ``5b``
-   karstic or ``UNK``), override is auto-enabled and required.
+   karstic or ``UNK``), override is auto-enabled and required. In
+   manual-entry mode there's no subtype lookup — the material
+   dropdown is shown instead and T/S inputs are mandatory.
 
 Other inputs:
 - Pumping rate: numeric + unit dropdown driven by
@@ -56,6 +64,7 @@ from dash import (
 )
 
 from gwdrawdown import config
+from gwdrawdown.analysis import MANUAL_AQUIFER_MATERIALS
 from gwdrawdown.core import aquifer_lookup, crs_utils, units
 from gwdrawdown.data_access import get_connection
 from gwdrawdown.data_access import queries as q
@@ -81,6 +90,26 @@ DURATION_PRESETS: list[tuple[str, float]] = [
 # Vancouver Island default view; covers the Cowichan Bay test point.
 MAP_CENTER = [48.8, -123.5]
 MAP_ZOOM = 7
+
+# Sentinel value for the picker's "No mapped aquifer" option. Picked
+# as a negative int so it can share a single-type RadioItems with real
+# AQUIFER_IDs (which are always positive in BCGW). The Run Analysis
+# packer translates this to ``source_aquifer_id=None`` on
+# ``AnalysisInputs``; the rest of the pipeline keys off
+# ``AnalysisInputs.is_manual_mode``.
+MANUAL_AQUIFER_VALUE: int = -1
+
+# Search radius (metres) for the nearby-aquifer fallback when no
+# polygon directly contains the point. 1000 m balances catching wells
+# that fall just outside a re-delineated boundary against returning
+# polygons too distant to be the "correct" association. Changing this
+# is a code release, not user-tunable.
+NEARBY_AQUIFER_RADIUS_M: float = 1000.0
+
+# Maximum nearby polygons surfaced in the picker. Keeps the radio
+# list short when the search radius hits a busy area; the SQL ORDER
+# BY DISTANCE_M guarantees these are the closest ones.
+MAX_NEARBY_AQUIFERS: int = 3
 
 
 def _section_heading(icon_name: str, label: str) -> html.H3:
@@ -282,6 +311,56 @@ def layout(**_kwargs: object) -> html.Div:
                                 className="bc-radio-group",
                                 style={"marginBottom": "1rem"},
                             ),
+                            # Manual-entry panel — shown only when the
+                            # picker value is the manual sentinel. Carries
+                            # the material dropdown and a hint that T/S
+                            # below are mandatory. The dropdown's value
+                            # is captured at Run Analysis time into
+                            # ``AnalysisInputs.manual_material``.
+                            html.Div(
+                                [
+                                    html.Div(
+                                        [
+                                            html.Label(
+                                                "Aquifer material",
+                                                className="bc-form-label",
+                                            ),
+                                            html.Div(
+                                                dcc.Dropdown(
+                                                    id="setup-manual-material",
+                                                    options=[
+                                                        {"label": m, "value": m}
+                                                        for m in MANUAL_AQUIFER_MATERIALS
+                                                    ],
+                                                    value=None,
+                                                    placeholder="Select material...",
+                                                    clearable=False,
+                                                ),
+                                                className="bc-dropdown",
+                                                style={"maxWidth": "20rem"},
+                                            ),
+                                        ],
+                                        className="bc-form-field",
+                                        style={"marginBottom": "0.75rem"},
+                                    ),
+                                    html.Div(
+                                        "Enter the transmissivity (T) and storativity (S) "
+                                        "values for this material in the fields below. "
+                                        "Both are required.",
+                                        className="bc-form-hint",
+                                        style={"fontStyle": "italic"},
+                                    ),
+                                ],
+                                id="setup-manual-panel",
+                                style={
+                                    "display": "none",
+                                    "padding": "0.75rem",
+                                    "backgroundColor": "rgba(204, 102, 0, 0.06)",
+                                    "borderLeft": "3px solid #cc6600",
+                                    "borderRadius": "var(--bc-radius)",
+                                    "marginBottom": "1.25rem",
+                                },
+                            ),
                             # Subtype + default T/S values, shown as a
                             # soft tinted badge so it reads as a value
                             # display rather than crowding the radios.
@@ -300,10 +379,11 @@ def layout(**_kwargs: object) -> html.Div:
                             ),
                             # Override toggle — same iOS-style switch as
                             # the same-aquifer filter for visual
-                            # consistency. Generous margin top/bottom
-                            # makes the gesture clearly distinct from
-                            # the value badge above and the editable
-                            # T/S inputs below.
+                            # consistency. Wrapped in its own Div so
+                            # the toggle can be hidden cleanly in
+                            # manual-entry mode (T/S editing is
+                            # mandatory there, no "default" to
+                            # override against).
                             html.Div(
                                 dcc.Checklist(
                                     id="setup-ts-override-toggle",
@@ -315,6 +395,7 @@ def layout(**_kwargs: object) -> html.Div:
                                     ],
                                     value=[],
                                 ),
+                                id="setup-ts-override-wrapper",
                                 className="bc-toggle",
                                 style={"marginBottom": "1rem"},
                             ),
@@ -659,6 +740,37 @@ def update_marker_and_display(point: dict | None) -> tuple[list, str]:
     return [marker], label
 
 
+def _manual_option() -> dict[str, object]:
+    """Picker option for the manual-entry fallback.
+
+    Always pinned at the bottom of the picker when no aquifer
+    directly contains the point. Selecting it puts the page into
+    manual mode (material dropdown + mandatory T/S).
+    """
+    return {
+        "label": "No mapped aquifer at this location — enter materials manually",
+        "value": MANUAL_AQUIFER_VALUE,
+    }
+
+
+def _nearby_option(aquifer: dict[str, object]) -> dict[str, object]:
+    """Picker option for a nearby (but not containing) aquifer.
+
+    Carries the distance in the label so officers can see at a glance
+    how far the polygon sits from the click point; tagged "(nearby —
+    not directly overlapping)" so the fallback nature is unmistakable.
+    """
+    dist_m = float(aquifer["DISTANCE_M"])
+    return {
+        "label": (
+            f"{aquifer['NAME']} (id {aquifer['AQUIFER_ID']}, "
+            f"{aquifer['SUBTYPE']}) — {dist_m:.0f} m away "
+            "(nearby — not directly overlapping)"
+        ),
+        "value": int(aquifer["AQUIFER_ID"]),
+    }
+
+
 @callback(
     Output("setup-aquifer-picker", "options"),
     Output("setup-aquifer-picker", "value", allow_duplicate=True),
@@ -667,42 +779,77 @@ def update_marker_and_display(point: dict | None) -> tuple[list, str]:
     prevent_initial_call="initial_duplicate",
 )
 def fetch_aquifers(point: dict | None) -> tuple[list[dict], int | None, str]:
+    """Populate the aquifer picker, with nearby + manual fallback.
+
+    Two-step query: ``aquifers_at_point`` first, then on empty result
+    ``aquifers_near_point`` within ``NEARBY_AQUIFER_RADIUS_M``. The
+    fallback list is capped to ``MAX_NEARBY_AQUIFERS`` (closest
+    first) and the manual sentinel option is always appended. When
+    the nearby query is also empty, the picker shows just the manual
+    option with a "nothing within X m" note.
+    """
     if not point:
         return [], None, "Place a pumping point above to populate this section."
     try:
         with get_connection() as conn:
-            aquifers = q.aquifers_at_point(conn, x_albers=point["x"], y_albers=point["y"])
+            containing = q.aquifers_at_point(
+                conn, x_albers=point["x"], y_albers=point["y"]
+            )
+            nearby: list[dict[str, object]] = []
+            if not containing:
+                nearby = q.aquifers_near_point(
+                    conn,
+                    x_albers=point["x"],
+                    y_albers=point["y"],
+                    radius_m=NEARBY_AQUIFER_RADIUS_M,
+                )
     except oracledb.DatabaseError as e:
-        logger.warning("aquifers_at_point failed: %s", e)
+        logger.warning("aquifer query failed: %s", e)
         return [], None, f"Aquifer query failed: {e}"
     except Exception as e:
-        logger.exception("Unexpected aquifers_at_point error")
+        logger.exception("Unexpected aquifer query error")
         return [], None, f"Unexpected error: {e}"
 
-    options = [
-        {
-            "label": f"{a['NAME']} (id {a['AQUIFER_ID']}, {a['SUBTYPE']})",
-            "value": int(a["AQUIFER_ID"]),
-        }
-        for a in aquifers
-    ]
-    if not options:
-        return [], None, "No aquifer polygon contains this point."
+    if containing:
+        options: list[dict[str, object]] = [
+            {
+                "label": f"{a['NAME']} (id {a['AQUIFER_ID']}, {a['SUBTYPE']})",
+                "value": int(a["AQUIFER_ID"]),
+            }
+            for a in containing
+        ]
+        auto = point.get("auto_aquifer_id")
+        if auto is not None and any(o["value"] == auto for o in options):
+            value: int | None = auto
+        elif len(options) == 1:
+            value = options[0]["value"]
+        else:
+            value = None
+        help_text = (
+            "One aquifer at this point — auto-selected."
+            if len(options) == 1
+            else f"{len(options)} aquifers at this point — pick the source."
+        )
+        return options, value, help_text
 
-    auto = point.get("auto_aquifer_id")
-    if auto is not None and any(o["value"] == auto for o in options):
-        value: int | None = auto
-    elif len(options) == 1:
-        value = options[0]["value"]
+    # Fallback path: no aquifer contains the point.
+    nearby_options = [_nearby_option(a) for a in nearby[:MAX_NEARBY_AQUIFERS]]
+    options = [*nearby_options, _manual_option()]
+    if nearby_options:
+        help_text = (
+            "No aquifer directly contains this point. The closest "
+            f"{len(nearby_options)} mapped aquifer"
+            f"{'s are' if len(nearby_options) != 1 else ' is'} listed "
+            "below as fallback choices; pick the best match, or choose "
+            "manual entry if none apply."
+        )
     else:
-        value = None
-
-    help_text = (
-        "One aquifer at this point — auto-selected."
-        if len(options) == 1
-        else f"{len(options)} aquifers at this point — pick the source."
-    )
-    return options, value, help_text
+        help_text = (
+            f"No mapped aquifers found within {NEARBY_AQUIFER_RADIUS_M:.0f} m "
+            "of this point. Use manual entry to specify the material and "
+            "supply T and S values."
+        )
+    return options, None, help_text
 
 
 @callback(
@@ -714,7 +861,26 @@ def fetch_aquifers(point: dict | None) -> tuple[list[dict], int | None, str]:
 def fetch_ts_lookup(
     aquifer_id: int | None,
 ) -> tuple[dict | None, str, list[str]]:
+    """Resolve T/S defaults for the picked aquifer.
+
+    Three cases:
+
+    - ``aquifer_id is None`` (no pick yet): clear everything.
+    - ``aquifer_id == MANUAL_AQUIFER_VALUE`` (manual mode): no subtype
+      lookup, no defaults — the manual-mode panel handles T/S entry.
+      The lookup store is cleared so `toggle_override_inputs` doesn't
+      try to populate the inputs with stale defaults from a previous
+      picked aquifer.
+    - Any positive AQUIFER_ID: normal subtype lookup against
+      ``GW_AQUIFER_ATTRS`` and the ``ts_lookup`` CSV.
+    """
     if aquifer_id is None:
+        return None, "", []
+    if aquifer_id == MANUAL_AQUIFER_VALUE:
+        # Manual mode — clear the lookup store and the default badge;
+        # the manual panel above the badge carries the explanatory
+        # text instead. Override toggle reset to off so its callback
+        # treatment is consistent (the wrapper is hidden anyway).
         return None, "", []
     try:
         with get_connection() as conn:
@@ -747,21 +913,114 @@ def fetch_ts_lookup(
     Output("setup-ts-S", "value"),
     Input("setup-ts-override-toggle", "value"),
     Input("setup-lookup-ts-store", "data"),
+    Input("setup-aquifer-picker", "value"),
 )
 def toggle_override_inputs(
     toggle: list[str],
     lookup: dict | None,
+    aquifer_id: int | None,
 ) -> tuple[bool, bool, float | None, float | None]:
-    """Always show the lookup defaults in the T/S boxes; toggle just controls editability.
+    """Manage T/S input editability and prefilled values.
 
-    Picking a different aquifer resets the boxes to that aquifer's
-    defaults (and clears any prior override). To customise, the user
-    ticks "Override default T / S" and edits in place.
+    Three modes:
+
+    - **Manual entry** (``aquifer_id == MANUAL_AQUIFER_VALUE``): both
+      inputs are always enabled, with no default — the officer types
+      values matching their chosen material.
+    - **Override toggle ON** for a mapped aquifer: both inputs are
+      enabled and pre-filled with the lookup defaults so the officer
+      can adjust in place.
+    - **Override toggle OFF** for a mapped aquifer: both inputs are
+      disabled, showing the read-only defaults.
+
+    Picking a different mapped aquifer resets the boxes to that
+    aquifer's defaults. Switching from a mapped aquifer to manual
+    entry clears the boxes (no defaults exist for manual mode).
     """
+    if aquifer_id == MANUAL_AQUIFER_VALUE:
+        return False, False, None, None
     enabled = "override" in (toggle or [])
     default_T = (lookup or {}).get("T")
     default_S = (lookup or {}).get("S")
     return (not enabled), (not enabled), default_T, default_S
+
+
+@callback(
+    Output("setup-filter-toggle", "options"),
+    Output("setup-filter-toggle", "value", allow_duplicate=True),
+    Input("setup-aquifer-picker", "value"),
+    State("setup-filter-toggle", "value"),
+    prevent_initial_call="initial_duplicate",
+)
+def disable_filter_in_manual_mode(
+    aquifer_id: int | None,
+    current_value: list[str] | None,
+) -> tuple[list[dict], Any]:
+    """Disable the same-aquifer spatial filter when manual mode is active.
+
+    Manual mode has no aquifer polygon, so the spatial filter has
+    nothing to test against. The option is greyed out and the label
+    spells out why, so the officer doesn't try to tick it and wonder
+    why nothing happens. Any prior tick is cleared so the stored
+    inputs stay coherent (the Run Analysis packer also forces this
+    off, but clearing the toggle keeps the UI honest).
+    """
+    if aquifer_id == MANUAL_AQUIFER_VALUE:
+        options = [
+            {
+                "label": (
+                    "Filter out wells spatially outside source aquifer "
+                    "(not applicable in manual entry)"
+                ),
+                "value": "filter",
+                "disabled": True,
+            }
+        ]
+        return options, []
+    options = [
+        {
+            "label": "Filter out wells spatially outside source aquifer",
+            "value": "filter",
+        }
+    ]
+    return options, current_value or []
+
+
+@callback(
+    Output("setup-manual-panel", "style"),
+    Output("setup-ts-override-wrapper", "style"),
+    Output("setup-ts-default-display", "style"),
+    Input("setup-aquifer-picker", "value"),
+    State("setup-manual-panel", "style"),
+    State("setup-ts-override-wrapper", "style"),
+    State("setup-ts-default-display", "style"),
+)
+def toggle_manual_panel_visibility(
+    aquifer_id: int | None,
+    manual_style: dict | None,
+    override_style: dict | None,
+    display_style: dict | None,
+) -> tuple[dict, dict, dict]:
+    """Show the manual panel — and hide the override toggle and default badge — when manual is picked.
+
+    The three controls live in the same section and split into two
+    visually exclusive groups: in manual mode the orange manual panel
+    is shown and the blue default-T/S badge + override toggle are
+    hidden; otherwise the badge + toggle are shown and the manual
+    panel hides. Carries the existing style dict forward so we don't
+    have to repeat the padding/colour rules in the callback.
+    """
+    is_manual = aquifer_id == MANUAL_AQUIFER_VALUE
+    manual_next = {**(manual_style or {}), "display": "block" if is_manual else "none"}
+    override_next = {
+        **(override_style or {}),
+        "display": "none" if is_manual else "block",
+    }
+    display_next = {
+        **(display_style or {}),
+        "display": "none" if is_manual else "block",
+    }
+    return manual_next, override_next, display_next
 
 
 @callback(
@@ -792,6 +1051,7 @@ def apply_duration_preset(*_n_clicks: int) -> float:
     State("setup-ts-override-toggle", "value"),
     State("setup-ts-T", "value"),
     State("setup-ts-S", "value"),
+    State("setup-manual-material", "value"),
     State("setup-q-value", "value"),
     State("setup-q-unit", "value"),
     State("setup-duration", "value"),
@@ -809,6 +1069,7 @@ def run_analysis_click(
     override_toggle: list[str],
     override_T: float | None,
     override_S: float | None,
+    manual_material: str | None,
     q_value: float | None,
     q_unit: str | None,
     duration_days: float | None,
@@ -816,21 +1077,49 @@ def run_analysis_click(
     filter_toggle: list[str],
     current_trigger: int | None,
 ) -> tuple[Any, Any, str]:
+    """Validate and pack the setup form into ``analysis-inputs``.
+
+    Two packing paths share the bulk of the validation:
+
+    - **Mapped mode** (``aquifer_id`` is a positive AQUIFER_ID): T/S
+      come from the lookup defaults unless the override toggle is on,
+      in which case the inputs are taken from the editable fields.
+      The picker label is copied into ``source_aquifer_name`` so the
+      results summary reads naturally.
+    - **Manual mode** (``aquifer_id == MANUAL_AQUIFER_VALUE``): a
+      material must be picked, T/S are mandatory and read directly
+      from the input fields (always editable in this mode), the
+      stored ``source_aquifer_id`` is ``None`` (the
+      ``AnalysisInputs.is_manual_mode`` flag), and
+      ``source_aquifer_name`` is "Manual entry (material)".
+    """
     if not point:
         return no_update, no_update, "Place a pumping point first."
     if aquifer_id is None:
         return no_update, no_update, "Pick a source aquifer."
 
-    override_on = "override" in (override_toggle or [])
-    if override_on:
+    is_manual = aquifer_id == MANUAL_AQUIFER_VALUE
+    if is_manual:
+        if not manual_material:
+            return no_update, no_update, "Pick an aquifer material for manual entry."
+        if override_T is None or override_S is None:
+            return no_update, no_update, (
+                "Manual entry requires T and S values — fill in both fields above."
+            )
         T_value, S_value = override_T, override_S
+        ts_overridden = True
     else:
-        T_value = (lookup or {}).get("T")
-        S_value = (lookup or {}).get("S")
-    if T_value is None or S_value is None:
-        return no_update, no_update, (
-            "T and S are required. Tick 'Override default T / S' and enter values."
-        )
+        override_on = "override" in (override_toggle or [])
+        if override_on:
+            T_value, S_value = override_T, override_S
+        else:
+            T_value = (lookup or {}).get("T")
+            S_value = (lookup or {}).get("S")
+        if T_value is None or S_value is None:
+            return no_update, no_update, (
+                "T and S are required. Tick 'Override default T / S' and enter values."
+            )
+        ts_overridden = override_on
     if T_value <= 0 or S_value <= 0:
         return no_update, no_update, "T and S must be positive."
 
@@ -843,14 +1132,26 @@ def run_analysis_click(
     if not radius_m or radius_m <= 0:
         return no_update, no_update, "Buffer radius must be positive."
 
-    aquifer_name = next(
-        (
-            o["label"]
-            for o in (aquifer_options or [])
-            if o.get("value") == aquifer_id
-        ),
-        f"Aquifer {aquifer_id}",
-    )
+    if is_manual:
+        aquifer_name = f"Manual entry ({manual_material})"
+        stored_aquifer_id: int | None = None
+        stored_subtype: str | None = None
+        # In manual mode the spatial filter has no polygon to test
+        # against; force it off in the stored inputs so the results
+        # summary doesn't display a misleading "filter ON" indicator.
+        same_aquifer_filter = False
+    else:
+        aquifer_name = next(
+            (
+                o["label"]
+                for o in (aquifer_options or [])
+                if o.get("value") == aquifer_id
+            ),
+            f"Aquifer {aquifer_id}",
+        )
+        stored_aquifer_id = int(aquifer_id)
+        stored_subtype = (lookup or {}).get("subtype_code")
+        same_aquifer_filter = "filter" in (filter_toggle or [])
 
     Q_m3_per_day = units.pumping_rate_to_m3_per_day(float(q_value), q_unit)
 
@@ -859,20 +1160,21 @@ def run_analysis_click(
         "pumping_lat": float(point["lat"]),
         "pumping_x_albers": float(point["x"]),
         "pumping_y_albers": float(point["y"]),
-        "source_aquifer_id": int(aquifer_id),
+        "source_aquifer_id": stored_aquifer_id,
         "source_aquifer_name": aquifer_name,
-        "source_subtype_code": (lookup or {}).get("subtype_code"),
+        "source_subtype_code": stored_subtype,
         "transmissivity_m2_per_day": float(T_value),
         "storativity": float(S_value),
-        "ts_overridden": bool(override_on),
+        "ts_overridden": bool(ts_overridden),
         "Q_value": float(q_value),
         "Q_unit": q_unit,
         "Q_m3_per_day": float(Q_m3_per_day),
         "duration_days": float(duration_days),
         "buffer_radius_m": float(radius_m),
-        "same_aquifer_filter": "filter" in (filter_toggle or []),
+        "same_aquifer_filter": same_aquifer_filter,
         "u_threshold": config.COOPER_JACOB_U_THRESHOLD,
         "at_risk_fraction": config.AT_RISK_DRAWDOWN_FRACTION,
+        "manual_material": manual_material if is_manual else None,
     }
     next_trigger = (current_trigger or 0) + 1
     return inputs, next_trigger, ""
@@ -922,7 +1224,8 @@ clientside_callback(
     Output("setup-q-unit", "value"),
     Output("setup-duration", "value", allow_duplicate=True),
     Output("setup-radius", "value"),
-    Output("setup-filter-toggle", "value"),
+    Output("setup-filter-toggle", "value", allow_duplicate=True),
+    Output("setup-manual-material", "value"),
     Input("setup-mount-trigger", "data"),
     State("analysis-inputs", "data"),
     prevent_initial_call="initial_duplicate",
@@ -938,9 +1241,14 @@ def hydrate_setup_form(
     analysis (or their session has been cleared), `inputs_data` is
     ``None`` and every output is `no_update`, so the form keeps its
     hardcoded defaults.
+
+    ``manual_material`` is replayed for continuity when the officer
+    bounces between /setup and /results on a manual-mode run; the
+    field stays hidden in mapped mode so a stale value doesn't
+    surface unless they explicitly re-pick manual.
     """
     if not inputs_data:
-        return tuple(no_update for _ in range(9))
+        return tuple(no_update for _ in range(10))
     point = {
         "lon": float(inputs_data["pumping_lon"]),
         "lat": float(inputs_data["pumping_lat"]),
@@ -960,6 +1268,7 @@ def hydrate_setup_form(
         float(inputs_data["duration_days"]),
         float(inputs_data["buffer_radius_m"]),
         ["filter"] if inputs_data.get("same_aquifer_filter") else [],
+        inputs_data.get("manual_material"),
     )
 
 
@@ -982,6 +1291,12 @@ def restore_saved_aquifer(
     first try (success or not) so subsequent point changes go through
     the normal auto-pick logic in `fetch_aquifers` instead of jumping
     back to the previous run's aquifer.
+
+    Manual-mode replay: ``source_aquifer_id is None`` on the saved
+    inputs means the prior run was manual. We restore to the manual
+    sentinel as long as it appears in the current picker options
+    (it only appears when the new point also has no containing
+    aquifer); otherwise auto-pick from `fetch_aquifers` runs.
     """
     if not pending:
         return no_update, no_update
@@ -989,6 +1304,8 @@ def restore_saved_aquifer(
         return no_update, False
     saved_id = inputs_data.get("source_aquifer_id")
     if saved_id is None:
+        if any(o.get("value") == MANUAL_AQUIFER_VALUE for o in options):
+            return MANUAL_AQUIFER_VALUE, False
         return no_update, False
     if any(o.get("value") == saved_id for o in options):
         return saved_id, False

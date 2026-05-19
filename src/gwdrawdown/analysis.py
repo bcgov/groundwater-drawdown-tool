@@ -56,15 +56,33 @@ OVERRIDABLE_FIELDS: Final[tuple[str, ...]] = (
 )
 
 
+# Manual-entry material options offered when the pumping point falls
+# outside every mapped aquifer polygon. Kept narrow (two categories)
+# so the picker is decisive — officers pick T/S separately based on
+# the material they choose.
+MANUAL_AQUIFER_MATERIALS: Final[tuple[str, ...]] = (
+    "Unconsolidated (sand and gravel)",
+    "Bedrock",
+)
+
+
 @dataclass(frozen=True)
 class AnalysisInputs:
-    """Everything the setup page collects, in SI where applicable."""
+    """Everything the setup page collects, in SI where applicable.
+
+    Manual-entry mode (no mapped aquifer at the pumping point): the
+    user picks "No mapped aquifer at this location" in the aquifer
+    picker and supplies the material plus T and S directly.
+    ``source_aquifer_id`` is ``None`` in this mode, ``manual_material``
+    carries the chosen category, and ``source_subtype_code`` is
+    ``None``. ``is_manual_mode`` is the canonical check.
+    """
 
     pumping_lon: float
     pumping_lat: float
     pumping_x_albers: float
     pumping_y_albers: float
-    source_aquifer_id: int
+    source_aquifer_id: int | None
     source_aquifer_name: str
     source_subtype_code: str | None
     transmissivity_m2_per_day: float
@@ -78,16 +96,29 @@ class AnalysisInputs:
     same_aquifer_filter: bool
     u_threshold: float
     at_risk_fraction: float
+    manual_material: str | None = None
+
+    @property
+    def is_manual_mode(self) -> bool:
+        """True when the run uses user-supplied materials + T/S.
+
+        In manual mode the spatial same-aquifer filter has no polygon
+        to test against; ``run_analysis`` forces ``aquifer_id=None``
+        on the well query regardless of ``same_aquifer_filter``.
+        """
+        return self.source_aquifer_id is None
 
     def to_json(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> AnalysisInputs:
-        # Older sessionStorage payloads (pre-4c.1) may lack ts_overridden;
-        # default to False so existing tabs don't crash.
+        # Older sessionStorage payloads may lack newer fields; default
+        # them so an existing tab from a prior run doesn't crash on
+        # deserialisation.
         data = {**data}
         data.setdefault("ts_overridden", False)
+        data.setdefault("manual_material", None)
         return cls(**data)
 
 
@@ -498,15 +529,26 @@ def run_analysis(inputs: AnalysisInputs) -> AnalysisResult:
 
     The connection pool must already be initialised (login flow).
     """
-    aquifer_filter = inputs.source_aquifer_id if inputs.same_aquifer_filter else None
+    # Manual mode has no aquifer polygon, so the spatial filter is
+    # silently forced off regardless of the UI toggle state.
+    aquifer_filter = (
+        inputs.source_aquifer_id
+        if inputs.same_aquifer_filter and not inputs.is_manual_mode
+        else None
+    )
+    source_descriptor = (
+        f"manual ({inputs.manual_material})"
+        if inputs.is_manual_mode
+        else str(inputs.source_aquifer_id)
+    )
     logger.info(
         "Running analysis: point=(%.6f, %.6f), source aquifer=%s, "
         "buffer=%.0f m, filter=%s",
         inputs.pumping_lon,
         inputs.pumping_lat,
-        inputs.source_aquifer_id,
+        source_descriptor,
         inputs.buffer_radius_m,
-        inputs.same_aquifer_filter,
+        inputs.same_aquifer_filter and not inputs.is_manual_mode,
     )
     with get_connection() as conn:
         rows = q.nearby_wells(
