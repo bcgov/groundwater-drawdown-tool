@@ -12,6 +12,38 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+### Phase 5b — Map layers and overlays
+
+#### Added
+
+- **Basemap switcher** on both the setup and results maps. A
+  layers control in the top-right corner switches between
+  OpenStreetMap (the default), a topographic basemap, and
+  satellite imagery.
+- **Context overlays** you can toggle on either map:
+  - **Aquifers** — BC's mapped aquifer polygons, shown by default
+    on the setup map. Appears once you are zoomed in to roughly
+    regional scale.
+  - **All BC Wells** — every registered well in the province, on
+    the setup map. Appears only when zoomed in close, so it
+    doesn't swamp the view.
+  - **Water Management Districts** and **Water Management
+    Precincts** — the administrative boundaries, each with a name
+    label that tracks the part of the boundary you're looking at
+    and follows you as you pan and zoom.
+- A small **legend** in the bottom-right corner of the map
+  explains the aquifer and well symbology. It appears only while
+  those layers are switched on.
+- The setup map shows a **crosshair cursor** while you are in
+  "Map click" mode — a clearer cue that the map is waiting for a
+  click to place the pumping point.
+
+#### Changed
+
+- Entering a latitude / longitude or looking up a well tag number
+  now **recentres and zooms the map** to that point automatically,
+  so you see it in context without panning there yourself.
+
 ### Phase 4d — Aquifer selection fallback + manual entry
 
 #### Added

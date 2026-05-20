@@ -37,6 +37,10 @@ dev = [
     "pytest>=8.3,<9",
     "pytest-cov>=5.0,<6",
     "ruff>=0.6,<1",
+    # Used only by scripts/fetch_water_mgmt_boundaries.py to simplify
+    # the WMD/WMP polygons at fetch time. Not imported at runtime —
+    # the app loads the committed, pre-simplified GeoJSON.
+    "shapely>=2.0,<3",
 ]
 
 [build-system]

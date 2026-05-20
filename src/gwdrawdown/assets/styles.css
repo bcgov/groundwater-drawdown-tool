@@ -77,3 +77,97 @@
     background: transparent;
     border: none;
 }
+
+/* Water management boundary labels. Each is a permanent Leaflet
+ * tooltip anchored (by the boundary-label callback) to the visible
+ * centre of a district/precinct polygon, so it re-positions as the
+ * officer pans. Styled to echo the slate vector outlines — districts
+ * darker and bolder than precincts so the hierarchy reads when both
+ * overlays are on. No arrow: the label sits on the polygon. */
+.leaflet-tooltip.wm-dyn-label-district {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #455a64;
+    border-radius: 2px;
+    padding: 0 5px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #37474f;
+    box-shadow: none;
+    pointer-events: none;
+    white-space: nowrap;
+    opacity: 1 !important;
+}
+.leaflet-tooltip.wm-dyn-label-district::before {
+    display: none;
+}
+
+.leaflet-tooltip.wm-dyn-label-precinct {
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid #90a4ae;
+    border-radius: 2px;
+    padding: 0 4px;
+    font-size: 0.62rem;
+    font-weight: 500;
+    color: #546e7a;
+    box-shadow: none;
+    pointer-events: none;
+    white-space: nowrap;
+    opacity: 1 !important;
+}
+.leaflet-tooltip.wm-dyn-label-precinct::before {
+    display: none;
+}
+
+/* Setup-map cursor by input mode. In "Map click" mode a crosshair
+ * reads as "click to place the pumping point"; in the lat/lon and
+ * WTN modes the grab hand reads as "pan only". The mode class lives
+ * on the stable `#setup-map-wrap` div; these descendant selectors
+ * reach the Leaflet container and its interactive child layers
+ * (markers, boundary polygons), so the cursor stays consistent
+ * wherever the pointer is — otherwise a boundary polygon would show
+ * its own `pointer` cursor. `!important` beats Leaflet's
+ * `.leaflet-grab` / `.leaflet-interactive` rules. */
+#setup-map-wrap.gw-cursor-cross .leaflet-container,
+#setup-map-wrap.gw-cursor-cross .leaflet-interactive {
+    cursor: crosshair !important;
+}
+#setup-map-wrap.gw-cursor-grab .leaflet-container,
+#setup-map-wrap.gw-cursor-grab .leaflet-interactive {
+    cursor: grab !important;
+}
+
+/* WMS symbology legend — a compact panel pinned to the bottom-right
+ * of the map showing the GetLegendGraphic swatch for each WMS overlay
+ * currently toggled on (aquifers, BC wells). The GeoJSON boundary
+ * overlays are self-styled and need no legend. `pointer-events: none`
+ * so the panel never intercepts a map click. Sits above the
+ * attribution bar. */
+.gw-wms-legend {
+    position: absolute;
+    right: 8px;
+    bottom: 24px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    pointer-events: none;
+}
+.gw-wms-legend__block {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid #b0bec5;
+    border-radius: 3px;
+    padding: 4px 7px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.gw-wms-legend__title {
+    margin-bottom: 2px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #37474f;
+}
+.gw-wms-legend__img {
+    display: block;
+}

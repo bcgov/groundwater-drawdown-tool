@@ -37,6 +37,7 @@ from dash import html
 
 from gwdrawdown.analysis import AnalysisResult, WellResult
 from gwdrawdown.core import crs_utils
+from gwdrawdown.ui.components.basemaps import make_layers_control, make_wms_legend
 from gwdrawdown.ui.components.palette import (
     BUFFER_COLOR,
     PUMPING_COLOR,
@@ -330,26 +331,38 @@ def map_viewport_for(result: AnalysisResult) -> dict[str, Any]:
     }
 
 
-def build_map_skeleton() -> dl.Map:
-    """Static `dl.Map` mounted once by the results page.
+def build_map_skeleton() -> html.Div:
+    """Static map block mounted once by the results page.
 
-    Two named `LayerGroup`s carry the dynamic content. The render
-    callback writes to their ``children`` rather than rebuilding the
-    Map; this avoids the tile-flicker and pan-reset that came with
-    full re-renders.
+    The `dl.Map` is wrapped in a relative-positioned `html.Div` so the
+    WMS legend panel can be absolutely positioned over the bottom-right
+    corner. Named `LayerGroup`s carry the dynamic content — pumping
+    marker, well markers, and the viewport-anchored boundary labels;
+    the render callbacks write to their ``children`` rather than
+    rebuilding the Map, which avoids the tile-flicker and pan-reset
+    that came with full re-renders. ``results-map-labels`` is fed by
+    the boundary-label callback on the results page.
     """
-    return dl.Map(
-        id="results-map",
-        center=_FALLBACK_CENTER,
-        zoom=_FALLBACK_ZOOM,
-        style={
-            "height": "480px",
-            "width": "100%",
-            "marginBottom": "0.5rem",
-        },
-        children=[
-            dl.TileLayer(),
-            dl.LayerGroup(id="results-map-pumping", children=[]),
-            dl.LayerGroup(id="results-map-wells", children=[]),
+    return html.Div(
+        [
+            dl.Map(
+                id="results-map",
+                center=_FALLBACK_CENTER,
+                zoom=_FALLBACK_ZOOM,
+                style={"height": "480px", "width": "100%"},
+                children=[
+                    make_layers_control(
+                        mode="results", control_id="results-layers-control"
+                    ),
+                    dl.LayerGroup(id="results-map-pumping", children=[]),
+                    dl.LayerGroup(id="results-map-wells", children=[]),
+                    dl.LayerGroup(id="results-map-labels", children=[]),
+                ],
+            ),
+            # Wells overlay isn't offered on the results map, so the
+            # legend only ever carries the aquifer entry — and that
+            # overlay defaults off here.
+            make_wms_legend("results-wms-legend", aquifers_on=False),
         ],
+        style={"position": "relative", "marginBottom": "0.5rem"},
     )

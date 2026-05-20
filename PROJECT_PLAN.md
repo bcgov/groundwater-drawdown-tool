@@ -638,15 +638,56 @@ bisectable:
   sub-stage — design-token migrations always are. Wants a design
   sketch / reference set before committing to a direction
   (CLIENT_TBD: visual-direction conversation pending).
-- **5b — Setup-page map improvements.** Basemap layer switcher
-  (OSM / topographic / satellite imagery), an aquifer-polygon
-  overlay so the officer can see polygon boundaries when picking
-  the pumping point (lazy-loaded vector tiles or WMS against
-  BCGW where available), an existing-wells overlay drawn once
-  the point is placed so the officer can eyeball the buffer
-  contents before clicking Run Analysis. The results map
-  inherits the same basemap switcher and overlays as a
-  consistency win.
+- **5b — Map improvements** *(shipped)*. Reworked the setup and
+  results maps into a shared, layered map experience. Both maps
+  draw their basemaps and overlays from one new module,
+  `ui/components/basemaps.py`.
+  - **5b.1 — Basemap switcher.** A `dl.LayersControl` widget
+    (top-right) offers three basemaps: OpenStreetMap (default),
+    ESRI World Topographic, and ESRI World Imagery (satellite).
+    All free, no API key.
+  - **5b.2 — WMS context overlays.** Two BCGW layers via WMS
+    (`openmaps.gov.bc.ca`): **Aquifers** (translucent fill,
+    default ON on the setup map) and **All BC Wells** (setup map
+    only — redundant on the results map, which already plots the
+    queried wells as colour-coded markers). Both are zoom-gated:
+    aquifers from zoom 9 (matching BC's `MaxScaleDenominator`, so
+    the client doesn't request guaranteed-blank tiles), wells
+    from zoom 13 (~150k points — a blob below that). OGL-BC
+    attribution wired in.
+  - **5b.2b — Water-management boundaries as GeoJSON.** The Water
+    Management District and Precinct layers — added at client
+    request — ship as committed, pre-simplified GeoJSON in
+    `assets/` rather than as WMS. They are small and static
+    (regulation-derived), so a snapshot buys full styling control
+    (self-styled slate outlines), no per-tile round-trips, and
+    browser-side geometry for the dynamic labels. The raw WFS
+    geometry is ~24 MB / 900k vertices; a Douglas-Peucker pass
+    (`scripts/fetch_water_mgmt_boundaries.py`, using `shapely` as
+    a dev-only dependency) cuts that to ~1.7 MB at a tolerance
+    invisible at the zoom levels these layers display. Re-run the
+    script if BC re-delineates.
+  - **5b.2c — Viewport-anchored boundary labels.** BC publishes
+    no labelled WMS style for these boundaries, so
+    `ui/components/map_labels.py` generates them. A callback clips
+    each polygon to the current map viewport (Sutherland-Hodgman)
+    and anchors a name label at the area-weighted centroid of the
+    *visible* piece — so a label stays on screen as the officer
+    pans within one district, instead of being pinned to a fixed
+    centroid that scrolls away. Labels appear only while the
+    overlay is toggled on (the callback reads the
+    `LayersControl.overlays` prop) and a minimum-visible-area
+    threshold keeps the zoomed-out view uncluttered. The
+    clip/centroid geometry is pure and unit-tested
+    (`tests/test_map_labels.py`).
+  - **WMS legend.** A compact panel pinned bottom-right shows the
+    `GetLegendGraphic` swatch for each WMS overlay (aquifers,
+    wells) while it is toggled on; the self-styled GeoJSON
+    overlays need none.
+  - **Map-click affordances.** The setup map shows a crosshair
+    cursor in "Map click" input mode (grab hand in the lat/lon
+    and WTN modes), and lat/lon entry and WTN lookup now fly the
+    map to the resolved point.
 - **5c — Exports.** CSV is already in (custom buttons on both
   tables). Add GeoJSON export of the well set (one feature per
   well, properties = full per-well row including overrides) and

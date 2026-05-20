@@ -81,10 +81,16 @@ from gwdrawdown.analysis import (
     apply_overrides,
     run_analysis,
 )
+from gwdrawdown.ui.components.basemaps import (
+    WMD_OVERLAY_NAME,
+    WMP_OVERLAY_NAME,
+    wms_legend_children,
+)
 from gwdrawdown.ui.components.dd_chart import make_distance_drawdown_figure
 from gwdrawdown.ui.components.footer import make_footer
 from gwdrawdown.ui.components.header import make_header
 from gwdrawdown.ui.components.impact_chart import make_impact_chart
+from gwdrawdown.ui.components.map_labels import build_boundary_label_markers
 from gwdrawdown.ui.components.results_map import (
     build_map_skeleton,
     make_pumping_layer,
@@ -711,3 +717,42 @@ clientside_callback(
     Output("results-map-resize-noop", "children"),
     Input("results-content", "style"),
 )
+
+
+# --- Dynamic water management boundary labels --------------------------------
+#
+# Mirrors the matching callback on the setup page. Fires on map
+# moveend (`bounds`) and on overlay toggles (`overlays`); rebuilds the
+# label LayerGroup so each visible WMD/WMP polygon carries a name
+# anchored to its visible centre. See `ui/components/map_labels.py`.
+
+
+@callback(
+    Output("results-map-labels", "children"),
+    Input("results-map", "bounds"),
+    Input("results-layers-control", "overlays"),
+)
+def update_boundary_labels(
+    bounds: list | None,
+    overlays: list[str] | None,
+) -> list[Any]:
+    active = overlays or []
+    return build_boundary_label_markers(
+        bounds,
+        show_wmd=WMD_OVERLAY_NAME in active,
+        show_wmp=WMP_OVERLAY_NAME in active,
+    )
+
+
+# --- WMS symbology legend ----------------------------------------------------
+#
+# The results map offers only the aquifer WMS overlay (no wells), so
+# the legend carries at most the aquifer swatch.
+
+
+@callback(
+    Output("results-wms-legend", "children"),
+    Input("results-layers-control", "overlays"),
+)
+def update_wms_legend(overlays: list[str] | None) -> list[Any]:
+    return wms_legend_children(overlays, include_wells=False)

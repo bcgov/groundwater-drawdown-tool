@@ -68,9 +68,17 @@ from gwdrawdown.analysis import MANUAL_AQUIFER_MATERIALS
 from gwdrawdown.core import aquifer_lookup, crs_utils, units
 from gwdrawdown.data_access import get_connection
 from gwdrawdown.data_access import queries as q
+from gwdrawdown.ui.components.basemaps import (
+    WMD_OVERLAY_NAME,
+    WMP_OVERLAY_NAME,
+    make_layers_control,
+    make_wms_legend,
+    wms_legend_children,
+)
 from gwdrawdown.ui.components.footer import make_footer
 from gwdrawdown.ui.components.header import make_header
 from gwdrawdown.ui.components.icons import icon
+from gwdrawdown.ui.components.map_labels import build_boundary_label_markers
 from gwdrawdown.ui.session import is_authenticated
 
 dash.register_page(__name__, path="/setup", name="Setup")
@@ -256,21 +264,57 @@ def layout(**_kwargs: object) -> html.Div:
                                 id="setup-wtn-panel",
                                 style={"display": "none", "marginBottom": "0.75rem"},
                             ),
-                            # Map (always visible)
-                            dl.Map(
-                                id="setup-map",
-                                center=MAP_CENTER,
-                                zoom=MAP_ZOOM,
-                                style={
-                                    "height": "380px",
-                                    "width": "100%",
-                                    "marginBottom": "0.5rem",
-                                    "borderRadius": "var(--bc-radius, 4px)",
-                                },
-                                children=[
-                                    dl.TileLayer(),
-                                    dl.LayerGroup(id="setup-marker-layer", children=[]),
+                            # Map (always visible). The wrapper div
+                            # carries the cursor-mode class. It's a
+                            # plain div dash-leaflet never re-renders,
+                            # so the class survives the Map's
+                            # post-mount prop updates — a class set
+                            # directly on the Leaflet container gets
+                            # wiped when dash-leaflet pushes the
+                            # initial viewport. The cursor CSS is a
+                            # descendant selector, so it applies the
+                            # moment the container mounts regardless
+                            # of callback timing.
+                            html.Div(
+                                [
+                                    dl.Map(
+                                        id="setup-map",
+                                        center=MAP_CENTER,
+                                        zoom=MAP_ZOOM,
+                                        style={
+                                            "height": "380px",
+                                            "width": "100%",
+                                            "borderRadius": "var(--bc-radius, 4px)",
+                                        },
+                                        children=[
+                                            make_layers_control(
+                                                mode="setup",
+                                                control_id="setup-layers-control",
+                                            ),
+                                            dl.LayerGroup(
+                                                id="setup-marker-layer", children=[]
+                                            ),
+                                            dl.LayerGroup(
+                                                id="setup-map-labels", children=[]
+                                            ),
+                                        ],
+                                    ),
+                                    make_wms_legend(
+                                        "setup-wms-legend", aquifers_on=True
+                                    ),
                                 ],
+                                id="setup-map-wrap",
+                                # Initial class matches the default
+                                # input mode ("map") so the crosshair
+                                # is correct on first paint without
+                                # waiting for the cursor callback.
+                                # `position: relative` anchors the
+                                # absolutely-positioned legend panel.
+                                className="gw-cursor-cross",
+                                style={
+                                    "position": "relative",
+                                    "marginBottom": "0.5rem",
+                                },
                             ),
                             html.Div(
                                 id="setup-point-display",
@@ -1197,6 +1241,95 @@ clientside_callback(
     Input("setup-results-trigger", "data"),
     prevent_initial_call=True,
 )
+
+
+# --- Map cursor: crosshair in "Map click" mode, grab otherwise --------------
+#
+# A crosshair reads as "click to place a point"; the grab hand reads
+# as "pan only". The class lives on the `#setup-map-wrap` div as a
+# real Dash-managed `className` prop — its initial value is set in the
+# layout (so the crosshair is right on first paint) and this callback
+# updates it on every input-mode change. The CSS in assets/styles.css
+# is a descendant selector reaching the Leaflet container and its
+# interactive child layers, so the cursor is consistent everywhere on
+# the map.
+
+clientside_callback(
+    """
+    function(mode) {
+        return mode === 'map' ? 'gw-cursor-cross' : 'gw-cursor-grab';
+    }
+    """,
+    Output("setup-map-wrap", "className"),
+    Input("setup-input-mode", "value"),
+)
+
+
+# --- Auto-zoom on lat/lon entry and WTN lookup ------------------------------
+#
+# Map-click mode doesn't need this — the user is already looking at the
+# place they clicked. Lat/lon and WTN entry, on the other hand, are
+# "navigate me there" gestures; the marker is dropped but the map view
+# stays put unless we move it. Zoom level 14 frames the point in its
+# immediate-neighbourhood context (a city block or two), which matches
+# what the officer typically wants to see next.
+
+
+@callback(
+    Output("setup-map", "viewport"),
+    Input("setup-point-store", "data"),
+    prevent_initial_call=True,
+)
+def zoom_to_point(point: dict | None) -> dict[str, Any] | str:
+    if not point:
+        return no_update
+    if point.get("mode") not in ("latlon", "wtn"):
+        return no_update
+    return {
+        "center": [point["lat"], point["lon"]],
+        "zoom": 14,
+        "transition": "flyTo",
+    }
+
+
+# --- Dynamic water management boundary labels --------------------------------
+#
+# Fires on map moveend (`bounds`) and on overlay toggles (`overlays`).
+# `build_boundary_label_markers` clips each WMD/WMP polygon to the
+# current viewport and anchors a name label at the visible centre, so
+# a label stays on screen while the officer pans within one polygon.
+# Labels appear only for overlays that are toggled on.
+
+
+@callback(
+    Output("setup-map-labels", "children"),
+    Input("setup-map", "bounds"),
+    Input("setup-layers-control", "overlays"),
+)
+def update_boundary_labels(
+    bounds: list | None,
+    overlays: list[str] | None,
+) -> list[Any]:
+    active = overlays or []
+    return build_boundary_label_markers(
+        bounds,
+        show_wmd=WMD_OVERLAY_NAME in active,
+        show_wmp=WMP_OVERLAY_NAME in active,
+    )
+
+
+# --- WMS symbology legend ----------------------------------------------------
+#
+# Shows a GetLegendGraphic swatch for each WMS overlay (aquifers,
+# wells) that is currently toggled on. Fires on overlay toggles.
+
+
+@callback(
+    Output("setup-wms-legend", "children"),
+    Input("setup-layers-control", "overlays"),
+)
+def update_wms_legend(overlays: list[str] | None) -> list[Any]:
+    return wms_legend_children(overlays, include_wells=True)
 
 
 # --- Form hydration on Back-to-Setup ----------------------------------------
