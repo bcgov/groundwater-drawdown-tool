@@ -48,14 +48,16 @@ Changed, Fixed, Removed.
 
 #### Added
 
-- **Nearby-aquifer fallback** on the setup page. When the pumping
-  point doesn't sit inside a mapped aquifer polygon, the tool now
-  searches a 1000 m radius for nearby aquifers and lists the three
-  closest as fallback choices, each labelled with its distance
-  (e.g. "Aquifer 123 — 47 m away") and tagged as "(nearby — not
-  directly overlapping)" so it's clear they aren't direct hits.
-  Helpful for wells that fall just outside a re-delineated aquifer
-  boundary.
+- **Nearby aquifers** are now offered on the setup page alongside
+  the aquifer the well directly overlaps. The tool searches a
+  1000 m radius and lists the three closest aquifers, each
+  labelled with its distance (e.g. "Aquifer 123 — 47 m away") and
+  tagged "(nearby — not directly overlapping)". The aquifer the
+  well sits inside is tagged "directly overlapping" and
+  pre-selected, but you can pick a nearby one instead — useful
+  when a well sits inside one aquifer (e.g. bedrock) but just
+  outside the boundary of the aquifer it should really be
+  associated with (e.g. an unconsolidated aquifer 50 m away).
 - **Manual-entry mode** for remote areas the Province hasn't
   mapped. A "No mapped aquifer at this location — enter materials
   manually" option appears at the bottom of the picker in the same
