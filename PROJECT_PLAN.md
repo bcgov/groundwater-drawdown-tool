@@ -291,14 +291,19 @@ spatial). In manual-entry mode (see Phase 4d) the filter has
 no polygon to test against and is forced off in both the UI
 and the pipeline.
 
-**Aquifer selection fallback (Phase 4d).** Two-step picker
-behaviour when the pumping point doesn't sit inside a mapped
-polygon. ``aquifers_at_point`` runs first; on empty result the
-setup page falls back to ``aquifers_near_point`` (1000 m search
-radius, top 3 by ascending distance) and pins a "No mapped
-aquifer at this location — enter materials manually" sentinel
-option at the bottom of the picker. Selecting the manual
-sentinel reveals a material dropdown
+**Aquifer selection fallback (Phase 4d).** ``aquifers_at_point``
+and ``aquifers_near_point`` both run on every point placement.
+Direct hits are listed first (tagged "directly overlapping"; a
+single hit is auto-selected); aquifers within a 1000 m search
+radius (top 3 by ascending distance) are listed below tagged
+with distance, so a nearby aquifer can be picked even when the
+well directly overlaps a different one (the common stacked-
+polygon case — a well in unconsolidated material can sit inside
+the underlying bedrock polygon but outside the unconsolidated
+polygon it should be associated with). When no polygon contains
+the point, a "No mapped aquifer at this location — enter
+materials manually" sentinel option is pinned at the bottom.
+Selecting the manual sentinel reveals a material dropdown
 (``MANUAL_AQUIFER_MATERIALS`` in ``analysis.py``: Unconsolidated
 or Bedrock) and makes T/S entry mandatory; the spatial-filter
 toggle is disabled, ``AnalysisInputs.source_aquifer_id`` is
@@ -557,10 +562,15 @@ flagged: (a) wells that fall just outside the boundary they
 should be associated with (common at re-delineated aquifer
 boundaries — the polygon is stale, not the well), and (b)
 remote areas the Province hasn't mapped at all where the
-officer still needs to run a screening estimate. Combined into
-a single fallback flow because both share the root condition
-("strict point-in-polygon failed") and presenting the choices
-side by side keeps the officer in control of the call.
+officer still needs to run a screening estimate. Presenting the
+choices side by side keeps the officer in control of the call.
+
+A follow-up client note refined case (a): a well can sit inside
+one aquifer (e.g. the bedrock polygon) yet just outside the
+*other* polygon it should be associated with (the unconsolidated
+aquifer). So the nearby search runs on every point placement —
+not only when there's no direct hit — and nearby aquifers are
+offered alongside the direct hit rather than as a last resort.
 
 What ships:
 
@@ -568,15 +578,21 @@ What ships:
   radius_m)` using `SDO_WITHIN_DISTANCE` +
   `SDO_GEOM.SDO_DISTANCE`, sorted ascending by distance.
   `aquifers_at_point` is unchanged.
-- Setup page picker behaviour: containing aquifer(s)
-  auto-selected as before when present. On empty result, the
-  picker shows up to `MAX_NEARBY_AQUIFERS` (3) closest polygons
-  within `NEARBY_AQUIFER_RADIUS_M` (1000 m) tagged with their
-  distance and "(nearby — not directly overlapping)", plus a
-  pinned "No mapped aquifer at this location — enter materials
-  manually" sentinel. When no aquifers are found within 1000 m
-  either, only the manual sentinel is offered with a note
-  explaining nothing was found nearby.
+- Setup page picker behaviour: both queries run on every point
+  placement. Direct hits are listed first, tagged "directly
+  overlapping" (a single hit is auto-selected; stacked polygons
+  leave the pick to the officer). Up to `MAX_NEARBY_AQUIFERS`
+  (3) polygons within `NEARBY_AQUIFER_RADIUS_M` (1000 m) are
+  listed below, tagged with distance and "(nearby — not
+  directly overlapping)" — so a nearby aquifer can be picked
+  even when the well directly overlaps a different one. The
+  nearby query returns the containing polygons too (distance
+  0); those are de-duplicated out. The "No mapped aquifer at
+  this location — enter materials manually" sentinel is pinned
+  at the bottom only when there are no direct hits. When no
+  aquifers are found within 1000 m and none contain the point,
+  only the manual sentinel is offered with a note explaining
+  nothing was found nearby.
 - Manual-mode UI: an orange-tinted panel reveals a material
   dropdown (`MANUAL_AQUIFER_MATERIALS = ("Unconsolidated (sand
   and gravel)", "Bedrock")`) and forces T/S inputs editable.
@@ -604,13 +620,15 @@ What ships:
   that the per-well override pipeline still works on a
   manual-mode result.
 
-**Acceptance:** clicking a point inside an aquifer behaves
-exactly as before. Clicking outside any aquifer but within
-1000 m of one shows the top 3 nearest as labelled fallback
-options plus the manual sentinel. Picking the manual option
-reveals the material dropdown and requires T and S; running
-the analysis lands on /results with the orange manual-entry
-banner. Per-well overrides recompute live in both modes.
+**Acceptance:** clicking a point inside an aquifer shows that
+aquifer (auto-selected) plus any aquifers within 1000 m as
+selectable nearby options. Clicking outside any aquifer but
+within 1000 m of one shows the top 3 nearest as labelled
+fallback options plus the manual sentinel. Picking the manual
+option reveals the material dropdown and requires T and S;
+running the analysis lands on /results with the orange
+manual-entry banner. Per-well overrides recompute live in both
+modes.
 
 ### Phase 5 — Visual identity, map polish, exports, disclaimers
 

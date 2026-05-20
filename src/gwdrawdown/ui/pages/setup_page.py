@@ -10,15 +10,18 @@ Each mode feeds the same ``point-store`` (memory-scoped — only
 relevant while the page is open). Whenever the point changes, two
 follow-up queries fire:
 
-1. ``aquifers_at_point`` -> populate the source-aquifer picker. If
-   one polygon contains the point it's auto-selected; for stacked
-   polygons (e.g. bedrock under sand-and-gravel) the user picks one.
-   When **no** polygon contains the point, the tool falls back to
-   ``aquifers_near_point`` (1000 m radius, top 3 nearest) and also
-   pins a "No mapped aquifer at this location — enter materials
-   manually" option at the bottom of the picker. If no aquifers are
-   found within 1000 m either, the picker shows only the manual
-   option with a note explaining nothing nearby was found.
+1. ``aquifers_at_point`` + ``aquifers_near_point`` -> populate the
+   source-aquifer picker. Both run on every point placement: direct
+   hits are listed first (tagged "directly overlapping"; a single
+   hit is auto-selected, stacked polygons leave the pick to the
+   user), and aquifers within 1000 m (top 3 nearest) are listed
+   below tagged with distance — so a nearby aquifer can be picked
+   even when the well directly overlaps a different one. When **no**
+   polygon contains the point, a "No mapped aquifer at this location
+   — enter materials manually" option is pinned at the bottom; if no
+   aquifers are found within 1000 m either, the picker shows only
+   that manual option with a note explaining nothing nearby was
+   found.
 2. Once a source aquifer is picked, ``subtype_code_for_aquifer`` +
    ``aquifer_lookup.lookup`` -> default T/S. The defaults are shown
    read-only with an "Override" checkbox to expose editable T/S
@@ -787,8 +790,9 @@ def update_marker_and_display(point: dict | None) -> tuple[list, str]:
 def _manual_option() -> dict[str, object]:
     """Picker option for the manual-entry fallback.
 
-    Always pinned at the bottom of the picker when no aquifer
-    directly contains the point. Selecting it puts the page into
+    Pinned at the bottom of the picker only when no aquifer directly
+    contains the point — a point that overlaps a polygon is, by
+    definition, in mapped territory. Selecting it puts the page into
     manual mode (material dropdown + mandatory T/S).
     """
     return {
@@ -797,12 +801,28 @@ def _manual_option() -> dict[str, object]:
     }
 
 
+def _containing_option(aquifer: dict[str, object]) -> dict[str, object]:
+    """Picker option for an aquifer whose polygon contains the point.
+
+    Tagged "directly overlapping" — the neutral counterpart to the
+    "nearby" tag — so the officer can tell at a glance which options
+    are direct hits and which are fallback choices.
+    """
+    return {
+        "label": (
+            f"{aquifer['NAME']} (id {aquifer['AQUIFER_ID']}, "
+            f"{aquifer['SUBTYPE']}) — directly overlapping"
+        ),
+        "value": int(aquifer["AQUIFER_ID"]),
+    }
+
+
 def _nearby_option(aquifer: dict[str, object]) -> dict[str, object]:
     """Picker option for a nearby (but not containing) aquifer.
 
     Carries the distance in the label so officers can see at a glance
     how far the polygon sits from the click point; tagged "(nearby —
-    not directly overlapping)" so the fallback nature is unmistakable.
+    not directly overlapping)" so it's clear it isn't a direct hit.
     """
     dist_m = float(aquifer["DISTANCE_M"])
     return {
@@ -823,14 +843,27 @@ def _nearby_option(aquifer: dict[str, object]) -> dict[str, object]:
     prevent_initial_call="initial_duplicate",
 )
 def fetch_aquifers(point: dict | None) -> tuple[list[dict], int | None, str]:
-    """Populate the aquifer picker, with nearby + manual fallback.
+    """Populate the aquifer picker: containing + nearby + manual.
 
-    Two-step query: ``aquifers_at_point`` first, then on empty result
-    ``aquifers_near_point`` within ``NEARBY_AQUIFER_RADIUS_M``. The
-    fallback list is capped to ``MAX_NEARBY_AQUIFERS`` (closest
-    first) and the manual sentinel option is always appended. When
-    the nearby query is also empty, the picker shows just the manual
-    option with a "nothing within X m" note.
+    Both spatial queries run on every point placement —
+    ``aquifers_at_point`` for direct hits and ``aquifers_near_point``
+    (``NEARBY_AQUIFER_RADIUS_M``) for nearby polygons — so the
+    officer can pick a nearby aquifer even when the well directly
+    overlaps a different one. This is the common stacked-polygon
+    case: a well completed in unconsolidated material can sit inside
+    the underlying bedrock polygon yet just outside the
+    unconsolidated polygon it should be associated with.
+
+    Picker contents:
+
+    - Direct hits first, tagged "directly overlapping". A single
+      direct hit is auto-selected; stacked polygons leave the pick
+      to the officer.
+    - Up to ``MAX_NEARBY_AQUIFERS`` nearby polygons below, tagged
+      with distance. The nearby query also returns the containing
+      polygons (distance 0), so those are de-duplicated out here.
+    - The manual-entry sentinel, appended only when there are no
+      direct hits.
     """
     if not point:
         return [], None, "Place a pumping point above to populate this section."
@@ -839,14 +872,12 @@ def fetch_aquifers(point: dict | None) -> tuple[list[dict], int | None, str]:
             containing = q.aquifers_at_point(
                 conn, x_albers=point["x"], y_albers=point["y"]
             )
-            nearby: list[dict[str, object]] = []
-            if not containing:
-                nearby = q.aquifers_near_point(
-                    conn,
-                    x_albers=point["x"],
-                    y_albers=point["y"],
-                    radius_m=NEARBY_AQUIFER_RADIUS_M,
-                )
+            nearby = q.aquifers_near_point(
+                conn,
+                x_albers=point["x"],
+                y_albers=point["y"],
+                radius_m=NEARBY_AQUIFER_RADIUS_M,
+            )
     except oracledb.DatabaseError as e:
         logger.warning("aquifer query failed: %s", e)
         return [], None, f"Aquifer query failed: {e}"
@@ -854,30 +885,41 @@ def fetch_aquifers(point: dict | None) -> tuple[list[dict], int | None, str]:
         logger.exception("Unexpected aquifer query error")
         return [], None, f"Unexpected error: {e}"
 
-    if containing:
-        options: list[dict[str, object]] = [
-            {
-                "label": f"{a['NAME']} (id {a['AQUIFER_ID']}, {a['SUBTYPE']})",
-                "value": int(a["AQUIFER_ID"]),
-            }
-            for a in containing
-        ]
+    # SDO_WITHIN_DISTANCE returns the containing polygons too (distance
+    # 0); drop them so an aquifer can't appear as both a direct hit and
+    # a nearby option.
+    containing_ids = {int(a["AQUIFER_ID"]) for a in containing}
+    nearby = [a for a in nearby if int(a["AQUIFER_ID"]) not in containing_ids]
+
+    containing_options = [_containing_option(a) for a in containing]
+    nearby_options = [_nearby_option(a) for a in nearby[:MAX_NEARBY_AQUIFERS]]
+
+    if containing_options:
+        options: list[dict[str, object]] = [*containing_options, *nearby_options]
         auto = point.get("auto_aquifer_id")
         if auto is not None and any(o["value"] == auto for o in options):
             value: int | None = auto
-        elif len(options) == 1:
-            value = options[0]["value"]
+        elif len(containing_options) == 1:
+            value = containing_options[0]["value"]
         else:
             value = None
-        help_text = (
-            "One aquifer at this point — auto-selected."
-            if len(options) == 1
-            else f"{len(options)} aquifers at this point — pick the source."
+        n_contain = len(containing_options)
+        base = (
+            "This point is inside one mapped aquifer."
+            if n_contain == 1
+            else f"This point is inside {n_contain} mapped aquifers."
         )
+        if nearby_options:
+            help_text = (
+                base + f" Aquifers within {NEARBY_AQUIFER_RADIUS_M:.0f} m are "
+                "also listed below — pick a nearby aquifer instead if it is "
+                "the correct association."
+            )
+        else:
+            help_text = base + " Pick the source aquifer below."
         return options, value, help_text
 
-    # Fallback path: no aquifer contains the point.
-    nearby_options = [_nearby_option(a) for a in nearby[:MAX_NEARBY_AQUIFERS]]
+    # No aquifer contains the point — nearby + manual fallback.
     options = [*nearby_options, _manual_option()]
     if nearby_options:
         help_text = (
