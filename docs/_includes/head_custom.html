@@ -1,0 +1,107 @@
+<!-- Light/dark theme toggle for the documentation site.
+
+     just-the-docs ships two colour schemes and a `jtd.setTheme` /
+     `jtd.getTheme` JavaScript API. This override:
+       1. remembers the reader's choice in localStorage,
+       2. applies a saved "dark" choice synchronously, before paint,
+          so there is no flash of the light theme on load,
+       3. adds a toggle button to the top of the navigation sidebar.
+
+     head_custom.html is a supported just-the-docs include point and is
+     rendered inside <head>, after the theme's own stylesheet link. -->
+
+<style>
+  .gwdd-theme-toggle {
+    display: block;
+    width: calc(100% - 1rem);
+    margin: 0.75rem 0.5rem;
+    cursor: pointer;
+  }
+</style>
+
+<script>
+  // (1) Synchronous, best-effort: if the reader previously chose "dark",
+  // rewrite the just-the-docs stylesheet href now, before the browser
+  // paints, so there is no light-theme flash. Harmless if the href
+  // pattern is not found.
+  (function () {
+    try {
+      var saved = localStorage.getItem("gwdd-docs-theme");
+      if (saved) {
+        var link = document.querySelector(
+          'link[rel="stylesheet"][href*="just-the-docs-"]'
+        );
+        if (link) {
+          link.setAttribute(
+            "href",
+            link
+              .getAttribute("href")
+              .replace(/just-the-docs-[a-z]+\.css/, "just-the-docs-" + saved + ".css")
+          );
+        }
+      }
+    } catch (e) {
+      /* localStorage unavailable — fall back to the default scheme. */
+    }
+  })();
+
+  // (2) After the DOM and the theme's JS are ready: build the toggle
+  // button, sync just-the-docs' own state, and wire the click handler.
+  (function () {
+    var STORAGE_KEY = "gwdd-docs-theme";
+
+    function currentTheme() {
+      if (window.jtd && typeof jtd.getTheme === "function") {
+        return jtd.getTheme();
+      }
+      return "light";
+    }
+
+    function applyTheme(theme) {
+      if (window.jtd && typeof jtd.setTheme === "function") {
+        jtd.setTheme(theme);
+      }
+      var btn = document.getElementById("gwdd-theme-toggle");
+      if (btn) {
+        btn.textContent =
+          theme === "dark" ? "☀️  Light mode" : "\u{1F319}  Dark mode";
+        btn.setAttribute("aria-pressed", theme === "dark" ? "true" : "false");
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      var btn = document.createElement("button");
+      btn.id = "gwdd-theme-toggle";
+      btn.type = "button";
+      btn.className = "btn gwdd-theme-toggle";
+
+      var nav =
+        document.querySelector(".site-nav") ||
+        document.querySelector("#site-nav") ||
+        document.querySelector("nav");
+      if (nav) {
+        nav.insertBefore(btn, nav.firstChild);
+      } else {
+        document.body.appendChild(btn);
+      }
+
+      var saved = null;
+      try {
+        saved = localStorage.getItem(STORAGE_KEY);
+      } catch (e) {
+        /* ignore */
+      }
+      applyTheme(saved || currentTheme());
+
+      btn.addEventListener("click", function () {
+        var next = currentTheme() === "dark" ? "light" : "dark";
+        try {
+          localStorage.setItem(STORAGE_KEY, next);
+        } catch (e) {
+          /* ignore — toggle still works for this page load */
+        }
+        applyTheme(next);
+      });
+    });
+  })();
+</script>
