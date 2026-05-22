@@ -232,15 +232,13 @@ they're used to. Familiarity here is a feature.
   (Q5 deferred), but adding multi-well in v2 is a UI change, not a math
   change.
 
-**Ported but flagged for review:**
+**Ported from the legacy Excel (client-confirmed):**
 
-- The `> 5 ft` bedrock-depth threshold in the reassigned-material rule is
-  treated as convention. **CLIENT_TBD: Q13.** If it's a documented
-  standard, fine. If it's just one person's heuristic that ended up in
-  the Excel, the team may want to revise.
+- The `> 5 ft` bedrock-depth threshold in the reassigned-material rule.
+  The client confirmed this rule is kept as-is for v1.
 - SAD is computed unconfined-style for all wells. For confined and
   bedrock wells, this over-estimates SAD (deck slide 7). The UI flags
   these wells with a "manual review of driller's log recommended" note
-  and exposes a per-well override. **CLIENT_TBD: Q11.** A more thorough
-  v2 could pull top-of-aquifer elevations from BCGW for confined wells,
-  but that's out of v1 scope.
+  and exposes a per-well override. The client confirmed v1 keeps this
+  manual-override approach. A more thorough v2 could pull top-of-aquifer
+  elevations from BCGW for confined wells, but that's out of v1 scope.

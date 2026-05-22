@@ -22,9 +22,8 @@ the unconfined fallback and accepts a per-well user override for
 wells the unconfined-style formula over-estimates SAD; the UI flags
 those wells with a "manual review of driller's log recommended" note
 and the user can supply the correct top via the override field.
-
-CLIENT_TBD: Q11 — confirm v1 should keep the manual-override approach
-or attempt automated SAD for confined cases.
+Client-confirmed: v1 keeps this manual-override approach; automated
+SAD for confined cases is deferred to a future version.
 """
 
 from __future__ import annotations

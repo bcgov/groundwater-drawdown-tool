@@ -33,8 +33,8 @@ follow-up queries fire:
 Other inputs:
 - Pumping rate: numeric + unit dropdown driven by
   ``core.units.load_pumping_rate_units``. Default ``L/s``.
-- Pumping duration: numeric, default 100 d (legacy Excel
-  convention; CLIENT_TBD: Q4, Q10), with quick presets.
+- Pumping duration: numeric, default 90 d (client-confirmed
+  for all of BC), with quick presets.
 - Buffer radius: 1000 m by default (matches the legacy deck).
 - Same-aquifer filter: **off by default** (Q12 confirmed). When on,
   it's a SPATIAL filter — wells whose geometry lies inside the

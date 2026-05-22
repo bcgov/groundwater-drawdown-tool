@@ -4,9 +4,8 @@ Two tables share styling so the at-risk summary looks like a focused
 extract of the full table. Both expose a custom Export CSV button that
 serialises the table's current sort + filter state.
 
-All numeric values are in SI (metres, m³/day, m²/day) per the chosen
-display convention. CLIENT_TBD: Q14 — confirm officers prefer SI to
-the legacy iMap CSV's mix of feet + US GPM.
+All numeric values are in SI (metres, m³/day, m²/day) — client-confirmed
+display convention (vs the legacy iMap CSV's mix of feet + US GPM).
 
 Per-well overrides (4c.2). The full table marks four columns editable —
 NPL, finished depth, stickup, top of fracture/aquifer/screen — and

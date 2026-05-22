@@ -59,9 +59,9 @@ def init_pool(user: str, password: str) -> None:
     ``close_pool()`` raises — the caller (login handler) is responsible
     for tearing down a previous session before starting a new one.
 
-    CLIENT_TBD: Q8 — IT permits outbound TCP to bcgw.bcgov:1521;
-    confirmed at the time of writing. If the network posture changes,
-    this is the call site that will fail first.
+    IT has confirmed user workstations are permitted outbound TCP to
+    bcgw.bcgov:1521 (Q8). If the network posture changes, this is the
+    call site that will fail first.
 
     Args:
         user: BCGW username.

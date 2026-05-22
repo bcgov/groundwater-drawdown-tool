@@ -91,9 +91,9 @@ DASH_DEBUG: Final[bool] = os.environ.get("DASH_DEBUG", "false").lower() in {
     "on",
 }
 
-# CLIENT_TBD: Q4, Q10 — confirm 90 days is appropriate outside east-coast
-# Vancouver Island. (Legacy Excel used 100 d for the dry-season convention;
-# updated to 90 d after client direction in Phase 5.) See PROJECT_PLAN.md §7.
+# Default pumping duration. The legacy Excel used 100 d (east-coast
+# Vancouver Island dry-season convention); the client directed 90 d in
+# Phase 5, confirmed as the default for all of BC (Q4, Q10).
 DEFAULT_PUMPING_DURATION_DAYS: Final[float] = float(
     os.environ.get("DEFAULT_PUMPING_DURATION_DAYS", "90")
 )

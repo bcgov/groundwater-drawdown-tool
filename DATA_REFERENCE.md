@@ -1,8 +1,8 @@
 # Data Reference
 
 This document is the source of truth for column names, data types, units, and
-relationships in the BCGW datasets used by this tool. Claude Code: **do not
-guess** column names — use what is documented here.
+relationships in the BCGW datasets used by this tool. **Do not guess**
+column names — use what is documented here.
 
 ## 1. BCGW datasets used
 
@@ -294,7 +294,11 @@ sad = available_drawdown * 0.7
 
 For confined and bedrock wells, the unconfined-style fallback
 **over-estimates SAD** (deck slide 7). Tag these wells in the results UI
-with a "manual review of driller's log recommended" note. **CLIENT_TBD: Q11.**
+with a "manual review of driller's log recommended" note; the Water
+Officer enters the correct top via the per-well
+`top_of_fracture_or_aquifer_or_screen_m` override. Client-confirmed: v1
+keeps the manual-override approach rather than automating SAD for
+confined cases.
 
 ## 10. Reassigned Aquifer Material rule
 
@@ -314,8 +318,8 @@ else:
     return "Unassigned"
 ```
 
-**The 5-foot threshold is from the legacy Excel** and is treated as
-convention, not regulation. **CLIENT_TBD: Q13** — confirm.
+**The 5-foot threshold is from the legacy Excel.** Client-confirmed: v1
+keeps the `> 5 ft` rule.
 
 Both the GWELLS-reported `AQFR_MTRL` and the reassigned classification are
 shown in the results table; the reassigned value is the one used for

@@ -18,8 +18,8 @@ Both the GWELLS-reported value and this reassigned value are shown in
 the results table; downstream interpretation (SAD flagging) uses the
 reassigned value.
 
-CLIENT_TBD: Q13 — confirm whether the 5 ft threshold is a documented
-standard or just convention.
+Client-confirmed: the legacy Excel's `> 5 ft` bedrock-depth threshold
+is kept for v1.
 """
 
 from __future__ import annotations

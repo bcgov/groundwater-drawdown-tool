@@ -152,8 +152,7 @@ else:
 
 The 5-unit threshold in the legacy Excel is in feet (the underlying values
 are in feet there). When porting to SI, convert the threshold accordingly.
-**CLIENT_TBD: Q13** — confirm whether `> 5 ft` is the standard rule or just
-a convention in the Excel.
+Client-confirmed (Q13): v1 keeps the `> 5 ft` rule.
 
 This classification is shown alongside the GWELLS-reported `AQFR_MTRL` in
 the results table, not as a replacement.
@@ -191,9 +190,9 @@ For confined and bedrock wells, the unconfined-style formula
 **over-estimates SAD**. Flag these wells with a "manual review of driller's
 log recommended" note in the results table, and expose a per-well override
 field `top_of_fracture_or_aquifer_or_screen_m` that the Water Officer can
-fill in by reading the driller's log. **CLIENT_TBD: Q11** — confirm whether
-v1 should attempt automated SAD for confined cases (using top-of-aquifer
-data from BCGW) or stay with the Excel's manual-override approach.
+fill in by reading the driller's log. Client-confirmed (Q11): v1 stays
+with the manual-override approach rather than automating SAD for confined
+cases.
 
 **`core/flagging.py`** — given predicted drawdown for a well and the well's
 SAD result, classify as:
@@ -377,7 +376,7 @@ What we are explicitly **not** doing in Stage 1:
 
 But every Stage 1 choice should leave Stage 2 a packaging problem, not a redesign.
 
-## 6. Build order (phases for Claude Code)
+## 6. Build order
 
 Each phase ends in something runnable / testable. Don't skip ahead.
 
@@ -774,20 +773,61 @@ PDF, interactive HTML map) produce correctly-formatted files; PDF
 mirrors the legacy Excel artifact. Logs rotate daily; disclaimers are
 visible on every officer-facing surface.
 
-### Phase 6 — Distribution and updates via GitHub Releases
+### Phase 6 — Documentation and distribution polish
 
-Goal: end users get the tool by downloading one file from a URL, and future
-releases reach them with at most one re-run of that same file. The mechanism
-must be invisible when there's nothing to do, and self-explanatory when there
-is. Users are non-technical.
+The distribution mechanism itself — GitHub Releases, the
+`publish_release.ps1` workflow, and the dual-mode `setup.bat`
+installer/updater — shipped early, pulled forward into Phase 5a.
+Sections 6.1–6.5 and 6.8 below document that shipped mechanism for
+reference; they are **not** outstanding work. (It was originally scoped
+as "auto-update from a BC government network share", then pivoted to
+GitHub Releases — public repo `bcgov/groundwater-drawdown-tool`, zero
+IT-provisioning, stable forever-URLs via
+`releases/latest/download/<asset>`.)
 
-This section was originally scoped as "auto-update from a BC government
-network share". Pivoted in Phase 5a to **GitHub Releases** as the
-distribution channel — public repo (`bcgov/groundwater-drawdown-tool`),
-zero IT-provisioning to set up, stable forever-URLs via
-`releases/latest/download/<asset>`. The bulk of the work (publish workflow,
-install/update via `setup.bat`) lands ahead of Phase 5b; the auto-update-on-
-launch wrapper is the remaining Phase 6 work.
+Phase 6 proper is four browser/release-verifiable sub-stages:
+
+- **6a — Documentation cleanup.** Resolve the remaining `CLIENT_TBD`
+  markers and bring the doc set in line with the shipped tool.
+- **6b — GitHub Pages documentation site.** A published `/docs` site
+  split into a User Guide and a Developer Guide.
+- **6c — Auto-update on launch.** `run.bat` silently updates from the
+  latest GitHub release before starting the app.
+- **6d — Version footer + CHANGELOG modal.** The footer shows the
+  running version and opens a changelog.
+
+#### Phase 6a — Documentation cleanup
+
+The project docs were written at kickoff and have drifted from the
+shipped tool. This sub-stage closes that gap.
+
+- **Resolve `CLIENT_TBD` markers.** Q4, Q8, Q10, Q11, Q13, Q14 are
+  already resolved (client-confirmed). Resolve the remaining answered
+  questions in both the `.md` files and the `.py` files that carry the
+  markers:
+  - Q1 (T/S lookup), Q3 (30% at-risk threshold), Q12 (aquifer-filter
+    default) — confirmed; resolve.
+  - Q2 (single T/S value vs range) and Q5 (superposition) — deferred
+    by design; reword from "pending client" to a stated v2 note.
+- **Sync stale content.** Re-read every `.md` file against the current
+  tool and correct anything that drifted since kickoff.
+- **Developer-only docs.** `PROJECT_PLAN.md`, `DATA_REFERENCE.md`, and
+  `DESIGN_NOTES.md` are developer-facing and are dropped from the
+  release zip — see the updated §6.1 inventory.
+
+#### Phase 6b — GitHub Pages documentation site
+
+- A new `/docs` folder published via **GitHub Pages** (Jekyll, a
+  zero-build theme such as `just-the-docs`). The `/docs` sources stay
+  in the repo but are excluded from the release zip.
+- Split by audience: a **User Guide** (install, locating the pumping
+  well, running an analysis, reading results, exports, troubleshooting)
+  and a **Developer Guide** (architecture, layer rules, running tests,
+  publishing a release). The Developer Guide re-homes existing
+  `README` / `DESIGN_NOTES` / `DATA_REFERENCE` content; the User Guide
+  is the main new writing.
+- Pages enabled in repo settings; the site is linked from `README.md`
+  and from the app footer.
 
 #### 6.1 The release layout
 
@@ -799,12 +839,13 @@ Each tagged release on GitHub carries two assets:
   on subsequent runs.
 - **`groundwater-drawdown-tool.zip`** — the tool payload. Contains
   `src/`, `data/`, `pyproject.toml`, `uv.lock`, `.python-version`,
-  `setup.bat`, `run.bat`, `version.txt`, `CHANGELOG.md`, and the project
-  docs (`README.md`, `CLIENT_INSTALL.md`, `PROJECT_PLAN.md`,
-  `DATA_REFERENCE.md`, `DESIGN_NOTES.md`, `references/excel_chart_layout.md`).
-  Explicitly excluded: `.venv/`, `outputs/`, `logs/`, `flask_session/`,
-  `.env`, `.git/`, `__pycache__/`, `*.pyc`, `tests/`, `scripts/`,
-  client-confidential reference materials.
+  `setup.bat`, `run.bat`, `version.txt`, `CHANGELOG.md`, and the
+  end-user docs (`README.md`, `CLIENT_INSTALL.md`,
+  `references/excel_chart_layout.md`). Explicitly excluded: the
+  developer-only docs (`PROJECT_PLAN.md`, `DATA_REFERENCE.md`,
+  `DESIGN_NOTES.md`), the `/docs` Pages sources, `.venv/`, `outputs/`,
+  `logs/`, `flask_session/`, `.env`, `.git/`, `__pycache__/`, `*.pyc`,
+  `tests/`, `scripts/`, client-confidential reference materials.
 
 Both assets are exposed at stable URLs that always resolve to the latest
 release:
@@ -919,11 +960,10 @@ In every failure case, the user can still run their previously-installed
 version of the tool. The installer can never leave the user with no working
 copy: it either succeeds in updating, or leaves the prior install untouched.
 
-#### 6.6 Phase 6 proper — auto-update on launch (deferred)
+#### Phase 6c — Auto-update on launch
 
-Sub-stages 6.1–6.5 deliver "one URL, double-click, install or update". The
-remaining piece — making updates happen *without the user noticing* — is
-the Phase 6 work that lands after Phase 5.
+Sections 6.1–6.5 deliver "one URL, double-click, install or update".
+This sub-stage makes updates happen *without the user noticing*.
 
 Design:
 
@@ -941,15 +981,15 @@ The mechanism is otherwise unchanged from §6.3 — same install dir, same
 preserve list, same release artifacts. It's a thin invocation wrapper on
 top of the already-built installer.
 
-#### 6.7 What gets surfaced in the UI
+#### Phase 6d — Version footer + CHANGELOG modal
 
 A footer line on every page: `Version 0.5.0 — last updated 2026-05-19`.
 Clicking it opens a modal showing the recent CHANGELOG entries, so users
 can see what changed without touching files. This is also where you handle
 "my colleague says feature X exists but I don't see it" — they're on
 different versions, the footer tells them. Implementation is a small
-addition to `ui/components/footer.py` and lands alongside the §6.6 launch-
-update wrapper.
+addition to `ui/components/footer.py` and lands alongside the Phase 6c
+launch-update wrapper.
 
 #### 6.8 Configuration
 
@@ -977,6 +1017,16 @@ need this.
 - Developer bumps `version.txt`, commits, runs `publish_release.ps1`:
   tests pass, tag pushed, GitHub release created with both assets
   uploaded, release notes populated from the CHANGELOG version section.
+- No `CLIENT_TBD` markers remain in the codebase except the
+  deliberately-deferred ones (Q2, Q5), reworded as stated v2 notes.
+- A GitHub Pages site is live with a User Guide and a Developer Guide,
+  linked from `README.md` and the app footer.
+- `run.bat` silently updates from the latest GitHub release on launch
+  and never blocks the app if GitHub is unreachable.
+- The app footer shows the running version and last-updated date and
+  opens a modal of recent CHANGELOG entries.
+- The release zip no longer carries `PROJECT_PLAN.md`,
+  `DATA_REFERENCE.md`, or `DESIGN_NOTES.md`.
 
 ## 7. Open questions, kept visible in the codebase
 
@@ -994,10 +1044,10 @@ update.
 - **Q3** (at-risk threshold) — updated default: drawdown ≥ **30%** of SAD,
   matching the legacy Excel `Impact!V` and the `InputValues!B30` summary
   filter. Configurable in `config.py` via `AT_RISK_DRAWDOWN_FRACTION`.
-- **Q4** (default pumping duration) — updated default: **100 days**,
-  matching the legacy Excel convention (deck slide 5: east-coast Vancouver
-  Island dry season, no recharge assumed). UI offers presets for 30 d /
-  100 d / 1 yr / 10 yr (3652.5 d, "perpetual licence" — deck slide 21).
+- **Q4** (default pumping duration) — **confirmed**: default **90 days**.
+  The legacy Excel used 100 d (deck slide 5: east-coast Vancouver Island
+  dry season, no recharge assumed); the client directed 90 d in Phase 5.
+  UI offers presets for 30 d / 90 d / 180 d / 1 yr / 10 yr (3652.5 d).
 - **Q5** (multiple pumping wells / superposition) — Stage 1 is single-well
   only in the UI. `core/drawdown.py` accepts a list of pumping sources
   and sums them linearly, so adding superposition later is a UI change,
@@ -1011,37 +1061,33 @@ update.
   formula, reassigned-aquifer-material rule, chart layout, unit list,
   default duration, 30% threshold. Will also serve as the validation
   harness for `core/drawdown.py` — known input set produces known output.
-- **Q8** (IT / network / outbound connectivity) — confirm that user
-  workstations are permitted outbound TCP to `bcgw.bcgov:1521` (over the
-  gov network or VPN), and that Python making such connections is
-  acceptable to IT/security. Credentials are entered at runtime, never
-  stored on disk.
+- **Q8** (IT / network / outbound connectivity) — **confirmed**: IT
+  permits user workstations outbound TCP to `bcgw.bcgov:1521` (over the
+  gov network or VPN), and Python making such connections is acceptable
+  to IT/security. Credentials are entered at runtime, never stored on
+  disk.
 - **Q9** (BCGW account model) — confirmed: each Water Officer has their
   own personal BCGW account.
-- **Q10** (pumping duration default by region) — confirm that 100 days is
-  the right default for all of BC, or whether different regions
-  (Interior, North) use different conventions. Also confirm the 10-year
-  preset (3652.5 d) wording — "perpetual licence" or something else?
-- **Q11** (SAD calculation for confined and bedrock aquifers) — v1
-  matches the legacy Excel: compute unconfined-style SAD, flag confined
-  and bedrock wells with a "manual review of driller's log recommended"
-  note, expose a per-well override field for `top_of_fracture_or_aquifer_or_screen_m`.
-  Confirm whether this is acceptable, or whether v1 should attempt
-  automated SAD for confined cases using top-of-aquifer data from BCGW
-  (more complex — needs a separate data source for aquifer-top
-  elevations).
+- **Q10** (pumping duration default by region) — **confirmed**: the
+  90-day default applies to all of BC; no region-specific conventions.
+- **Q11** (SAD calculation for confined and bedrock aquifers) —
+  **confirmed**: v1 matches the legacy Excel — compute unconfined-style
+  SAD, flag confined and bedrock wells with a "manual review of driller's
+  log recommended" note, and let the Water Officer enter the correct top
+  via the per-well `top_of_fracture_or_aquifer_or_screen_m` override.
+  Automated SAD for confined cases (using top-of-aquifer data from BCGW)
+  is deferred to a future version.
 - **Q12** (single-aquifer filtering default) — **confirmed**:
   default-OFF, and the filter is spatial (`SDO_ANYINTERACT` against
   the source aquifer polygon), not a GWELLS `AQUIFER_ID` attribute
   match. The spatial test safeguards against erroneous GWELLS aquifer
   assignments and against future re-delineation of aquifer boundaries.
-- **Q13** (reassigned aquifer material rule) — v1 ports the legacy Excel
-  rule verbatim: `if BedrockDepth populated AND (FinishedDepth -
-  BedrockDepth) > 5 ft, classify as "Bedrock", else "Unconsolidated"`.
-  Confirm whether the `> 5 ft` threshold is a documented standard or
-  just convention; if convention, confirm it's still appropriate.
+- **Q13** (reassigned aquifer material rule) — **confirmed**: v1 ports
+  the legacy Excel rule verbatim: `if BedrockDepth populated AND
+  (FinishedDepth - BedrockDepth) > 5 ft, classify as "Bedrock", else
+  "Unconsolidated"`. The client confirmed the `> 5 ft` threshold.
 
-## 8. Working agreements for Claude Code
+## 8. Working agreements
 
 - No Dash imports anywhere in `core/` or `data_access/`.
 - No SQL strings outside `data_access/queries.py`.

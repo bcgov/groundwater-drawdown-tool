@@ -127,9 +127,9 @@ def run(args: argparse.Namespace) -> int:
 
     user, password = _prompt_credentials()
 
-    # CLIENT_TBD: Q8 — IT permits outbound TCP to bcgw.bcgov:1521;
-    # confirmed at the time of writing. If this connect fails with a
-    # network-level error, that's the first thing to re-verify.
+    # IT has confirmed outbound TCP to bcgw.bcgov:1521 is permitted (Q8).
+    # If this connect fails with a network-level error, that's the first
+    # thing to re-verify.
     try:
         init_pool(user, password)
     except oracledb.DatabaseError as e:
