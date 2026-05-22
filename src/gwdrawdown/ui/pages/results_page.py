@@ -107,6 +107,7 @@ from gwdrawdown.ui.components.results_table import (
 )
 from gwdrawdown.ui.components.stat_cards import make_stat_cards
 from gwdrawdown.ui.session import current_user, is_authenticated
+from gwdrawdown.usage_logger import get_usage_logger
 
 dash.register_page(__name__, path="/results", name="Results")
 
@@ -217,6 +218,22 @@ def layout(**_kwargs: object) -> html.Div:
                     build_map_skeleton(),
                     build_at_risk_section(),
                     build_per_well_section(),
+                    # A second "Back to Setup" at the foot of the page so
+                    # the officer doesn't have to scroll all the way back
+                    # up after reading the per-well table. Right-aligned
+                    # to line up with the header-row link.
+                    html.Div(
+                        dcc.Link(
+                            "← Back to Setup",
+                            href="/setup",
+                            className="bc-btn bc-btn--secondary",
+                        ),
+                        style={
+                            "marginTop": "1.5rem",
+                            "display": "flex",
+                            "justifyContent": "flex-end",
+                        },
+                    ),
                 ],
             ),
             # selected-well is page-scoped (memory) so navigating away
@@ -359,6 +376,7 @@ def run_pipeline_if_needed(
     """
     if not inputs_data:
         return no_update, no_update, no_update
+    bcgw_user = current_user()
     try:
         inputs = AnalysisInputs.from_json(inputs_data)
     except (TypeError, KeyError) as exc:
@@ -368,8 +386,16 @@ def run_pipeline_if_needed(
         result = run_analysis(inputs)
     except Exception as exc:
         # Surface any pipeline failure to the UI rather than 500-ing.
-        logger.exception("Pipeline failed")
+        # usage_logged=True so the UsageLogHandler doesn't forward this
+        # as a duplicate of the log_analysis_error detail event below.
+        logger.exception("Pipeline failed", extra={"usage_logged": True})
+        get_usage_logger().log_analysis_error(
+            f"Pipeline error: {exc}", bcgw_user=bcgw_user
+        )
         return {"_error": f"Pipeline error: {exc}"}, {}, None
+    # One usage-log summary record per fresh run. Override recomputes and
+    # tab refreshes reuse the cached `analysis-result` and never reach here.
+    get_usage_logger().log_analysis(result, bcgw_user=bcgw_user)
     payload = result.to_json()
     payload["_fingerprint"] = _inputs_fingerprint(inputs_data)
     return payload, {}, None

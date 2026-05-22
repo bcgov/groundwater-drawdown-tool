@@ -1261,6 +1261,9 @@ def run_analysis_click(
         "u_threshold": config.COOPER_JACOB_U_THRESHOLD,
         "at_risk_fraction": config.AT_RISK_DRAWDOWN_FRACTION,
         "manual_material": manual_material if is_manual else None,
+        # Present only when the point was located by WTN lookup; carried
+        # for the usage log, not used by the pipeline.
+        "pumping_well_tag_number": point.get("wtn"),
     }
     next_trigger = (current_trigger or 0) + 1
     return inputs, next_trigger, ""

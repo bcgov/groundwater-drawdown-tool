@@ -12,6 +12,51 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+### Phase 5d — Logging, sign-in messaging, and UI polish
+
+#### Added
+
+- The tool now keeps a **daily log file** in the `logs\` folder
+  next to the tool (`gwdrawdown.log`). A new file starts each day
+  and the last 30 days are kept, so if something goes wrong there
+  is a record to look back on.
+- **Usage logging.** Each time an analysis is run, a small summary
+  record (run parameters and headline results — no passwords) is
+  written to a central GeoBC log location, along with sign-in and
+  error events. This helps the team monitor the tool's health,
+  understand how it is used, and troubleshoot issues. If the
+  central location can't be reached (for example, off the
+  government network), logging quietly switches off — it never
+  blocks or slows the tool.
+- The sign-in screen now shows a **"Check your BCGW account
+  status"** link when sign-in fails, so you can confirm your
+  account is active without leaving the tool.
+- A short note on the sign-in screen confirming that **your
+  password is never stored** — it is held only in memory for the
+  session and discarded when you sign out.
+- A second **"← Back to Setup"** button at the foot of the results
+  page, so you don't have to scroll back to the top to start a new
+  analysis.
+
+#### Changed
+
+- The page header now shows the official **British Columbia logo**
+  in place of the typographic "British Columbia / Government of
+  B.C." text.
+- **Friendlier sign-in error messages.** A failed sign-in now
+  explains the problem in plain language — wrong username or
+  password, locked account, expired password, or a network /
+  connection problem — instead of showing the raw database error.
+  The technical error code is still shown, in small print, in
+  case you need to quote it to support.
+- Reworded the sign-in screen subtitle to "Connect to your BC
+  Geographic Warehouse (BCGW) account to use the tool."
+- Minor visual polish: the footer no longer repeats the signed-in
+  user name (it is already shown in the header) and its
+  disclaimer is centred; the "Impact % per well" chart caption is
+  smaller so it sits below the section heading rather than
+  competing with it.
+
 ### Phase 5b — Map layers and overlays
 
 #### Added

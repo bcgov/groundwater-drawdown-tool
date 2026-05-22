@@ -164,41 +164,19 @@ select {
 }
 .bc-header__brand:hover { color: var(--bc-text-inverse); }
 
-/* Wordmark: typographic, plain HTML so BC Sans applies. Two stacked
- * lines — bold "British Columbia" on top, smaller "Government of
- * B.C." underneath. A gold bar on the left edge echoes the accent
- * stripe under the header. Every element here is flex-shrink:0 +
- * nowrap so the wordmark always renders on its own lines regardless
- * of how narrow the viewport gets. */
-.bc-wordmark {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+/* BC visual-identity logo. The positive (navy) logo would vanish
+ * against the dark header band, so the white-background asset is kept
+ * and shown as a rounded white panel — the brand's treatment for the
+ * logo in a dark context. Sized by height; width follows the logo's
+ * aspect ratio. flex-shrink:0 so it never squashes as the viewport
+ * narrows. */
+.bc-header__logo {
+    height: 40px;
+    width: auto;
+    display: block;
     flex-shrink: 0;
-    line-height: 1.15;
-    padding: 4px 0 4px 12px;
-    border-left: 3px solid var(--bc-gold);
-}
-.bc-wordmark__primary {
-    font-family: var(--bc-font-sans);
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--bc-text-inverse);
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-    text-transform: none;
-    line-height: 1.15;
-}
-.bc-wordmark__secondary {
-    font-family: var(--bc-font-sans);
-    font-size: 0.68rem;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.85);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    margin-top: 2px;
-    line-height: 1.15;
+    background: #FFFFFF;
+    border-radius: var(--bc-radius);
 }
 
 .bc-header__divider {
@@ -303,7 +281,12 @@ select {
     font-size: 0.85rem;
 }
 
+/* Footer is a three-cell row: version (left), disclaimer (centre),
+ * empty spacer (right). The meta and spacer cells share an equal
+ * flex-grow with a zero basis, so the disclaimer cell is pinned to
+ * the true horizontal centre of the page. */
 .bc-footer__meta {
+    flex: 1 1 0;
     display: flex;
     flex-wrap: wrap;
     gap: var(--bc-space-4);
@@ -311,11 +294,16 @@ select {
 }
 
 .bc-footer__disclaimer {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-width: 240px;
+    text-align: center;
     color: rgba(255, 255, 255, 0.75);
     font-size: 0.8rem;
     line-height: 1.4;
+}
+
+.bc-footer__spacer {
+    flex: 1 1 0;
 }
 
 /* ---------------------------------------------------------------------------

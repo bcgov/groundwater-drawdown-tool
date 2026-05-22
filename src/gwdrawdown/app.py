@@ -21,6 +21,7 @@ from __future__ import annotations
 import logging
 import secrets
 from datetime import timedelta
+from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
 import dash
@@ -28,18 +29,41 @@ import flask
 from dash import dcc, html
 from flask_session import Session
 
-from gwdrawdown import config
+from gwdrawdown import config, usage_logger
 from gwdrawdown.data_access import close_pool
 
 logger = logging.getLogger(__name__)
 
 
 def _configure_logging() -> None:
-    """Set up the root logger. File rotation lands in Phase 5."""
-    logging.basicConfig(
-        level=config.LOG_LEVEL,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    """Configure the root logger: console plus a daily-rotating file.
+
+    Replaces the Phase 4 ``basicConfig``. A ``TimedRotatingFileHandler``
+    rolls ``<LOG_DIR>/gwdrawdown.log`` at midnight and keeps
+    ``config.LOG_RETENTION_DAYS`` days of history. Existing handlers are
+    cleared first so the debug-mode reloader (which re-runs ``main`` in a
+    child process) does not stack duplicate handlers.
+    """
+    config.LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+    fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    root = logging.getLogger()
+    root.setLevel(config.LOG_LEVEL)
+    for handler in list(root.handlers):
+        root.removeHandler(handler)
+
+    console = logging.StreamHandler()
+    console.setFormatter(fmt)
+    root.addHandler(console)
+
+    file_handler = TimedRotatingFileHandler(
+        config.LOG_DIR / "gwdrawdown.log",
+        when="midnight",
+        backupCount=config.LOG_RETENTION_DAYS,
+        encoding="utf-8",
     )
+    file_handler.setFormatter(fmt)
+    root.addHandler(file_handler)
 
 
 def _configure_sessions(server: flask.Flask) -> None:
@@ -130,6 +154,10 @@ def main() -> None:
     """Run the Dash dev server on localhost:8050."""
     _configure_logging()
     logger.info("Starting gwdrawdown v%s", config.version())
+    # Centralized usage logging: probes the Object Storage share on a
+    # background thread and forwards WARNING+ records to the detail log.
+    # A failure here never blocks startup (see usage_logger.py).
+    usage_logger.init_usage_logger()
     app = create_app()
     app.run(host="127.0.0.1", port=8050, debug=config.DASH_DEBUG)
 

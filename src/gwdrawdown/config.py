@@ -30,6 +30,14 @@ load_dotenv(PROJECT_ROOT / ".env")
 # release, not a config edit. See PROJECT_PLAN.md §4.1.
 BCGW_DSN: Final[str] = "bcgw.bcgov:1521/idwprod1.bcgov"
 
+# AQT account self-service page (BCGW database IDWPROD11). Linked from the
+# login page so a user whose sign-in fails can check their own account
+# status. The jsessionid in any copied URL is a stale session token and is
+# deliberately not included here.
+BCGW_ACCOUNT_STATUS_URL: Final[str] = (
+    "https://apps.gov.bc.ca/int/aqt/jsp/query.jsp"
+)
+
 VERSION_FILE: Final[Path] = PROJECT_ROOT / "version.txt"
 DATA_DIR: Final[Path] = PROJECT_ROOT / "data"
 TS_LOOKUP_PATH: Final[Path] = DATA_DIR / "ts_lookup.csv"
@@ -47,6 +55,30 @@ OUTPUT_DIR: Final[Path] = Path(
 LOG_DIR: Final[Path] = Path(
     os.environ.get("LOG_DIR", str(PROJECT_ROOT / "logs"))
 )
+
+# Days of daily-rotated local log files to keep (TimedRotatingFileHandler
+# backupCount). See app._configure_logging.
+LOG_RETENTION_DAYS: Final[int] = int(os.environ.get("LOG_RETENTION_DAYS", "30"))
+
+# Centralized usage log location. Like BCGW_DSN, the default is a fixed,
+# non-secret, non-user-specific path — a code release moves it, not a
+# config edit. The .env override exists so a developer can point usage
+# logging at a local folder during testing. The tool runs fine when the
+# share is unreachable: usage logging silently disables itself and never
+# blocks or crashes the tool. See usage_logger.py and PROJECT_PLAN.md §5d.
+USAGE_LOG_DIR: Final[Path] = Path(
+    os.environ.get(
+        "USAGE_LOG_DIR",
+        r"\\objectstore2.nrs.bcgov\GSS_Share\authorizations\logs"
+        r"\groundwater_drawdown_tool",
+    )
+)
+
+# Set USAGE_LOGGING_ENABLED=false to disable centralized usage logging
+# outright (e.g. for local development or automated tests).
+USAGE_LOGGING_ENABLED: Final[bool] = os.environ.get(
+    "USAGE_LOGGING_ENABLED", "true"
+).lower() in {"1", "true", "yes", "on"}
 
 SESSION_DIR: Final[Path] = Path(
     os.environ.get("SESSION_DIR", str(PROJECT_ROOT / "flask_session"))

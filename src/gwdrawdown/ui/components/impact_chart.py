@@ -197,13 +197,16 @@ def make_impact_chart(
         )
 
     fig.update_layout(
-        # Smaller title font than Plotly's 17 px default so the chart
-        # title doesn't compete with the section heading above it.
+        # Small title font (well under Plotly's 17 px default): both the
+        # results page and the PDF export carry a separate "Impact % per
+        # well" heading above this chart, so the in-chart title is a
+        # secondary caption — it must not compete with that heading, and
+        # it stays legible once the figure is scaled down into the PDF.
         title={
             "text": title_text,
             "x": 0.5,
             "xanchor": "center",
-            "font": {"size": 13},
+            "font": {"size": 11},
         },
         xaxis={
             "title": "Impact (% of SAD)",

@@ -379,6 +379,23 @@ def test_legacy_inputs_payload_without_manual_material_field_loads_cleanly() -> 
     assert restored.is_manual_mode is False
 
 
+def test_pumping_well_tag_number_survives_json_roundtrip() -> None:
+    """The WTN-mode pumping-point tag is carried for the usage log."""
+    inputs = AnalysisInputs.from_json(
+        {**_make_inputs().to_json(), "pumping_well_tag_number": 96473}
+    )
+    restored = AnalysisInputs.from_json(inputs.to_json())
+    assert restored.pumping_well_tag_number == 96473
+
+
+def test_legacy_inputs_payload_without_wtn_field_loads_cleanly() -> None:
+    """Payloads predating `pumping_well_tag_number` default it to None."""
+    payload = _make_inputs().to_json()
+    payload.pop("pumping_well_tag_number", None)
+    restored = AnalysisInputs.from_json(payload)
+    assert restored.pumping_well_tag_number is None
+
+
 def test_apply_overrides_works_in_manual_mode() -> None:
     """Overrides on a manual-mode result still recompute SAD + status.
 

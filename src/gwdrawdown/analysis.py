@@ -98,6 +98,11 @@ class AnalysisInputs:
     u_threshold: float
     at_risk_fraction: float
     manual_material: str | None = None
+    # WELL_TAG_NUMBER of the pumping point when it was located via the
+    # "Well tag number" input mode; None for map-click / lat-lon modes.
+    # Carried only so the usage log can record which well an officer
+    # screened from; not used by the drawdown pipeline.
+    pumping_well_tag_number: int | None = None
 
     @property
     def is_manual_mode(self) -> bool:
@@ -120,6 +125,7 @@ class AnalysisInputs:
         data = {**data}
         data.setdefault("ts_overridden", False)
         data.setdefault("manual_material", None)
+        data.setdefault("pumping_well_tag_number", None)
         return cls(**data)
 
 

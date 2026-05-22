@@ -19,6 +19,7 @@ form so users always see which database they are signing in to.
 from __future__ import annotations
 
 import logging
+import re
 
 import dash
 import oracledb
@@ -37,6 +38,7 @@ from gwdrawdown import config, data_access
 from gwdrawdown.ui import session
 from gwdrawdown.ui.components.footer import make_footer
 from gwdrawdown.ui.components.header import make_header
+from gwdrawdown.usage_logger import get_usage_logger
 
 dash.register_page(__name__, path="/login", name="Sign in")
 
@@ -115,6 +117,33 @@ def _form_field(label: str, control: html.Div | dcc.Input) -> html.Div:
     )
 
 
+def _credentials_note() -> html.Div:
+    """Reassurance about how BCGW credentials are handled.
+
+    Stage 1 has no credential store: the password is held only in the
+    running tool's memory (inside the ``oracledb`` connection pool),
+    never written to disk, and dropped on logout / session expiry. See
+    DESIGN_NOTES.md "Why BCGW credentials are entered at runtime".
+    """
+    return html.Div(
+        [
+            html.Strong("Your password is never stored. "),
+            "Your BCGW username and password are used only to sign in to "
+            "the BC Geographic Warehouse. They are held in memory for this "
+            "session only — never written to disk — and are discarded when "
+            "you sign out or the session expires.",
+        ],
+        style={
+            "fontSize": "0.8rem",
+            "lineHeight": "1.5",
+            "color": "var(--bc-text-muted, #606060)",
+            "marginTop": "1.5rem",
+            "paddingTop": "1rem",
+            "borderTop": "1px solid var(--bc-border, #D9D9D9)",
+        },
+    )
+
+
 def layout(**_kwargs: object) -> html.Div:
     if session.is_authenticated():
         return html.Div(
@@ -128,7 +157,8 @@ def layout(**_kwargs: object) -> html.Div:
                     [
                         html.H1("Sign in"),
                         html.P(
-                            "Use your BCGW credentials to access the tool.",
+                            "Connect to your BC Geographic Warehouse (BCGW) "
+                            "account to use the tool.",
                             style={
                                 "color": "var(--bc-text-muted, #606060)",
                                 "marginBottom": "1.5rem",
@@ -190,6 +220,7 @@ def layout(**_kwargs: object) -> html.Div:
                         ),
                         html.Div(id="login-error", className="bc-form-error"),
                         dcc.Location(id="login-redirect", refresh=True),
+                        _credentials_note(),
                     ],
                     className="bc-login-card",
                     style={
@@ -281,6 +312,99 @@ clientside_callback(
 )
 
 
+# Friendly text for the Oracle / oracledb error codes a BCGW sign-in
+# can realistically hit. Anything not listed here falls back to a
+# generic message that still points the user at the account-status link.
+_FRIENDLY_DB_ERRORS: dict[str, str] = {
+    "ORA-01017": "The BCGW username or password is incorrect.",
+    "ORA-28000": (
+        "Your BCGW account is locked. Contact the BCGW Data Custodian "
+        "to have it unlocked."
+    ),
+    "ORA-28001": "Your BCGW password has expired and must be reset.",
+    "ORA-28002": (
+        "Your BCGW password is about to expire — sign-in still works "
+        "for now, but please reset it soon."
+    ),
+}
+
+# Codes that mean the database could not be reached at all, as opposed
+# to a credential problem.
+_NETWORK_ERROR_CODES: frozenset[str] = frozenset(
+    {
+        "ORA-12170",  # TNS connect timeout
+        "ORA-12541",  # no listener
+        "ORA-12514",  # listener does not know the requested service
+        "ORA-12545",  # connect failed — host or object does not exist
+        "DPY-6005",  # cannot connect to database
+        "DPY-4011",  # the database closed the connection
+    }
+)
+
+
+def _friendly_db_error(exc: oracledb.DatabaseError) -> tuple[str, str]:
+    """Map an Oracle error to ``(user-facing message, technical detail)``.
+
+    The raw ``oracledb`` error text is cryptic ("ORA-01017: invalid
+    username/password; logon denied"). This returns a plain-language
+    message for the headline plus the bare ``ORA-``/``DPY-`` code as a
+    small technical detail the user can quote to support.
+    """
+    raw = str(exc).strip()
+    match = re.search(r"(?:ORA|DPY)-\d+", raw)
+    code = match.group(0) if match else ""
+
+    if code in _FRIENDLY_DB_ERRORS:
+        friendly = _FRIENDLY_DB_ERRORS[code]
+    elif code in _NETWORK_ERROR_CODES:
+        friendly = (
+            "Could not reach the BC Geographic Warehouse. Check your "
+            "network or VPN connection and try again."
+        )
+    else:
+        friendly = (
+            "Sign-in to the BC Geographic Warehouse failed. Check your "
+            "username and password, or verify your account status below."
+        )
+    detail = code or (raw.splitlines()[0] if raw else "unknown error")
+    return friendly, detail
+
+
+def _account_status_link() -> html.Div:
+    """Render the 'check your BCGW account status' helper line."""
+    return html.Div(
+        [
+            "Not sure about your account? ",
+            html.A(
+                "Check your BCGW account status",
+                href=config.BCGW_ACCOUNT_STATUS_URL,
+                target="_blank",
+                rel="noopener noreferrer",
+            ),
+            ".",
+        ],
+        style={"fontSize": "0.85rem", "marginTop": "0.5rem"},
+    )
+
+
+def _error_block(friendly: str, detail: str) -> html.Div:
+    """Render the inline sign-in error: message, detail, account link."""
+    return html.Div(
+        [
+            html.Div(friendly),
+            html.Div(
+                f"Technical detail: {detail}",
+                style={
+                    "fontSize": "0.85rem",
+                    "marginTop": "0.35rem",
+                    "color": "var(--bc-text-muted, #606060)",
+                },
+            ),
+            _account_status_link(),
+        ]
+    )
+
+
 def _verify_credentials(username: str, password: str) -> None:
     """Run ``SELECT 1 FROM DUAL`` against BCGW; raise on failure."""
     conn = oracledb.connect(user=username, password=password, dsn=config.BCGW_DSN)
@@ -308,7 +432,7 @@ def handle_login(
     _pw_submit: int,
     username: str | None,
     password: str | None,
-) -> tuple[str, object]:
+) -> tuple[object, object]:
     if not username or not password:
         return "Username and password are required.", no_update
 
@@ -317,8 +441,19 @@ def handle_login(
     try:
         _verify_credentials(username, password)
     except oracledb.DatabaseError as e:
-        logger.warning("Login failed for user %r: %s", username, e)
-        return f"Sign-in failed: {e}", no_update
+        friendly, detail = _friendly_db_error(e)
+        # usage_logged=True: the structured event is written by
+        # log_login below, so the UsageLogHandler must not forward this
+        # line as a duplicate detail record. It still reaches the local
+        # rotating log.
+        logger.warning(
+            "Login failed for user %r: %s",
+            username,
+            e,
+            extra={"usage_logged": True},
+        )
+        get_usage_logger().log_login(username, success=False, error_code=detail)
+        return _error_block(friendly, detail), no_update
 
     # Defensive: if a previous session never closed cleanly, drop it
     # before reopening. init_pool itself raises if a pool already exists.
@@ -327,4 +462,5 @@ def handle_login(
     data_access.init_pool(username, password)
     session.set_user(username)
     logger.info("User %r authenticated", username)
+    get_usage_logger().log_login(username, success=True)
     return "", "/setup"
