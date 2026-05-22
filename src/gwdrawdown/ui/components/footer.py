@@ -31,7 +31,7 @@ def make_footer() -> html.Footer:
                 html.Div(meta, className="bc-footer__meta"),
                 html.Div(
                     "Screening tool — results are advisory and must be "
-                    "reviewed by a qualified hydrogeologist.",
+                    "reviewed by the regional hydrogeologist.",
                     className="bc-footer__disclaimer",
                 ),
             ],

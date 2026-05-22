@@ -286,8 +286,36 @@ def test_analysis_result_json_roundtrip() -> None:
     assert restored.n_ok == base.n_ok
     assert restored.n_at_risk == base.n_at_risk
     assert restored.run_timestamp == base.run_timestamp
+    assert restored.run_id == base.run_id
     assert [w.well_tag_number for w in restored.wells] == [1, 2, 3]
     assert restored.inputs == base.inputs
+
+
+def test_run_id_is_stable_and_unique() -> None:
+    """Each result mints its own run_id; the same result keeps it."""
+    a = _make_result([_compute(_row())])
+    b = _make_result([_compute(_row())])
+    assert a.run_id and b.run_id
+    assert a.run_id != b.run_id
+    assert a.run_id == a.run_id
+
+
+def test_apply_overrides_preserves_run_id() -> None:
+    base = _make_result([_compute(_row())])
+    out = apply_overrides(base, {12345: {"stickup_m": 1.0}})
+    assert out.run_id == base.run_id
+
+
+def test_legacy_result_payload_without_run_id_gets_one() -> None:
+    """Pre-5c sessionStorage payloads predate `run_id`.
+
+    `from_json` mints a fresh hex id so a stale tab still deserialises.
+    """
+    payload = _make_result([_compute(_row())]).to_json()
+    payload.pop("run_id", None)
+    restored = AnalysisResult.from_json(payload)
+    assert restored.run_id
+    assert len(restored.run_id) == 32
 
 
 # --- Manual-entry mode -------------------------------------------------------

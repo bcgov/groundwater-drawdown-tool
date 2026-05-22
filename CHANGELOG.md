@@ -44,6 +44,46 @@ Changed, Fixed, Removed.
   now **recentres and zooms the map** to that point automatically,
   so you see it in context without panning there yourself.
 
+### Phase 5c — Exports
+
+#### Added
+
+- **Download KML** button on the results page. Exports the
+  pumping well and every nearby well as a KML file you can open
+  directly in Google Earth. Each well is colour-coded by its
+  status (at-risk, OK, and so on) and sized by its predicted
+  impact — the same scheme as the results-page map — and carries
+  its full result row (distance, drawdown, SAD, impact, and the
+  rest), so you can inspect any well by clicking it in Google
+  Earth.
+- **Download PDF report** button on the results page. Produces a
+  print-ready summary of the whole analysis, one section per
+  page: page 1 — input parameters, a row of summary cards, and a
+  method-and-assumptions note; the two result charts, one per
+  page; then the at-risk wells table; then the full per-well
+  details table. Every page carries a screening-tool disclaimer
+  banner
+  and a footer with the run timestamp, a unique run ID, the tool
+  version, and your username — suitable for attaching to a
+  licence assessment file. Wells outside the Cooper-Jacob
+  validity range are tinted light purple in the per-well table,
+  matching the on-screen view.
+- **Download interactive map (HTML)** button on the results
+  page. Produces a self-contained HTML file that opens in any
+  browser as an interactive Leaflet map — the pumping well, its
+  buffer, and every well with a click-through popup. A handy way
+  to share the result without the full tool.
+- All three exports reflect any per-well overrides you have
+  applied, and the PDF charts are captured from exactly what you
+  see on screen.
+
+#### Changed
+
+- The per-well CSV export gains an **"Outside Validity"** Yes/No
+  column, so the Cooper-Jacob validity advisory (shown as a
+  purple row tint on screen) survives the export to a format
+  that can't carry cell colour.
+
 ### Phase 4d — Aquifer selection fallback + manual entry
 
 #### Added

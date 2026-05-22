@@ -341,8 +341,11 @@ order:
    Impact %, Status flag.
 
 Map and chart are cross-linked (click one, highlights on the other).
-Export buttons for CSV (full results table), GeoJSON (well points with
-results as attributes), and PDF (summary + chart + at-risk table).
+Export buttons for CSV (full results table), KML (well points with
+results as attributes, for Google Earth), PDF (summary + charts +
+tables), and a standalone interactive HTML map. KML was chosen over
+GeoJSON at client request — Water Officers are more familiar with
+Google Earth.
 
 ## 5. Stage 2 considerations baked into Stage 1
 
@@ -636,10 +639,10 @@ Phase 5 expands the original "Exports and polish" scope to absorb
 two things that v0.4.0 deferred: a coherent visual identity (the
 v0.4.0 UI ships with per-component inline styles and no real
 theming), and richer maps (the setup-page map ships with a single
-OSM basemap and no aquifer overlay, the results map likewise). PDF
-export rounds out the exports trio (CSV ships; GeoJSON and PDF
-don't), and a logging + disclaimer pass closes out the
-"professional polish" theme.
+OSM basemap and no aquifer overlay, the results map likewise). KML,
+PDF, and standalone-HTML-map exports round out the export set (only
+CSV shipped at v0.4.0), and a logging + disclaimer pass closes out
+the "professional polish" theme.
 
 Sub-staged like Phase 4 so each step is browser-verifiable and
 bisectable:
@@ -706,23 +709,57 @@ bisectable:
     cursor in "Map click" input mode (grab hand in the lat/lon
     and WTN modes), and lat/lon entry and WTN lookup now fly the
     map to the resolved point.
-- **5c — Exports.** CSV is already in (custom buttons on both
-  tables). Add GeoJSON export of the well set (one feature per
-  well, properties = full per-well row including overrides) and
-  PDF export of the full run. PDF stack: `reportlab` is already a
-  dep. Content per the legacy-Excel parity goal:
-  - Input parameters block (pumping point, source aquifer + subtype,
-    T/S with `(override)` tag when applicable, Q, duration, buffer,
-    spatial-filter on/off).
-  - Cooper-Jacob assumptions disclaimer.
-  - At-risk summary table.
-  - Distance-drawdown chart image.
-  - Impact-% bar chart image.
-  - Full per-well details table (with override markers).
-  - Footer: BCGW snapshot date (if obtainable), run timestamp,
-    run ID (UUID), tool version from `version.txt`, signed-in user.
-  - "Screening tool — not a replacement for qualified hydrogeologist
-    review" banner on every page.
+- **5c — Exports** *(shipped)*. CSV was already in (custom buttons
+  on both tables). Added KML, PDF, and standalone-HTML-map exports
+  of the full run, as three whole-run buttons in an export bar on
+  the results page (`ui/components/export_bar.py`); all reflect
+  any active per-well overrides.
+  - **KML, not GeoJSON.** Changed at client request — Water
+    Officers are more familiar with Google Earth than with
+    GeoJSON tooling. `ui/components/export_kml.py` builds a KML
+    document: one Placemark for the pumping well plus one per
+    observation well, colour-coded by `WellStatus` and sized by
+    predicted impact (an inline `<IconStyle><scale>`, echoing the
+    results-map proportional sizing), with the full per-well
+    result row carried as `<ExtendedData>`. Pure and unit-tested
+    (`tests/test_export_kml.py`); well points are converted from
+    BC Albers back to WGS84 (`core.crs_utils.to_wgs84`).
+  - **PDF** (`ui/components/export_pdf.py`, `reportlab` —
+    already a dep). Landscape Letter, with a fixed one-section-
+    per-page layout via explicit `PageBreak`s: page 1 — input
+    parameters, a summary-card row (mirroring the results-page
+    stat cards), and the method-and-assumptions disclaimer; the
+    distance-drawdown and impact-% chart images, one per page
+    (the impact chart can be tall); the at-risk summary table;
+    then a fresh page for the full per-well details table. The per-well table carries
+    the override "Edited" column and the light-purple
+    outside-validity row tint (the validity check is advisory,
+    not enforced — called out in the disclaimer). A
+    screening-tool banner sits on every page; a per-page footer
+    carries run timestamp, run ID (`AnalysisResult.run_id`, a
+    UUID minted per run), tool version, and signed-in user.
+    (BCGW snapshot date is not obtainable from the live query
+    and is omitted.)
+  - **Chart images.** Plotly figures are captured in the browser
+    via a clientside `Plotly.toImage` callback and handed to
+    `build_pdf` as PNG bytes — chosen over a server-side
+    `kaleido` render to keep a ~100 MB headless-Chromium
+    dependency out of the install and to guarantee the PDF charts
+    match what the officer saw on screen. A capture failure
+    degrades to a "chart unavailable" note rather than erroring.
+  - **Interactive HTML map** (`ui/components/export_html_map.py`).
+    A self-contained HTML file — Leaflet from a CDN, OSM +
+    satellite basemaps, the pumping well, buffer, and per-well
+    markers with click popups. A *static image* snapshot of the
+    live results map was considered for the PDF but not done:
+    capturing a Leaflet map with cross-origin basemap tiles
+    taints the browser canvas, so a reliable image export isn't
+    feasible. The standalone HTML is both reliable to generate
+    (pure string templating) and more useful — it stays
+    interactive.
+  - **CSV.** The per-well CSV gains a derived "Outside Validity"
+    Yes/No column so the validity advisory (a purple row tint
+    on screen, which CSV can't carry) survives the export.
 - **5d — Logging + caveat text + disclaimer.** Rotating daily log to
   `./logs/gwdrawdown.log` (replaces the current `basicConfig`
   setup in `app._configure_logging`). Final caveat / disclaimer
@@ -732,10 +769,10 @@ bisectable:
 
 **Acceptance (full Phase 5):** UI reads as a coherent, professionally
 branded tool rather than the Dash-default appearance. Setup-page map
-offers basemap and aquifer overlay choices. All three exports (CSV,
-GeoJSON, PDF) produce correctly-formatted files; PDF mirrors the
-legacy Excel artifact. Logs rotate daily; disclaimers are visible on
-every officer-facing surface.
+offers basemap and aquifer overlay choices. All exports (CSV, KML,
+PDF, interactive HTML map) produce correctly-formatted files; PDF
+mirrors the legacy Excel artifact. Logs rotate daily; disclaimers are
+visible on every officer-facing surface.
 
 ### Phase 6 — Distribution and updates via GitHub Releases
 

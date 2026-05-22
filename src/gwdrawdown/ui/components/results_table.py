@@ -531,7 +531,8 @@ def _per_well_legend() -> html.Div:
             html.Span(
                 "outside Cooper-Jacob validity (advisory — "
                 "drawdown number shown but should be treated with "
-                "caution at this distance / duration).",
+                "caution at this distance / duration). The CSV export "
+                "carries this as an \"Outside Validity\" Yes/No column.",
             ),
         ],
         style=_PER_WELL_LEGEND_STYLE,
@@ -666,22 +667,58 @@ def at_risk_helper_text(result: AnalysisResult) -> str:
     )
 
 
-def _table_to_csv(rows: list[dict], columns: list[dict]) -> str:
+def _table_to_csv(
+    rows: list[dict],
+    columns: list[dict],
+    *,
+    extra_columns: list[tuple[str, str, Any]] | None = None,
+) -> str:
     """Serialise dash_table data + columns to a CSV string with display headers.
 
     Columns whose id starts with ``_`` are treated as hidden bookkeeping
     fields (the override-marker flag and the per-column ``_base``
     shadow values) and excluded from the export.
+
+    ``extra_columns`` appends derived columns the table itself doesn't
+    show. Each entry is ``(field_id, display_header, fn)`` where ``fn``
+    maps a row dict to the cell value — used to surface the
+    outside-validity advisory (a hidden ``_`` cell) as a plain Yes/No
+    column, since CSV can't carry the table's purple row tint.
     """
+    extra_columns = extra_columns or []
     buf = io.StringIO()
     visible = [c for c in columns if not c["id"].startswith("_")]
-    fieldnames = [c["id"] for c in visible]
+    visible_ids = [c["id"] for c in visible]
+    fieldnames = visible_ids + [fid for fid, _, _ in extra_columns]
     headers = {c["id"]: c["name"] for c in visible}
+    for fid, header, _ in extra_columns:
+        headers[fid] = header
     writer = csv.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
     writer.writerow(headers)
     for row in rows:
-        writer.writerow({k: row.get(k, "") for k in fieldnames})
+        out = {k: row.get(k, "") for k in visible_ids}
+        for fid, _, fn in extra_columns:
+            out[fid] = fn(row)
+        writer.writerow(out)
     return buf.getvalue()
+
+
+def _export_filename(
+    result_data: dict[str, Any] | None,
+    descriptor: str,
+    ext: str,
+) -> str:
+    """Build ``drawdown-<descriptor>-<run-id>.<ext>``, matching the exports.
+
+    Every artifact from one run shares the ``drawdown-<descriptor>-<run
+    id first 8 chars>`` scheme so the files sort together and the run
+    they belong to is obvious. Falls back to a plain name if the cached
+    result carries no run id.
+    """
+    run_id = (result_data or {}).get("run_id")
+    if isinstance(run_id, str) and run_id:
+        return f"drawdown-{descriptor}-{run_id[:8]}.{ext}"
+    return f"drawdown-{descriptor}.{ext}"
 
 
 @callback(
@@ -690,6 +727,7 @@ def _table_to_csv(rows: list[dict], columns: list[dict]) -> str:
     State("per-well-details", "derived_virtual_data"),
     State("per-well-details", "data"),
     State("per-well-details", "columns"),
+    State("analysis-result", "data"),
     prevent_initial_call=True,
 )
 def export_per_well_csv(
@@ -697,6 +735,7 @@ def export_per_well_csv(
     filtered_rows: list[dict] | None,
     raw_rows: list[dict] | None,
     columns: list[dict] | None,
+    result_data: dict[str, Any] | None,
 ) -> object:
     """Build a CSV from the per-well table's current view.
 
@@ -708,7 +747,20 @@ def export_per_well_csv(
     rows = filtered_rows if filtered_rows is not None else raw_rows
     if not rows or not columns:
         return no_update
-    return dcc.send_string(_table_to_csv(rows, columns), "per-well-details.csv")
+    # CSV can't carry the table's purple outside-validity row tint, so
+    # the advisory is surfaced as a plain Yes/No column derived from
+    # the hidden ``_outside_validity`` cell.
+    extra = [
+        (
+            "outside_validity",
+            "Outside Validity",
+            lambda r: "Yes" if r.get("_outside_validity") == "yes" else "No",
+        )
+    ]
+    return dcc.send_string(
+        _table_to_csv(rows, columns, extra_columns=extra),
+        _export_filename(result_data, "per-well", "csv"),
+    )
 
 
 @callback(
@@ -717,6 +769,7 @@ def export_per_well_csv(
     State("at-risk-summary", "derived_virtual_data"),
     State("at-risk-summary", "data"),
     State("at-risk-summary", "columns"),
+    State("analysis-result", "data"),
     prevent_initial_call=True,
 )
 def export_at_risk_csv(
@@ -724,12 +777,16 @@ def export_at_risk_csv(
     filtered_rows: list[dict] | None,
     raw_rows: list[dict] | None,
     columns: list[dict] | None,
+    result_data: dict[str, Any] | None,
 ) -> object:
     """Build a CSV from the at-risk table's current view (sort + filter aware)."""
     rows = filtered_rows if filtered_rows is not None else raw_rows
     if not rows or not columns:
         return no_update
-    return dcc.send_string(_table_to_csv(rows, columns), "at-risk-summary.csv")
+    return dcc.send_string(
+        _table_to_csv(rows, columns),
+        _export_filename(result_data, "at-risk", "csv"),
+    )
 
 
 def _parse_float(value: object) -> float | None:

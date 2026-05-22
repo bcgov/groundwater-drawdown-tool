@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import logging
 import math
+import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any, Final
@@ -187,6 +188,11 @@ class AnalysisResult:
     n_outside_validity: int = 0
     max_drawdown_m: float | None = None
     run_timestamp: datetime = field(default_factory=datetime.now)
+    # Stable identifier for this analysis run. Generated once when the
+    # result is built and carried through override recomputes so a
+    # PDF exported twice from the same run shows the same ID. Surfaced
+    # in the PDF footer (PROJECT_PLAN.md §5 Phase 5c).
+    run_id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -200,6 +206,7 @@ class AnalysisResult:
             "n_outside_validity": self.n_outside_validity,
             "max_drawdown_m": self.max_drawdown_m,
             "run_timestamp": self.run_timestamp.isoformat(),
+            "run_id": self.run_id,
         }
 
     @classmethod
@@ -215,6 +222,9 @@ class AnalysisResult:
             n_outside_validity=data["n_outside_validity"],
             max_drawdown_m=data["max_drawdown_m"],
             run_timestamp=datetime.fromisoformat(data["run_timestamp"]),
+            # Older sessionStorage payloads predate run_id; mint a fresh
+            # one so a stale tab still deserialises cleanly.
+            run_id=data.get("run_id") or uuid.uuid4().hex,
         )
 
 
@@ -507,6 +517,7 @@ def apply_overrides(
         n_outside_validity=counts[WellStatus.OUTSIDE_VALIDITY],
         max_drawdown_m=max_drawdown,
         run_timestamp=base.run_timestamp,
+        run_id=base.run_id,
     )
 
 

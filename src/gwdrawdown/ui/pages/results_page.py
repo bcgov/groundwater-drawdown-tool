@@ -87,6 +87,7 @@ from gwdrawdown.ui.components.basemaps import (
     wms_legend_children,
 )
 from gwdrawdown.ui.components.dd_chart import make_distance_drawdown_figure
+from gwdrawdown.ui.components.export_bar import build_export_bar
 from gwdrawdown.ui.components.footer import make_footer
 from gwdrawdown.ui.components.header import make_header
 from gwdrawdown.ui.components.impact_chart import make_impact_chart
@@ -177,6 +178,7 @@ def layout(**_kwargs: object) -> html.Div:
                 children=[
                     html.Div(id="summary-block-container"),
                     html.Div(id="stat-cards-container"),
+                    build_export_bar(),
                     html.H2(
                         "Distance-drawdown",
                         className="bc-results-heading",
