@@ -20,15 +20,21 @@ Default install location: `%USERPROFILE%\Tools\groundwater-drawdown-tool\`
 Total disk usage: roughly 150 MB. Nothing is installed system-wide; nothing
 requires administrator rights.
 
-After first-time setup, the tool runs offline (except for connecting to BCGW
-to fetch well and aquifer data, which it does over your normal network).
+After first-time setup, the tool runs locally on your computer. The only
+network connection it needs is to BCGW, for well and aquifer data — and
+that requires the BC government network (see Prerequisites below).
 
 ## Prerequisites
 
 - Windows 10 or Windows 11.
 - An internet connection for first-time setup and for future updates.
 - A personal BCGW account (Oracle username and password).
-- Network access to BCGW (usually via the BC government network or VPN).
+- **A connection to the BC government network to run an analysis** —
+  either in a BC government office, or over **VPN** when working from
+  home. The tool fetches well and aquifer data from BCGW
+  (`bcgw.bcgov:1521`), so **sign-in and analysis will not work without
+  it.** First-time setup and updates only need a normal internet
+  connection, not the government network.
 
 ## Step 1 — Download `setup.bat`
 
