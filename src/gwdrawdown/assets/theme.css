@@ -306,6 +306,16 @@ select {
     flex: 1 1 0;
 }
 
+.bc-footer__link {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: underline;
+}
+
+.bc-footer__link:hover,
+.bc-footer__link:focus {
+    color: #fff;
+}
+
 /* ---------------------------------------------------------------------------
  * Form sections (card containers for grouped fields)
  * ------------------------------------------------------------------------- */

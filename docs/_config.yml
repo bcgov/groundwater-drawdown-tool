@@ -1,0 +1,55 @@
+# Jekyll configuration for the Groundwater Drawdown Tool documentation site.
+# Published via GitHub Pages from the /docs folder on the main branch.
+title: Groundwater Drawdown Tool
+description: >-
+  Documentation for the Groundwater Drawdown Tool — a screening tool for
+  BC Water Authorizations staff to estimate drawdown impacts at nearby
+  wells from a proposed groundwater withdrawal.
+
+# just-the-docs, pulled in as a remote theme (no local build needed).
+remote_theme: just-the-docs/just-the-docs
+
+# Site URL — GitHub Pages for the bcgov/groundwater-drawdown-tool repo.
+url: https://bcgov.github.io
+baseurl: /groundwater-drawdown-tool
+
+# Clean URLs: docs/user-guide/installation.md -> /user-guide/installation/
+permalink: pretty
+
+# --- just-the-docs options -------------------------------------------------
+search_enabled: true
+heading_anchors: true
+color_scheme: light
+back_to_top: true
+back_to_top_text: "Back to top"
+
+aux_links:
+  "GitHub repository":
+    - https://github.com/bcgov/groundwater-drawdown-tool
+aux_links_new_tab: true
+
+# "Edit this page on GitHub" link in the page footer.
+gh_edit_link: true
+gh_edit_link_text: "Edit this page on GitHub"
+gh_edit_repository: https://github.com/bcgov/groundwater-drawdown-tool
+gh_edit_branch: main
+gh_edit_view_mode: tree
+gh_edit_source: docs
+
+# --- Jekyll ----------------------------------------------------------------
+plugins:
+  - jekyll-remote-theme
+  - jekyll-seo-tag
+
+# Apply the theme's default layout to every page so individual pages
+# don't need to declare it.
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor

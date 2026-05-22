@@ -12,6 +12,18 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+### Phase 6 — Online documentation
+
+#### Added
+
+- An **online documentation site** is now available, with a
+  step-by-step User Guide covering installation, running an
+  analysis, reading the results, exporting them, and
+  troubleshooting:
+  <https://bcgov.github.io/groundwater-drawdown-tool/>
+- A **"Documentation"** link in the footer of every page opens
+  that site.
+
 ### Phase 5d — Logging, sign-in messaging, and UI polish
 
 #### Added
