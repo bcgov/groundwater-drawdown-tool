@@ -15,8 +15,10 @@ team requires manual entry. `UNK` is not in the table at all.
 In both "no valid lookup" cases this module returns ``None``; the UI
 catches that and prompts the user for manual T/S entry.
 
-CLIENT_TBD: Q1 — confirm the lookup values match current team practice.
-CLIENT_TBD: Q2 — currently a single (T, S) per subtype, not a range.
+The lookup values are client-confirmed (Q1): they match the legacy
+Excel `AquiferProperty_DB` (Wei et al. 2009 medians). v1 deliberately
+uses a single (T, S) per subtype; a future version may expose a range
+per subtype instead (Q2).
 """
 
 from __future__ import annotations

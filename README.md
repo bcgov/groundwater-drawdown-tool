@@ -135,7 +135,7 @@ are **not** in here — they are entered at runtime through the login UI.
 | `OUTPUT_DIR` | `./outputs` | Where CSV / GeoJSON / PDF exports are written |
 | `DASH_DEBUG` | `false` | Enable Dash hot-reload during development |
 | `DEFAULT_PUMPING_DURATION_DAYS` | `90` | Default pumping duration (client-confirmed, all of BC). |
-| `AT_RISK_DRAWDOWN_FRACTION` | `0.30` | Drawdown / SAD ratio that flags a well at-risk. CLIENT_TBD: Q3. |
+| `AT_RISK_DRAWDOWN_FRACTION` | `0.30` | Drawdown / SAD ratio that flags a well at-risk (client-confirmed). |
 | `COOPER_JACOB_U_THRESHOLD` | `0.01` | Validity threshold for `u = r²S / (4Tt)` |
 | `SESSION_TIMEOUT_HOURS` | `8` | Inactive session expiry before re-login |
 

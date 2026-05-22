@@ -25,8 +25,8 @@ Output:
 The function accepts a list of pumping sources and sums their drawdown
 contributions linearly at each observation point. Cooper-Jacob is linear
 in ``Q``, so superposition is mathematically free; v1 of the UI exposes
-only single-well input (CLIENT_TBD: Q5 deferred), but this signature
-removes a future refactor.
+only single-well input (multi-well superposition is a deliberate
+future scope — Q5), but this signature removes a later refactor.
 
 Two important behaviours match the legacy Excel tool:
 

@@ -98,8 +98,8 @@ DEFAULT_PUMPING_DURATION_DAYS: Final[float] = float(
     os.environ.get("DEFAULT_PUMPING_DURATION_DAYS", "90")
 )
 
-# CLIENT_TBD: Q3 — at-risk threshold (matches legacy Excel `Impact!V` and
-# `InputValues!B30` filter at 30%).
+# At-risk threshold, client-confirmed at 30% (Q3) — matches the legacy
+# Excel `Impact!V` and the `InputValues!B30` summary filter.
 AT_RISK_DRAWDOWN_FRACTION: Final[float] = float(
     os.environ.get("AT_RISK_DRAWDOWN_FRACTION", "0.30")
 )

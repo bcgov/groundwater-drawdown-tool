@@ -324,7 +324,7 @@ def _compute_well_result(
         aquifer_material_from_gwells=well_row.get("AQUIFER_MATERIAL"),
     )
 
-    # CLIENT_TBD: BCGW does not expose a STICKUP column on
+    # BCGW does not expose a STICKUP column on
     # GW_WATER_WELLS_WRBC_SVW (DATA_REFERENCE.md §12). Stickup is None
     # at the initial pass; the results-page editable table is the only
     # path that fills it in.
@@ -530,10 +530,11 @@ def apply_overrides(
 def effective_u_threshold(inputs: AnalysisInputs) -> float:
     """Return the Cooper-Jacob u-threshold the pipeline should actually use.
 
-    Pipeline-level bypass for CLIENT_TBD Q?: the math still computes
-    ``u_max`` per source for diagnostics, but no well is flagged
-    OUTSIDE_VALIDITY pending client confirmation. To re-enable the
-    check, return ``inputs.u_threshold`` from this function. Both
+    The Cooper-Jacob validity check is advisory only, per client
+    direction: the math still computes ``u_max`` per source for
+    diagnostics, but no well is flagged OUTSIDE_VALIDITY (the per-well
+    table tints these rows light purple instead). To re-enable a hard
+    fail, return ``inputs.u_threshold`` from this function. Both
     ``run_analysis`` and the per-row override recompute consult this
     helper, so the bypass flips in one place.
     """

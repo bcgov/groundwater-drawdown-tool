@@ -380,7 +380,7 @@ will land.
   page-scoped `selected-well` Store: clicking a chart point or a
   map marker highlights the matching well in both views.
 - Source-aquifer filter is now **spatial** and **default off**
-  (CLIENT_TBD Q12 confirmed). When enabled, the nearby-wells query
+  (confirmed with the client). When enabled, the nearby-wells query
   filters with an `SDO_ANYINTERACT` correlated subquery against
   the source aquifer polygon geometry rather than comparing
   `w.AQUIFER_ID` to the source id. This safeguards against stale

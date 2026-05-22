@@ -223,7 +223,7 @@ future re-enablement, but is not emitted by the pipeline today.)
 The 30% threshold matches the legacy Excel (`Impact!V` formula and the
 summary table at `InputValues!B30`). Make the threshold a config key
 (`AT_RISK_DRAWDOWN_FRACTION`, default `0.30`) so changing it later is
-one line, not a refactor. **CLIENT_TBD: Q3** — confirm the threshold.
+one line, not a refactor. Client-confirmed (Q3): the threshold is 30%.
 
 **`data_access/db.py`** — `oracledb` thin-mode connection pool. The pool is
 initialised lazily by the login handler (`init_pool(user, password)`) once
@@ -269,10 +269,10 @@ number), parameter inputs (Q with unit dropdown, duration, buffer radius,
 T/S override), and the "Run Analysis" trigger. The pumping-rate input
 matches the legacy Excel: numeric value plus unit dropdown of Imp GPM,
 L/min, L/s (default), m³/d, m³/min, m³/s, US GPM. Pumping duration
-defaults to 100 days (legacy Excel convention for east-coast Vancouver
-Island dry season; see deck slide 5), with quick-pick presets for "30
-days", "100 days", "1 year", "10 years (perpetual licence)".
-**CLIENT_TBD: Q4, Q10**.
+defaults to 90 days (client-confirmed for all of BC; the legacy Excel
+used 100 days for the east-coast Vancouver Island dry-season
+convention, see deck slide 5), with quick-pick presets for 30 days,
+90 days, 180 days, 1 year, and 10 years.
 
 **Single-aquifer filtering (spatial, default OFF).** Once the pumping
 point is placed, the tool queries the aquifer polygon containing it.
@@ -285,8 +285,8 @@ re-delineation of aquifer boundaries: a well's recorded
 `AQUIFER_ID` may be stale, but where it sits on the map is not.
 Default is OFF (return every well within the buffer) so the
 officer sees the full set first and chooses to narrow when
-appropriate. **CLIENT_TBD: Q12 — confirmed** (default-off,
-spatial). In manual-entry mode (see Phase 4d) the filter has
+appropriate. Client-confirmed (Q12): default-off, and the
+filter is spatial. In manual-entry mode (see Phase 4d) the filter has
 no polygon to test against and is forced off in both the UI
 and the pipeline.
 
@@ -646,7 +646,7 @@ the "professional polish" theme.
 Sub-staged like Phase 4 so each step is browser-verifiable and
 bisectable:
 
-- **5a — Visual identity / theme.** Pull the per-component inline
+- **5a — Visual identity / theme** *(shipped)*. Pull the per-component inline
   style dicts out of Python and into a single CSS theme: design
   tokens for colour, typography, spacing, and radius; a wordmark
   / header chrome consistent with the BC government visual
@@ -654,10 +654,9 @@ bisectable:
   consistent button/card/section/form styling; real footer
   treatment with version + signed-in user + Logout. The status
   palette in `ui/components/palette.py` already centralises one
-  axis; this stage centralises the rest. Probably the largest
-  sub-stage — design-token migrations always are. Wants a design
-  sketch / reference set before committing to a direction
-  (CLIENT_TBD: visual-direction conversation pending).
+  axis; this stage centralises the rest. The largest sub-stage —
+  design-token migrations always are. The visual direction was
+  agreed with the client before the theme work proceeded.
 - **5b — Map improvements** *(shipped)*. Reworked the setup and
   results maps into a shared, layered map experience. Both maps
   draw their basemaps and overlays from one new module,
@@ -801,14 +800,11 @@ Phase 6 proper is four browser/release-verifiable sub-stages:
 The project docs were written at kickoff and have drifted from the
 shipped tool. This sub-stage closes that gap.
 
-- **Resolve `CLIENT_TBD` markers.** Q4, Q8, Q10, Q11, Q13, Q14 are
-  already resolved (client-confirmed). Resolve the remaining answered
-  questions in both the `.md` files and the `.py` files that carry the
-  markers:
-  - Q1 (T/S lookup), Q3 (30% at-risk threshold), Q12 (aquifer-filter
-    default) — confirmed; resolve.
-  - Q2 (single T/S value vs range) and Q5 (superposition) — deferred
-    by design; reword from "pending client" to a stated v2 note.
+- **Resolve `CLIENT_TBD` markers** *(done)*. All marker questions are
+  resolved across the `.md` files and the `.py` files: Q1, Q3, Q4, Q8,
+  Q10, Q11, Q12, Q13, Q14 are client-confirmed; Q2 (single T/S value
+  vs range) and Q5 (superposition) are reworded as deliberate
+  future-version notes. No `CLIENT_TBD` markers remain in the codebase.
 - **Sync stale content.** Re-read every `.md` file against the current
   tool and correct anything that drifted since kickoff.
 - **Developer-only docs.** `PROJECT_PLAN.md`, `DATA_REFERENCE.md`, and
@@ -1030,28 +1026,30 @@ need this.
 
 ## 7. Open questions, kept visible in the codebase
 
-These are placeholders pending client confirmation. Each one is tagged in code
-with `# CLIENT_TBD: Q<n>` so they're greppable. When answers come in, find and
-update.
+These questions were raised at the start of the project. As answers came in,
+each was resolved in code and docs; a few are deliberately deferred to a
+future version. The list is kept here as a record of what was decided and
+why.
 
-- **Q1** (T/S lookup table by aquifer subtype) — confirmed: matches the
-  legacy Excel `AquiferProperty_DB` exactly (Wei et al. 2009 medians).
-  Stored in `data/ts_lookup.csv`. Q1 effectively closed unless the client
-  wants different values; flag remains so they can opt-in to a refresh.
-- **Q2** (T/S range vs single value per subtype) — single value for now,
-  matching legacy Excel behaviour. Hydrogeologists can be invited to
-  expand this later.
-- **Q3** (at-risk threshold) — updated default: drawdown ≥ **30%** of SAD,
+- **Q1** (T/S lookup table by aquifer subtype) — **confirmed**: matches
+  the legacy Excel `AquiferProperty_DB` exactly (Wei et al. 2009
+  medians), stored in `data/ts_lookup.csv`. If the client later wants
+  different values it is a `ts_lookup.csv` edit, no code change.
+- **Q2** (T/S range vs single value per subtype) — **deferred to a
+  future version**: v1 uses a single (T, S) per subtype, matching the
+  legacy Excel. A later version may expose a range per subtype.
+- **Q3** (at-risk threshold) — **confirmed**: drawdown ≥ **30%** of SAD,
   matching the legacy Excel `Impact!V` and the `InputValues!B30` summary
   filter. Configurable in `config.py` via `AT_RISK_DRAWDOWN_FRACTION`.
 - **Q4** (default pumping duration) — **confirmed**: default **90 days**.
   The legacy Excel used 100 d (deck slide 5: east-coast Vancouver Island
   dry season, no recharge assumed); the client directed 90 d in Phase 5.
   UI offers presets for 30 d / 90 d / 180 d / 1 yr / 10 yr (3652.5 d).
-- **Q5** (multiple pumping wells / superposition) — Stage 1 is single-well
-  only in the UI. `core/drawdown.py` accepts a list of pumping sources
-  and sums them linearly, so adding superposition later is a UI change,
-  not a math change.
+- **Q5** (multiple pumping wells / superposition) — **deferred to a
+  future version**: Stage 1 is single-well only in the UI.
+  `core/drawdown.py` already accepts a list of pumping sources and sums
+  them linearly, so adding superposition later is a UI change, not a
+  math change.
 - **Q6** (PDF report content) — generic professional layout for now;
   revisit after client review. Should mirror the legacy Excel outputs:
   input parameters, at-risk summary table, distance-drawdown chart,

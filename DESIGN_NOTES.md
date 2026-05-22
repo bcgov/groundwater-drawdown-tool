@@ -206,7 +206,6 @@ they're used to. Familiarity here is a feature.
   heuristic with `> 5 ft`).
 - The pumping rate unit dropdown including all seven units, with L/s as
   default (`Lookup_DB!B3:I10`).
-- The default pumping duration of 100 days (deck slide 5).
 - The distance-drawdown chart layout: scatter, inverted Y, three series
   (Wells, Drawdown Curve, SAD bars), WTN labels (`InputValues` chart, deck
   slide 21).
@@ -220,10 +219,12 @@ they're used to. Familiarity here is a feature.
   drag formulas down to fill the right number of rows. We replace this
   with a click-to-place pumping well, automatic same-aquifer query, and
   vectorised computation across all wells in one pass.
-- *Automatic single-aquifer filtering.* The Excel's deck (slide 19) tells
+- *Spatial single-aquifer filtering.* The Excel's deck (slide 19) tells
   the user to manually remove out-of-aquifer wells from the pasted list.
-  We do this in SQL via `WHERE w.AQUIFER_ID = :pumping_well_aquifer_id`,
-  with a UI toggle to disable it. Less work, fewer errors.
+  We offer this as an optional SQL filter — a spatial test
+  (`SDO_ANYINTERACT` against the source aquifer polygon), not a GWELLS
+  `AQUIFER_ID` attribute match — with a UI toggle. Default is off
+  (Q12 confirmed), so the officer sees the full set first.
 - *Direct BCGW connectivity.* No intermediate iMap CSV export. Always
   current data. (The legacy iMap field abbreviations are documented in
   `DATA_REFERENCE.md` section 12 for cross-reference only.)
@@ -231,6 +232,9 @@ they're used to. Familiarity here is a feature.
   sources. The Excel handles only one. The UI exposes only one for v1
   (Q5 deferred), but adding multi-well in v2 is a UI change, not a math
   change.
+- *Default pumping duration of 90 days.* The legacy Excel used 100 days
+  (deck slide 5, east-coast Vancouver Island dry season). The client
+  directed 90 days in Phase 5, confirmed as the default for all of BC.
 
 **Ported from the legacy Excel (client-confirmed):**
 

@@ -17,7 +17,7 @@ priority wins:
    is fine; the *baseline* well record needs review against the
    driller's log.
 4. ``AT_RISK`` — drawdown / SAD ≥ ``AT_RISK_DRAWDOWN_FRACTION``
-   (default 0.30, matches legacy Excel `Impact!V`; CLIENT_TBD: Q3).
+   (default 0.30, client-confirmed; matches legacy Excel `Impact!V`).
 5. ``OK`` — everything checks out, well is below the threshold.
 """
 

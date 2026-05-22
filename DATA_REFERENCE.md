@@ -241,12 +241,12 @@ select explicit columns, don't use `SELECT *`.
 
 - No T/S table exists in BCGW. The `data/ts_lookup.csv` shipped with this
   tool comes from the legacy Excel `AquiferProperty_DB` sheet (Wei et al.
-  2009 medians). **CLIENT_TBD: Q1.**
+  2009 medians). Client-confirmed (Q1).
 - No "available drawdown" or "SAD" column on wells. The tool computes
   these from `FINISHED_WELL_DEPTH`, `STATIC_WATER_LEVEL`, and `STICKUP`
   (in metres after unit conversion). See section 9.
 - No flag column for "at-risk". The tool computes this from inputs and
-  the configured threshold (default 30%, **CLIENT_TBD: Q3**).
+  the configured threshold (default 30%, client-confirmed — Q3).
 - No "top of fracture / aquifer / screen" column for wells in confined
   aquifers or fractured bedrock. This must be read from the driller's log
   by the Water Officer and entered as a per-well manual override. The UI
