@@ -30,12 +30,14 @@ load_dotenv(PROJECT_ROOT / ".env")
 # release, not a config edit. See PROJECT_PLAN.md §4.1.
 BCGW_DSN: Final[str] = "bcgw.bcgov:1521/idwprod1.bcgov"
 
-# AQT account self-service page (BCGW database IDWPROD11). Linked from the
-# login page so a user whose sign-in fails can check their own account
-# status. The jsessionid in any copied URL is a stale session token and is
-# deliberately not included here.
-BCGW_ACCOUNT_STATUS_URL: Final[str] = (
-    "https://apps.gov.bc.ca/int/aqt/jsp/query.jsp"
+# BCGW account help page on the tool's public documentation site.
+# Linked from the login page so a user whose sign-in fails lands on a
+# single page covering the full range of causes (locked / expired
+# account, expired password, network or VPN), each with the right
+# next step. The AQT self-service status page is one of those next
+# steps, linked from inside the help page.
+BCGW_ACCOUNT_HELP_URL: Final[str] = (
+    "https://bcgov.github.io/groundwater-drawdown-tool/user-guide/bcgw-account/"
 )
 
 VERSION_FILE: Final[Path] = PROJECT_ROOT / "version.txt"

@@ -80,6 +80,27 @@ In the ticket include your **IDIR**, the database name (**IDWPROD11**),
 and a one-line description such as *"BCGW account locked, please
 unlock"* or *"BCGW password reset request"*.
 
+## Saving your password in the browser
+
+The sign-in form is a standard web form, so if you'd like to skip
+re-typing your password each session you can let your browser's
+built-in password manager (Chrome, Edge, Firefox) remember it for
+`localhost:8050`. The first time you sign in successfully the
+browser will offer to save the credentials.
+
+> **The tool itself never stores your password.** It is held only
+> in memory for the active session and discarded when you sign out
+> or the session expires. Any password saved on your machine lives
+> in the **browser's** password store, under your control — not in
+> any tool file. The same reminder is shown on the sign-in screen.
+
+One caveat if you do save the password: **a browser-saved password
+goes stale as soon as you rotate your BCGW password** (which the
+service requires every two months). If sign-in suddenly fails after
+a password change, clear the saved entry for `localhost:8050` and
+let the browser re-save the new one — otherwise the stale auto-fill
+will keep submitting the old password and can lock the account.
+
 ## Avoiding the lock
 
 A few small habits prevent most account problems:
@@ -89,9 +110,9 @@ A few small habits prevent most account problems:
 - After **two** failed sign-in attempts, stop and check the password
   before trying a third time. Use the account-status query above to
   confirm the account is still **OPEN** before attempting again.
-- Your browser may have an old saved password from before your last
-  password change. If it auto-fills incorrectly, clear the saved entry
-  for `localhost:8050`.
+- If you use a browser-saved password, refresh it after each BCGW
+  password change — see [Saving your password in the
+  browser](#saving-your-password-in-the-browser) above.
 
 ## If sign-in still fails after all of this
 

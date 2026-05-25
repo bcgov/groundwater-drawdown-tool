@@ -113,7 +113,7 @@ def _form_field(label: str, control: html.Div | dcc.Input) -> html.Div:
             control,
         ],
         className="bc-form-field",
-        style={"marginBottom": "1rem"},
+        style={"marginBottom": "0.75rem"},
     )
 
 
@@ -135,10 +135,10 @@ def _credentials_note() -> html.Div:
         ],
         style={
             "fontSize": "0.8rem",
-            "lineHeight": "1.5",
+            "lineHeight": "1.45",
             "color": "var(--bc-text-muted, #606060)",
-            "marginTop": "1.5rem",
-            "paddingTop": "1rem",
+            "marginTop": "1rem",
+            "paddingTop": "0.75rem",
             "borderTop": "1px solid var(--bc-border, #D9D9D9)",
         },
     )
@@ -155,13 +155,13 @@ def layout(**_kwargs: object) -> html.Div:
             html.Main(
                 html.Div(
                     [
-                        html.H1("Sign in"),
+                        html.H1("Sign in", style={"marginBottom": "0.5rem"}),
                         html.P(
                             "Connect to your BC Geographic Warehouse (BCGW) "
                             "account to use the tool.",
                             style={
                                 "color": "var(--bc-text-muted, #606060)",
-                                "marginBottom": "1.5rem",
+                                "marginBottom": "1rem",
                             },
                         ),
                         html.Form(
@@ -227,7 +227,7 @@ def layout(**_kwargs: object) -> html.Div:
                         "backgroundColor": "var(--bc-surface, #FFFFFF)",
                         "border": "1px solid var(--bc-border, #D9D9D9)",
                         "borderRadius": "var(--bc-radius-lg, 6px)",
-                        "padding": "2rem",
+                        "padding": "1.5rem",
                         "boxShadow": "var(--bc-shadow-md, 0 2px 6px rgba(0,0,0,0.08))",
                     },
                 ),
@@ -235,7 +235,10 @@ def layout(**_kwargs: object) -> html.Div:
             ),
             make_footer(),
         ],
-        className="bc-page",
+        # The bc-page--login modifier lets theme.css tighten the page so
+        # the form + footer fit a typical laptop viewport (~768 px) on
+        # the landing page without scrolling.
+        className="bc-page bc-page--login",
     )
 
 
@@ -371,13 +374,13 @@ def _friendly_db_error(exc: oracledb.DatabaseError) -> tuple[str, str]:
 
 
 def _account_status_link() -> html.Div:
-    """Render the 'check your BCGW account status' helper line."""
+    """Render the 'BCGW account help' helper line on sign-in failure."""
     return html.Div(
         [
-            "Not sure about your account? ",
+            "Need help signing in? See the ",
             html.A(
-                "Check your BCGW account status",
-                href=config.BCGW_ACCOUNT_STATUS_URL,
+                "BCGW account help guide",
+                href=config.BCGW_ACCOUNT_HELP_URL,
                 target="_blank",
                 rel="noopener noreferrer",
             ),

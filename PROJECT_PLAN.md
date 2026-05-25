@@ -795,7 +795,7 @@ Phase 6 proper is four browser/release-verifiable sub-stages:
 - **6d — Version footer + CHANGELOG modal.** The footer shows the
   running version and opens a changelog.
 
-#### Phase 6a — Documentation cleanup
+#### Phase 6a — Documentation cleanup *(shipped)*
 
 The project docs were written at kickoff and have drifted from the
 shipped tool. This sub-stage closes that gap.
@@ -811,7 +811,7 @@ shipped tool. This sub-stage closes that gap.
   `DESIGN_NOTES.md` are developer-facing and are dropped from the
   release zip — see the updated §6.1 inventory.
 
-#### Phase 6b — GitHub Pages documentation site
+#### Phase 6b — GitHub Pages documentation site *(shipped)*
 
 - A new `/docs` folder published via **GitHub Pages** (Jekyll, a
   zero-build theme such as `just-the-docs`). The `/docs` sources stay

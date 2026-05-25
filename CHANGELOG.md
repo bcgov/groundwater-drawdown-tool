@@ -12,6 +12,21 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+### Security
+
+- A pre-release dependency-and-code audit was completed; nine
+  advisories were either resolved or formally reviewed. Five were
+  fixed by refreshing transitive dependencies (`idna`, `urllib3`)
+  and the development-only test runner (`pytest`). Four affect
+  components that the tool depends on indirectly (Flask, Werkzeug)
+  and are not exploitable on a localhost-only single-user tool; they
+  will clear automatically when the tool migrates to the next major
+  Dash release.
+- The signed-in BCGW username is no longer written to the general
+  application log file when a session starts. It remains in the
+  structured usage log used for monitoring and troubleshooting, so
+  traceability is unchanged.
+
 ### Phase 6 — Online documentation
 
 #### Added
@@ -56,9 +71,10 @@ Changed, Fixed, Removed.
   central location can't be reached (for example, off the
   government network), logging quietly switches off — it never
   blocks or slows the tool.
-- The sign-in screen now shows a **"Check your BCGW account
-  status"** link when sign-in fails, so you can confirm your
-  account is active without leaving the tool.
+- The sign-in screen now shows a **"BCGW account help guide"** link
+  when sign-in fails, pointing at the documentation page that
+  covers the common causes (locked or expired account, expired
+  password, network or VPN) and the right next step for each.
 - A short note on the sign-in screen confirming that **your
   password is never stored** — it is held only in memory for the
   session and discarded when you sign out.
