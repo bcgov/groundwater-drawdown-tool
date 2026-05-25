@@ -17,6 +17,13 @@ dependencies = [
     "plotly>=5.24,<6",
     "flask-session>=0.8,<1",  # server-side session store for login state
 
+    # Note: flask and werkzeug stay at the versions dash 2.18 allows
+    # (flask 3.0.x, werkzeug 3.0.x). Dependabot will flag a few advisories
+    # against those (Vary: Cookie cache header, safe_join Windows device
+    # names) — neither is exploitable on a localhost-only single-user
+    # tool, so they are dismissed at the alert level. Bumping requires
+    # migrating to dash 3.x, which is planned for a later release.
+
     # Data + math
     "pandas>=2.2,<3",
     "numpy>=2.0,<3",
@@ -34,7 +41,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "pytest>=8.3,<9",
+    "pytest>=9.0.3,<10",
     "pytest-cov>=5.0,<6",
     "ruff>=0.6,<1",
     # Used only by scripts/fetch_water_mgmt_boundaries.py to simplify

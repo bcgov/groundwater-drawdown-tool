@@ -79,7 +79,11 @@ def init_pool(user: str, password: str) -> None:
             "Connection pool already initialised; call close_pool() first."
         )
 
-    logger.info("Initialising BCGW connection pool for user %r", user)
+    # The signed-in user is recorded by usage_logger.py as part of the
+    # sign-in event; keep the username out of the general app log to
+    # avoid logging credentials in plain text (CodeQL py/clear-text-
+    # logging-sensitive-data).
+    logger.info("Initialising BCGW connection pool")
     _pool = oracledb.create_pool(
         user=user,
         password=password,
