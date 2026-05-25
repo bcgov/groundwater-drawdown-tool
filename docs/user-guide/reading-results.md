@@ -31,6 +31,9 @@ where the predicted impact is at least 30% of that well's Safe Available
 Drawdown (SAD), with columns: WTN, reassigned aquifer material, SAD (m),
 impact (m), and impact as a percentage of SAD.
 
+![At-risk wells summary table with WTN, reassigned material, SAD, impact, and impact-percent columns]({{ site.baseurl }}/assets/img/at-risk-table.png)
+*The at-risk wells summary table.*
+
 ## Distance-drawdown chart
 
 A chart of drawdown against distance from the pumping well, matching
@@ -43,12 +46,18 @@ Leahey, 2024):
 - The Y axis is **inverted** — drawdown increases downward, the standard
   hydrogeology convention.
 
+![Distance-drawdown chart with red WTN-labelled well points, a smooth black Cooper-Jacob curve, and vertical orange SAD bars, on an inverted Y axis]({{ site.baseurl }}/assets/img/distance-drawdown-chart.png)
+*The distance-drawdown chart: wells (red), Cooper-Jacob curve (black), SAD bars (orange).*
+
 ## Map
 
 A colour-coded map of the wells. Marker colour shows drawdown severity
 and marker size shows the magnitude of impact. Clicking a well on the
 map highlights it on the chart, and vice versa — the two views are
 linked.
+
+![Results map with observation wells colour-coded by drawdown severity and sized by predicted impact, around the proposed pumping well at the centre]({{ site.baseurl }}/assets/img/results-map.png)
+*The results map. Marker colour shows drawdown severity; marker size shows impact magnitude.*
 
 ## Per-well details table
 
@@ -71,6 +80,9 @@ Four columns can be edited directly in the table:
 When you edit a cell, the tool recomputes that well's SAD and status
 immediately, without re-querying BCGW. Edited rows are tinted **light
 yellow** and edited values carry a trailing `*`.
+
+![Per-well details table with one row tinted light yellow to mark an edited value and one row tinted light purple to mark outside Cooper-Jacob validity]({{ site.baseurl }}/assets/img/per-well-table.png)
+*The per-well details table. Yellow rows have edited values; purple rows fall outside the Cooper-Jacob validity range.*
 
 ## Status flags
 

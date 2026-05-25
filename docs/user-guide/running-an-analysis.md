@@ -10,6 +10,9 @@ After signing in you land on the **setup page**. An analysis has three
 parts: locate the proposed pumping well, choose its source aquifer, and
 set the pumping parameters. Then click **Run Analysis**.
 
+![Top of the setup page showing the locate-the-well input modes and the map]({{ site.baseurl }}/assets/img/setup-page-locate.png)
+*The top of the setup page: choose how to locate the pumping well, then place it on the map.*
+
 ## 1. Locate the proposed pumping well
 
 Choose one of three input methods:
@@ -49,6 +52,9 @@ at and near that location and lists them:
 - **No mapped aquifer** — if the point is not inside any aquifer, a
   "enter materials manually" option is offered.
 
+![Source-aquifer dropdown showing directly-overlapping aquifers first, nearby aquifers below with distance tags, and a manual-entry option at the bottom]({{ site.baseurl }}/assets/img/aquifer-picker.png)
+*The source-aquifer picker after placing a pumping point.*
+
 ### Manual entry
 
 If you choose the manual option (no mapped aquifer at the location), the
@@ -57,6 +63,9 @@ or *Bedrock* — and requires you to enter the aquifer's transmissivity
 (T) and storativity (S) yourself. The same-aquifer filter is not
 available in manual mode. The results page shows an orange "manual
 entry" banner so the run is clearly marked.
+
+![Manual-entry mode with the orange banner, a material dropdown, and the required T and S input fields]({{ site.baseurl }}/assets/img/manual-entry-mode.png)
+*Manual-entry mode: material dropdown and required T / S inputs.*
 
 ## 3. Set the pumping parameters
 
@@ -73,6 +82,9 @@ entry" banner so the run is clearly marked.
 > from a lookup table keyed to the aquifer subtype. If the subtype has no
 > reliable default (for example karstic limestone), you must enter them
 > yourself.
+
+![Pumping parameters panel with the pumping-rate input and unit dropdown, the duration field with preset buttons, the buffer radius, and the T/S override controls]({{ site.baseurl }}/assets/img/setup-page-parameters.png)
+*The pumping parameters panel: Q with its unit dropdown, duration with quick presets, buffer radius, and T/S inputs.*
 
 ## 4. Run the analysis
 
