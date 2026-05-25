@@ -26,17 +26,30 @@
 .PARAMETER Draft
     Create the GitHub release as a draft. Useful for pre-release review.
 
+.PARAMETER Prerelease
+    Create the GitHub release as a pre-release. By default the release
+    is published as a regular release and marked --latest so
+    releases/latest/download/<asset> resolves to it (the canonical
+    install URL the auto-updater uses). Without --latest, `gh release
+    create` defaults the release to prerelease=true on a repository
+    with no prior releases, which broke the v0.5.0 publish until the
+    flag was flipped by hand.
+
 .EXAMPLE
     .\scripts\publish_release.ps1
 
 .EXAMPLE
     .\scripts\publish_release.ps1 -Draft
+
+.EXAMPLE
+    .\scripts\publish_release.ps1 -Prerelease
 #>
 
 [CmdletBinding()]
 param(
     [switch]$SkipTests,
-    [switch]$Draft
+    [switch]$Draft,
+    [switch]$Prerelease
 )
 
 $ErrorActionPreference = 'Stop'
@@ -222,6 +235,14 @@ $ghArgs = @(
     'setup.bat'
 )
 if ($Draft) { $ghArgs += '--draft' }
+if ($Prerelease) {
+    $ghArgs += '--prerelease'
+} else {
+    # Explicit --latest required: without it, gh release create defaults
+    # to prerelease=true on the first release in a repo, which makes
+    # releases/latest 404 and breaks the auto-updater URL.
+    $ghArgs += '--latest'
+}
 
 & gh @ghArgs
 $ghExit = $LASTEXITCODE
