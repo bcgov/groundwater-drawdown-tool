@@ -187,8 +187,9 @@ Habits to avoid:
 
 ## What we kept from the legacy Excel — and what we changed
 
-The legacy Excel tool (`iMapBCDistDrawdown_20241108.xlsx`) is the team's
-current working tool. The new tool replaces it, but does not redesign
+The legacy Excel tool — *iMapBCDistDrawdown*
+(`iMapBCDistDrawdown_20241108.xlsx`), developed by D. van Everdingen and
+M. Leahey (2024) — is the team's current working tool. The new tool replaces it, but does not redesign
 what's working. The Water Officer team reads the same chart, the same
 summary table, and the same reassigned-aquifer-material classification
 they're used to. Familiarity here is a feature.

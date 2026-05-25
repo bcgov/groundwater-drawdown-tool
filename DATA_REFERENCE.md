@@ -229,9 +229,10 @@ legacy tool:
   `AQUIFER_ID`. Useful for verifying the join works and the subtype code
   values match the T/S lookup table.
 - `iMapBCDistDrawdown_20241108.xlsx` — the legacy Excel tool currently
-  used by Water Officers. Source of truth for SAD formula, unit list,
-  default duration, 30% threshold, chart layout, and reassigned-material
-  rule. See section 13.
+  used by Water Officers, developed by D. van Everdingen and M. Leahey
+  (2024). Source of truth for SAD formula, unit list, default duration,
+  30% threshold, chart layout, and reassigned-material rule. See
+  section 13.
 
 The sample CSV has duplicated columns (e.g. `DEMAND` and `DEMAND.1`,
 `AQUIFER_ID` and `AQUIFER_ID.1`) because of the join. In real queries,

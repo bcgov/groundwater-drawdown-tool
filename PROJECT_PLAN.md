@@ -92,7 +92,7 @@ with `always_xy=True`. Used both for inbound user coordinates (lon/lat from the
 map click) and for outbound results display.
 
 **`core/drawdown.py`** — Cooper-Jacob distance-drawdown calculation:
-
+ 
 ```
 s(r, t) = (Q / (4πT)) * ln(2.25 * T * t / (r² * S))
 ```
@@ -1054,7 +1054,7 @@ why.
   revisit after client review. Should mirror the legacy Excel outputs:
   input parameters, at-risk summary table, distance-drawdown chart,
   full per-well details table, disclaimers.
-- **Q7** (existing Excel tool by Lepitre and Beebe) — **received** as
+- **Q7** (existing Excel tool by D. van Everdingen and M. Leahey, 2024) — **received** as
   `iMapBCDistDrawdown_20241108.xlsx`. Used to derive: T/S lookup, SAD
   formula, reassigned-aquifer-material rule, chart layout, unit list,
   default duration, 30% threshold. Will also serve as the validation

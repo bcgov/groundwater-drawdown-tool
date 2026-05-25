@@ -47,7 +47,8 @@ uv run pytest
 
 Tests live in `tests/`, mirroring the package structure. Every function
 in `core/` has tests; the math is validated against analytical reference
-cases and against the legacy Excel example.
+cases and against the legacy Excel example (*iMapBCDistDrawdown*,
+D. van Everdingen & M. Leahey, 2024).
 
 ## Verifying the BCGW SQL
 

@@ -17,6 +17,16 @@
     margin: 0.75rem 0.5rem;
     cursor: pointer;
   }
+
+  /* Keep the sidebar nav (Home, User Guide, Developer Guide) fully
+     expanded by default. just-the-docs normally collapses sub-pages
+     of parents that are not the current section. */
+  .site-nav ul.nav-list ul.nav-list {
+    display: block !important;
+  }
+  .site-nav .nav-list-expander {
+    display: none !important;
+  }
 </style>
 
 <script>

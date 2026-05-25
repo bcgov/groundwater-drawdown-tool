@@ -17,12 +17,15 @@ Changed, Fixed, Removed.
 #### Added
 
 - An **online documentation site** is now available, with a
-  step-by-step User Guide covering installation, running an
-  analysis, reading the results, exporting them, and
-  troubleshooting:
+  step-by-step User Guide covering installation, BCGW account
+  help, running an analysis, reading the results, exporting
+  them, troubleshooting, and the methods and assumptions behind
+  the calculations:
   <https://bcgov.github.io/groundwater-drawdown-tool/>
 - A **"Documentation"** link in the footer of every page opens
   that site.
+- The documentation site supports a **light/dark theme toggle**
+  (defaults to dark; your choice is remembered per browser).
 
 ### Phase 5d — Logging, sign-in messaging, and UI polish
 

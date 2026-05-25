@@ -6,7 +6,8 @@ Cooper-Jacob (1946) distance-drawdown solution against well and aquifer
 data in BC's Geographic Warehouse (BCGW).
 
 The specifications are largely derived from the client's previous
-solution, which relied on iMap and Excel-based tools.
+solution — the *iMapBCDistDrawdown* Excel workbook developed by
+D. van Everdingen and M. Leahey (2024).
 
 ## Documentation
 

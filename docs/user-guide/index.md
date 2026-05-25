@@ -19,14 +19,19 @@ their own machine.
    set up the tool.
 2. [First run]({% link user-guide/first-run.md %}) — launch the tool and
    sign in to BCGW.
-3. [Running an analysis]({% link user-guide/running-an-analysis.md %}) —
+3. [BCGW account help]({% link user-guide/bcgw-account.md %}) — check
+   account status, change or reset a password, and unlock a locked
+   account.
+4. [Running an analysis]({% link user-guide/running-an-analysis.md %}) —
    place the pumping well and set the parameters.
-4. [Reading the results]({% link user-guide/reading-results.md %}) —
+5. [Reading the results]({% link user-guide/reading-results.md %}) —
    understand the tables, chart, map, and status flags.
-5. [Exporting results]({% link user-guide/exports.md %}) — CSV, KML, PDF,
+6. [Exporting results]({% link user-guide/exports.md %}) — CSV, KML, PDF,
    and the interactive HTML map.
-6. [Troubleshooting]({% link user-guide/troubleshooting.md %}) — fixes for
+7. [Troubleshooting]({% link user-guide/troubleshooting.md %}) — fixes for
    common problems.
+8. [Methods and assumptions]({% link user-guide/methods-and-assumptions.md %}) —
+   the math behind the screening estimates, and what the tool assumes.
 
 ## Before you start
 

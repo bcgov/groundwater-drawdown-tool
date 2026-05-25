@@ -1,7 +1,7 @@
 ---
 title: Reading the results
 parent: User Guide
-nav_order: 4
+nav_order: 5
 ---
 
 # Reading the results
@@ -33,8 +33,9 @@ impact (m), and impact as a percentage of SAD.
 
 ## Distance-drawdown chart
 
-A chart of drawdown against distance from the pumping well, matching the
-legacy Excel chart:
+A chart of drawdown against distance from the pumping well, matching
+the legacy Excel tool (*iMapBCDistDrawdown*, D. van Everdingen & M.
+Leahey, 2024):
 
 - **Red dots** — each nearby well, labelled with its WTN.
 - **Black curve** — the Cooper-Jacob drawdown curve.
