@@ -32,6 +32,7 @@ of any BCGW account:
 4. Click **Submit**.
 
 ![BC Account Query Tool form, with the IDIR field filled, Queries set to Account Status, and Databases set to IDWPROD11]({{ site.baseurl }}/assets/img/bcgw-account-status-query.png)
+
 *The BC Account Query Tool, with the three fields set to query an account's status.*
 
 The result is the current status of your account:

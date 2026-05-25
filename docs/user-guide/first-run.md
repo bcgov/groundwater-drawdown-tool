@@ -31,6 +31,7 @@ When you click **Sign in**, the tool checks your credentials against
 BCGW. On success, it takes you to the analysis setup page.
 
 ![Groundwater Drawdown Tool sign-in page with BCGW username and password fields]({{ site.baseurl }}/assets/img/sign-in.png)
+
 *The sign-in page.*
 
 ### You must be on the BC government network
