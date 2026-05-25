@@ -12,6 +12,11 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+### Fixed
+
+- The footer's **"What's new"** panel no longer shows an empty
+  *"Unreleased"* heading above the current release notes.
+
 ## [0.5.0] — 2026-05-25
 
 First broadly-installable release. Phase 5 (visual identity, map

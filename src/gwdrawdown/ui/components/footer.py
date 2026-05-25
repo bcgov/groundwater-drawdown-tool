@@ -53,22 +53,31 @@ def _last_updated_date() -> str:
 
 
 def _recent_changelog() -> str:
-    """Return the most recent CHANGELOG sections as a Markdown string.
+    """Return the most recent shipped CHANGELOG sections as Markdown.
 
     Only the first ``_MAX_CHANGELOG_SECTIONS`` ``## [...]`` blocks are
     kept, so the modal does not become an entire-history scroll wall.
+    The ``[Unreleased]`` working-set heading is skipped: the modal is
+    opened by users running an installed release, so a developer-side
+    "what's queued for the next release" block is irrelevant (and
+    misleading — it shows as an empty heading right above the user's
+    actual release notes).
     """
     try:
         content = _CHANGELOG_PATH.read_text(encoding="utf-8")
     except OSError:
         return "_Changelog not available._"
-    matches = list(re.finditer(r"^## \[", content, flags=re.MULTILINE))
-    if not matches:
-        return content
-    start = matches[0].start()
-    if len(matches) <= _MAX_CHANGELOG_SECTIONS:
+    pattern = re.compile(r"^## \[(?P<label>[^\]]+)\]", re.MULTILINE)
+    sections = [
+        m for m in pattern.finditer(content)
+        if m.group("label").strip().lower() != "unreleased"
+    ]
+    if not sections:
+        return "_No release notes available._"
+    start = sections[0].start()
+    if len(sections) <= _MAX_CHANGELOG_SECTIONS:
         return content[start:].rstrip()
-    end = matches[_MAX_CHANGELOG_SECTIONS].start()
+    end = sections[_MAX_CHANGELOG_SECTIONS].start()
     return content[start:end].rstrip()
 
 
