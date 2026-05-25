@@ -80,4 +80,4 @@ Click **Run Analysis**. The tool validates your inputs, queries BCGW, and
 opens the results in a **new browser tab**. Your setup tab stays as it
 is, so you can adjust and re-run without losing an earlier results tab.
 
-Continue to [Reading the results]({% link user-guide/reading-results.md %}).
+Continue to [Reading the results]({{ site.baseurl }}{% link user-guide/reading-results.md %}).

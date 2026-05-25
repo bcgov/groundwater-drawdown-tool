@@ -22,9 +22,8 @@ because code comments reference them directly by filename and section.
 ## The legacy Excel tool
 
 The tool's screening calculations are ported from a legacy Excel
-workbook — *iMapBCDistDrawdown* (file
-`iMapBCDistDrawdown_20241108.xlsx`), **developed by D. van Everdingen
-and M. Leahey (2024).** That workbook is the source of truth for the
+workbook — *iMapBCDistDrawdown*, **developed by D. van Everdingen and
+M. Leahey (2024).** That workbook is the source of truth for the
 Cooper-Jacob implementation, the SAD formula, the
 reassigned-aquifer-material rule, the chart layout, the unit list, the
 default duration, and the 30% at-risk threshold. It also serves as the
@@ -33,4 +32,4 @@ validation harness — a known input set produces a known output that
 
 A user-facing summary of the math and assumptions, including
 references, is in the User Guide:
-[Methods and assumptions]({% link user-guide/methods-and-assumptions.md %}).
+[Methods and assumptions]({{ site.baseurl }}{% link user-guide/methods-and-assumptions.md %}).

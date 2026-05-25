@@ -22,9 +22,9 @@ solution.
 ## Who this is for
 
 - **Water Officers and support staff** running the tool — start with the
-  [User Guide]({% link user-guide/index.md %}).
+  [User Guide]({{ site.baseurl }}{% link user-guide/index.md %}).
 - **Developers** maintaining or extending the tool — see the
-  [Developer Guide]({% link developer-guide/index.md %}).
+  [Developer Guide]({{ site.baseurl }}{% link developer-guide/index.md %}).
 
 ## What it does
 
@@ -40,6 +40,6 @@ solution.
 
 ## Quick links
 
-- [Install the tool]({% link user-guide/installation.md %})
-- [Run your first analysis]({% link user-guide/running-an-analysis.md %})
-- [Troubleshooting]({% link user-guide/troubleshooting.md %})
+- [Install the tool]({{ site.baseurl }}{% link user-guide/installation.md %})
+- [Run your first analysis]({{ site.baseurl }}{% link user-guide/running-an-analysis.md %})
+- [Troubleshooting]({{ site.baseurl }}{% link user-guide/troubleshooting.md %})

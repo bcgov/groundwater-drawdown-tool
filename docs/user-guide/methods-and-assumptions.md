@@ -12,10 +12,9 @@ where the numbers come from — no familiarity with the legacy Excel
 tool or with hydrogeology software is needed.
 
 > The tool's calculations are ported directly from the legacy Excel
-> tool *iMapBCDistDrawdown* (file `iMapBCDistDrawdown_20241108.xlsx`),
-> **developed by D. van Everdingen & M. Leahey (2024).** Cell
-> references throughout (e.g. `Impact!Q2`, `Impact!U2`) point to the
-> exact formula in that workbook.
+> tool *iMapBCDistDrawdown*, **developed by D. van Everdingen & M.
+> Leahey (2024).** Cell references throughout (e.g. `Impact!Q2`,
+> `Impact!U2`) point to the exact formula in that workbook.
 
 ## The Cooper-Jacob distance-drawdown formula
 
@@ -181,9 +180,8 @@ BC.
   Canadian Cordillera hydrogeologic region to better manage and
   protect groundwater.* Streamline Watershed Management Bulletin,
   13(1), 10–18.
-- **Legacy Excel tool:** *iMapBCDistDrawdown* (file
-  `iMapBCDistDrawdown_20241108.xlsx`), developed by **D. van Everdingen
-  & M. Leahey, 2024.** This tool's screening calculations — the
-  Cooper-Jacob form, the SAD formula, the reassigned-material rule,
-  the chart layout, the unit list, the default duration, and the 30%
-  at-risk threshold — are ported directly from that workbook.
+- **Legacy Excel tool:** *iMapBCDistDrawdown*, developed by **D. van
+  Everdingen & M. Leahey, 2024.** This tool's screening calculations —
+  the Cooper-Jacob form, the SAD formula, the reassigned-material
+  rule, the chart layout, the unit list, the default duration, and
+  the 30% at-risk threshold — are ported directly from that workbook.

@@ -15,13 +15,13 @@ to a server) is mostly packaging work, not a rewrite.
 
 ## Pages in this guide
 
-1. [Architecture]({% link developer-guide/architecture.md %}) — the layer
+1. [Architecture]({{ site.baseurl }}{% link developer-guide/architecture.md %}) — the layer
    model and module responsibilities.
-2. [Development setup]({% link developer-guide/development-setup.md %}) —
+2. [Development setup]({{ site.baseurl }}{% link developer-guide/development-setup.md %}) —
    getting a working environment with `uv`.
-3. [Releasing]({% link developer-guide/releasing.md %}) — cutting a
+3. [Releasing]({{ site.baseurl }}{% link developer-guide/releasing.md %}) — cutting a
    GitHub release that end users install from.
-4. [Reference documents]({% link developer-guide/reference.md %}) — the
+4. [Reference documents]({{ site.baseurl }}{% link developer-guide/reference.md %}) — the
    in-repository specification and data documents.
 
 ## Technology

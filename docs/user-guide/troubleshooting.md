@@ -44,8 +44,8 @@ network that can reach BCGW.
 
 ## Sign-in says "authentication failed" but my password is correct
 
-First confirm you can sign in to BCGW from another tool (for example SQL
-Developer) to rule out a password problem. If that works but the
+First confirm you can sign in to BCGW from another tool (for example
+ArcGIS Pro or SQL Developer) to rule out a password problem. If that works but the
 drawdown tool still fails, re-check the network/VPN connection as above.
 
 Remember that BCGW passwords expire periodically — if yours just expired,

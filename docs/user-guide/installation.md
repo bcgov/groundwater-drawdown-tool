@@ -79,7 +79,7 @@ A console window opens — leave it running; closing it stops the tool.
 After a few seconds your browser opens to `http://localhost:8050`. If it
 does not open on its own, open any browser and go to that address.
 
-Continue to [First run]({% link user-guide/first-run.md %}).
+Continue to [First run]({{ site.baseurl }}{% link user-guide/first-run.md %}).
 
 ## Updating to a new version
 

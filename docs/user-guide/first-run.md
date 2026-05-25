@@ -39,7 +39,7 @@ means you must be:
 - connected by **VPN** if you are working from home.
 
 If you are not on the government network, sign-in will fail with a
-connection error. See [Troubleshooting]({% link user-guide/troubleshooting.md %})
+connection error. See [Troubleshooting]({{ site.baseurl }}{% link user-guide/troubleshooting.md %})
 if this happens.
 
 ## About your password
@@ -59,4 +59,4 @@ Use the **Logout** link in the header. This closes the database
 connection and clears your session. Closing the `run.bat` console window
 also stops the tool entirely.
 
-Next: [Running an analysis]({% link user-guide/running-an-analysis.md %}).
+Next: [Running an analysis]({{ site.baseurl }}{% link user-guide/running-an-analysis.md %}).

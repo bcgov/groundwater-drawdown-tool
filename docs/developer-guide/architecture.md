@@ -89,4 +89,4 @@ src/gwdrawdown/
 
 The full specification — including the Cooper-Jacob equation, the SAD
 formula, and the at-risk rules — is in `PROJECT_PLAN.md`; see
-[Reference documents]({% link developer-guide/reference.md %}).
+[Reference documents]({{ site.baseurl }}{% link developer-guide/reference.md %}).

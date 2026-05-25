@@ -92,4 +92,4 @@ wells is less reliable and should be treated as advisory.
 > driller's log — the tool flags them with a note. Have a qualified
 > hydrogeologist review the results.
 
-Next: [Exporting results]({% link user-guide/exports.md %}).
+Next: [Exporting results]({{ site.baseurl }}{% link user-guide/exports.md %}).

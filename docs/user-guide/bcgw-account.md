@@ -8,13 +8,13 @@ nav_order: 3
 
 The Groundwater Drawdown Tool signs in to BCGW with your **personal
 BCGW account** — the same Oracle username and password you use for
-other BCGW tools (SQL Developer, iMap data exports, and so on). If
-sign-in is failing, the cause is almost always one of:
+other tools requiring a BCGW connection (e.g. ArcGIS Pro). If sign-in
+is failing, the cause is almost always one of:
 
 - the account is locked or expired,
 - the password has expired or has just been changed,
 - you are not on the BC government network or VPN — see
-  [Troubleshooting]({% link user-guide/troubleshooting.md %}).
+  [Troubleshooting]({{ site.baseurl }}{% link user-guide/troubleshooting.md %}).
 
 This page covers how to check and fix the account itself.
 
@@ -91,7 +91,7 @@ A few small habits prevent most account problems:
 
 ## If sign-in still fails after all of this
 
-See [Troubleshooting]({% link user-guide/troubleshooting.md %}) for the
+See [Troubleshooting]({{ site.baseurl }}{% link user-guide/troubleshooting.md %}) for the
 network/VPN checks. If the account is **OPEN**, your password is
 known-correct, you are connected to the BC government network or VPN,
 and sign-in still fails — contact your project lead.
