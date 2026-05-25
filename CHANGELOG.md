@@ -26,6 +26,19 @@ Changed, Fixed, Removed.
   that site.
 - The documentation site supports a **light/dark theme toggle**
   (defaults to dark; your choice is remembered per browser).
+- When the tool starts, it now **checks for a new release on GitHub
+  and updates itself in place** if one is available. The check is
+  silent when nothing has changed; if an update is applied you see a
+  short "An update is available…" line and the dependency refresh.
+  Pass `--no-update` to `run.bat` to skip the check on a slow
+  network. Update failures are logged to `logs\auto-update.log` and
+  never block the app from starting.
+- The footer on every page now shows **the running version and the
+  date it was installed** — for example, *"Version 0.5.0 — last
+  updated 2026-05-25"*. Clicking the version opens a **"What's new"
+  panel** with the most recent release notes, so you can see at a
+  glance what changed (and whether a colleague with a different
+  install is on the same version as you).
 
 ### Phase 5d — Logging, sign-in messaging, and UI polish
 

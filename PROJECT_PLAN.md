@@ -825,6 +825,24 @@ shipped tool. This sub-stage closes that gap.
 - Pages enabled in repo settings; the site is linked from `README.md`
   and from the app footer.
 
+#### Release strategy
+
+The first published release is **`v0.5.0`**, cut as a GitHub
+**pre-release** for internal testing by the GIS team. Once that
+internal cycle yields a build the team is comfortable shipping, a
+subsequent non-pre-release is published for end-user (Water Officer)
+testing. Iterations during internal testing are published as further
+pre-releases.
+
+A practical note about the auto-updater (§6c): GitHub's
+`releases/latest` endpoint **excludes pre-releases.** Internal
+testers on a pre-release will therefore not receive automatic updates
+to subsequent pre-releases — they re-run the `setup.bat` they
+downloaded (or download a fresh copy from the specific release page)
+for each iteration. Auto-updates begin once a non-pre-release ships,
+at which point `releases/latest` resolves and the
+`setup.bat --silent-update` path takes over for everyone.
+
 #### 6.1 The release layout
 
 Each tagged release on GitHub carries two assets:
@@ -956,10 +974,33 @@ In every failure case, the user can still run their previously-installed
 version of the tool. The installer can never leave the user with no working
 copy: it either succeeds in updating, or leaves the prior install untouched.
 
-#### Phase 6c — Auto-update on launch
+#### Phase 6c — Auto-update on launch *(shipped)*
 
 Sections 6.1–6.5 deliver "one URL, double-click, install or update".
 This sub-stage makes updates happen *without the user noticing*.
+
+What ships:
+
+- `run.bat` calls `setup.bat --silent-update` as its first step before
+  launching the Dash app.
+- `setup.bat --silent-update` queries the GitHub releases API, compares
+  the returned tag to local `version.txt`, and exits 0 immediately if
+  the versions match (no output at all). If a newer release is
+  published, it downloads the zip, extracts in place over the install
+  folder (user data — `outputs\`, `logs\`, `flask_session\`, `.env` —
+  is preserved by the same allow-list that builds the zip), and runs
+  `uv sync` to refresh dependencies. The user sees one short
+  "An update is available…" line and the `uv sync` progress.
+- A failed update (GitHub unreachable, download failure, `uv sync`
+  failure) appends a timestamped line to `logs\auto-update.log` and
+  exits 0 — the launch is never blocked; the user keeps their prior
+  version.
+- `run.bat --no-update` skips the check entirely (for slow networks or
+  when the user wants to launch immediately).
+
+The mechanism is otherwise unchanged from §6.3 — same install dir,
+same preserve list, same release artifacts. It is a thin invocation
+wrapper on top of the already-built installer.
 
 Design:
 
@@ -977,15 +1018,23 @@ The mechanism is otherwise unchanged from §6.3 — same install dir, same
 preserve list, same release artifacts. It's a thin invocation wrapper on
 top of the already-built installer.
 
-#### Phase 6d — Version footer + CHANGELOG modal
+#### Phase 6d — Version footer + CHANGELOG modal *(shipped)*
 
-A footer line on every page: `Version 0.5.0 — last updated 2026-05-19`.
-Clicking it opens a modal showing the recent CHANGELOG entries, so users
-can see what changed without touching files. This is also where you handle
-"my colleague says feature X exists but I don't see it" — they're on
-different versions, the footer tells them. Implementation is a small
-addition to `ui/components/footer.py` and lands alongside the Phase 6c
-launch-update wrapper.
+The footer on every page now reads
+`Version X.Y.Z — last updated YYYY-MM-DD`, where the date is the
+``version.txt`` mtime (the install or auto-update extraction touches
+this file, so the date reflects when the running release landed on
+this machine). The version text is a button — clicking it opens a
+modal showing the most recent CHANGELOG sections, so a user whose
+colleague has a feature they don't see can self-diagnose the version
+gap without touching files. Bounded to the latest few sections
+(`_MAX_CHANGELOG_SECTIONS = 3` in `ui/components/footer.py`) so the
+modal stays scannable.
+
+Implementation: small additions to `ui/components/footer.py`
+(`_last_updated_date`, `_recent_changelog`, the modal markup, and a
+``@callback`` that toggles the modal's ``style.display``) plus
+`.bc-modal*` styles in `assets/theme.css`. No new dependencies.
 
 #### 6.8 Configuration
 

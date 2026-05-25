@@ -2,7 +2,7 @@
 REM ============================================================================
 REM Groundwater Drawdown Tool - Installer / Updater
 REM
-REM Two modes, auto-detected:
+REM Three modes, auto-detected or selected by argument:
 REM
 REM 1. BOOTSTRAP MODE - setup.bat is run from outside the install folder (e.g.
 REM    Downloads). It downloads the latest release from GitHub, extracts it to
@@ -15,12 +15,26 @@ REM 2. LOCAL MODE - setup.bat is run from inside an installed (or cloned) copy
 REM    of the tool. It installs uv if needed and runs `uv sync` to install or
 REM    refresh Python dependencies. No network calls to GitHub.
 REM
+REM 3. SILENT-UPDATE MODE - `setup.bat --silent-update` is called by run.bat
+REM    before launching the app. It queries GitHub for the latest release, and
+REM    if newer than the installed version, downloads and extracts it in place
+REM    and refreshes dependencies. Silent when nothing has changed; never
+REM    blocks the caller on failure. Logs to logs\auto-update.log.
+REM
 REM Daily use: double-click run.bat from the install folder.
 REM ============================================================================
 
 setlocal enableextensions enabledelayedexpansion
 
 cd /d "%~dp0"
+
+REM --- Argument parsing -----------------------------------------------------
+REM `--silent-update` is the auto-update entry point used by run.bat. It checks
+REM GitHub for a newer release, updates in place if one is available, and exits.
+REM It never pauses and never blocks the caller on failure.
+set "SILENT_UPDATE=0"
+if /i "%~1"=="--silent-update" set "SILENT_UPDATE=1"
+if "%SILENT_UPDATE%"=="1" goto :silent_update_mode
 
 REM --- Mode detection -------------------------------------------------------
 REM A bootstrap copy of setup.bat sits alone (no pyproject.toml next to it).
@@ -251,3 +265,82 @@ echo If your network blocks api.github.com or github.com, contact IT.
 echo.
 pause
 exit /b 1
+
+
+REM ============================================================================
+REM SILENT UPDATE MODE - called by run.bat before launching the app
+REM
+REM Designed to be invisible when there is nothing to do, and to never block
+REM the caller on failure. Reports briefly when an update is actually being
+REM applied. Logs to logs\auto-update.log.
+REM ============================================================================
+:silent_update_mode
+
+set "REPO=bcgov/groundwater-drawdown-tool"
+set "API_URL=https://api.github.com/repos/%REPO%/releases/latest"
+set "ZIP_URL=https://github.com/%REPO%/releases/latest/download/groundwater-drawdown-tool.zip"
+set "INSTALL_DIR=%~dp0"
+set "UPDATE_LOG=%INSTALL_DIR%logs\auto-update.log"
+
+if not exist "%INSTALL_DIR%logs" mkdir "%INSTALL_DIR%logs" >nul 2>nul
+
+set "LOCAL_VERSION="
+if exist "%INSTALL_DIR%version.txt" set /p LOCAL_VERSION=<"%INSTALL_DIR%version.txt"
+
+REM Query GitHub for the latest version. Any failure -> exit 0 (do not block).
+set "REMOTE_VERSION="
+for /f "usebackq delims=" %%V in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $r = Invoke-RestMethod -Uri '%API_URL%' -UseBasicParsing -ErrorAction Stop; $r.tag_name.TrimStart('v').Trim() } catch { 'ERROR' }"`) do set "REMOTE_VERSION=%%V"
+
+if "!REMOTE_VERSION!"=="ERROR" (
+    >> "%UPDATE_LOG%" echo [%DATE% %TIME%] Could not reach GitHub to check for updates.
+    exit /b 0
+)
+if "!REMOTE_VERSION!"=="" (
+    >> "%UPDATE_LOG%" echo [%DATE% %TIME%] Empty response from GitHub releases API.
+    exit /b 0
+)
+
+REM Same version - nothing to do, exit silently.
+if /i "!LOCAL_VERSION!"=="!REMOTE_VERSION!" exit /b 0
+
+REM Different version - perform an in-place update.
+echo.
+echo An update is available: !LOCAL_VERSION! -^> !REMOTE_VERSION!
+echo Downloading...
+
+set "TMP_ZIP=%TEMP%\groundwater-drawdown-tool-!REMOTE_VERSION!.zip"
+if exist "!TMP_ZIP!" del "!TMP_ZIP!" >nul 2>nul
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%ZIP_URL%' -OutFile '!TMP_ZIP!' -UseBasicParsing -ErrorAction Stop } catch { exit 1 }" >nul 2>nul
+if errorlevel 1 (
+    >> "%UPDATE_LOG%" echo [%DATE% %TIME%] Download failed.
+    echo Update download failed. Continuing with current version.
+    exit /b 0
+)
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; try { Expand-Archive -Path '!TMP_ZIP!' -DestinationPath '%INSTALL_DIR%' -Force -ErrorAction Stop } catch { exit 1 }" >nul 2>nul
+if errorlevel 1 (
+    >> "%UPDATE_LOG%" echo [%DATE% %TIME%] Extraction failed.
+    echo Update extraction failed. Continuing with current version.
+    del "!TMP_ZIP!" >nul 2>nul
+    exit /b 0
+)
+del "!TMP_ZIP!" >nul 2>nul
+
+echo Refreshing dependencies...
+
+REM Defensive PATH prepend so uv is found even before any shell PATH refresh.
+set "PATH=%USERPROFILE%\.local\bin;%PATH%"
+
+uv sync
+if errorlevel 1 (
+    >> "%UPDATE_LOG%" echo [%DATE% %TIME%] uv sync failed after update.
+    echo.
+    echo Dependency refresh failed; you may need to re-run setup.bat manually.
+    exit /b 0
+)
+
+echo Update complete: now on !REMOTE_VERSION!.
+echo.
+>> "%UPDATE_LOG%" echo [%DATE% %TIME%] Updated from !LOCAL_VERSION! to !REMOTE_VERSION!.
+exit /b 0

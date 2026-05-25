@@ -316,6 +316,133 @@ select {
     color: #fff;
 }
 
+/* Version text in the footer is a clickable button that opens the
+ * CHANGELOG modal; style it so it reads like the surrounding text. */
+.bc-footer__version-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    color: rgba(255, 255, 255, 0.9);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.bc-footer__version-btn:hover,
+.bc-footer__version-btn:focus {
+    color: #fff;
+    outline: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Modal (CHANGELOG "What's new" overlay)
+ * ------------------------------------------------------------------------- */
+
+.bc-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.5);
+    /* Initial display is set inline to "none" by the Python component and
+     * toggled to "flex" by the open-modal callback. Centering rules below
+     * take effect when display is flex. */
+    align-items: center;
+    justify-content: center;
+    padding: var(--bc-space-5);
+}
+
+.bc-modal__dialog {
+    background-color: var(--bc-surface);
+    color: var(--bc-text);
+    border-radius: var(--bc-radius-lg);
+    width: min(720px, 100%);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.bc-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--bc-space-3) var(--bc-space-5);
+    border-bottom: 1px solid var(--bc-border);
+    background-color: var(--bc-surface-alt);
+}
+
+.bc-modal__title {
+    margin: 0;
+    font-size: 1.15rem;
+    color: var(--bc-brand);
+}
+
+.bc-modal__close {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    line-height: 1;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    color: var(--bc-text-muted);
+    border-radius: var(--bc-radius);
+}
+
+.bc-modal__close:hover,
+.bc-modal__close:focus {
+    color: var(--bc-text);
+    background-color: rgba(0, 0, 0, 0.05);
+    outline: none;
+}
+
+.bc-modal__content {
+    padding: var(--bc-space-4) var(--bc-space-5);
+    overflow-y: auto;
+    flex: 1 1 auto;
+    line-height: 1.5;
+}
+
+.bc-modal__content h2,
+.bc-modal__content h3,
+.bc-modal__content h4 {
+    color: var(--bc-brand);
+    margin-top: var(--bc-space-4);
+    margin-bottom: var(--bc-space-2);
+}
+
+.bc-modal__content h2 {
+    font-size: 1.1rem;
+}
+
+.bc-modal__content h3 {
+    font-size: 1rem;
+}
+
+.bc-modal__content h4 {
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--bc-text-muted);
+}
+
+.bc-modal__content ul {
+    padding-left: 1.25rem;
+}
+
+.bc-modal__content li {
+    margin-bottom: var(--bc-space-2);
+}
+
+.bc-modal__content code {
+    background-color: var(--bc-surface-alt);
+    border: 1px solid var(--bc-border);
+    padding: 0.05em 0.3em;
+    border-radius: var(--bc-radius);
+    font-family: var(--bc-font-mono);
+    font-size: 0.9em;
+}
+
 /* ---------------------------------------------------------------------------
  * Form sections (card containers for grouped fields)
  * ------------------------------------------------------------------------- */

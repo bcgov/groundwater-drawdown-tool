@@ -1,19 +1,29 @@
 """Footer component shown on every page.
 
-A BC-styled dark-blue strip with the tool version (read fresh from
-``version.txt`` on each render so the Phase 6 auto-updater can swap
-the file under a running process), a link to the documentation site,
-and a screening-tool disclaimer. The signed-in user and the Logout
-link both live in the header; the footer carried a duplicate "Signed
-in as" line until Phase 5d.
+A BC-styled dark-blue strip with:
+
+- the tool version (read fresh from ``version.txt`` on each render so the
+  Phase 6 auto-updater can swap the file under a running process),
+- the date that version was installed — the mtime of ``version.txt``,
+  which the install / update process touches when it lands the file,
+- a link to the documentation site,
+- a screening-tool disclaimer.
+
+The version text is a button that opens a modal listing the most recent
+``CHANGELOG.md`` entries, so a user whose colleague has a feature they
+don't can see at a glance which version added it and how their install
+compares.
 
 All visual rules live in ``assets/theme.css``; this module is plain
-markup.
+markup plus the modal toggle callback.
 """
 
 from __future__ import annotations
 
-from dash import html
+import re
+from datetime import datetime
+
+from dash import Input, Output, callback, ctx, dcc, html, no_update
 
 from gwdrawdown import config
 
@@ -21,36 +31,137 @@ from gwdrawdown import config
 # pointing it elsewhere is a code release, like the BCGW DSN.
 DOCS_URL = "https://bcgov.github.io/groundwater-drawdown-tool/"
 
+# How many leading ``## [...]`` sections of the CHANGELOG to render in
+# the modal. Bounded so the modal stays scannable.
+_MAX_CHANGELOG_SECTIONS = 3
+
+_CHANGELOG_PATH = config.PROJECT_ROOT / "CHANGELOG.md"
+
+
+def _last_updated_date() -> str:
+    """Return ``YYYY-MM-DD`` of ``version.txt``'s last-modified time.
+
+    On a fresh install or an auto-update extraction the file's mtime is
+    the extraction timestamp, so this is the date the currently
+    installed release landed on the user's machine.
+    """
+    try:
+        mtime = config.VERSION_FILE.stat().st_mtime
+    except OSError:
+        return "unknown"
+    return datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+
+
+def _recent_changelog() -> str:
+    """Return the most recent CHANGELOG sections as a Markdown string.
+
+    Only the first ``_MAX_CHANGELOG_SECTIONS`` ``## [...]`` blocks are
+    kept, so the modal does not become an entire-history scroll wall.
+    """
+    try:
+        content = _CHANGELOG_PATH.read_text(encoding="utf-8")
+    except OSError:
+        return "_Changelog not available._"
+    matches = list(re.finditer(r"^## \[", content, flags=re.MULTILINE))
+    if not matches:
+        return content
+    start = matches[0].start()
+    if len(matches) <= _MAX_CHANGELOG_SECTIONS:
+        return content[start:].rstrip()
+    end = matches[_MAX_CHANGELOG_SECTIONS].start()
+    return content[start:end].rstrip()
+
 
 def make_footer() -> html.Footer:
-    """Render the page footer with version and disclaimer."""
+    """Render the page footer.
+
+    Includes the always-rendered, initially-hidden CHANGELOG modal as a
+    sibling of the footer's content row, so clicking the version button
+    can reveal it without touching app-level layout.
+    """
+    version_label = (
+        f"Version {config.version()} — last updated {_last_updated_date()}"
+    )
     return html.Footer(
+        [
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Button(
+                                version_label,
+                                id="footer-version-btn",
+                                type="button",
+                                className="bc-footer__version-btn",
+                                title="See recent changes",
+                            ),
+                            html.A(
+                                "Documentation",
+                                href=DOCS_URL,
+                                target="_blank",
+                                rel="noopener noreferrer",
+                                className="bc-footer__link",
+                            ),
+                        ],
+                        className="bc-footer__meta",
+                    ),
+                    html.Div(
+                        "Screening tool — results are advisory and must be "
+                        "reviewed by the regional hydrogeologist.",
+                        className="bc-footer__disclaimer",
+                    ),
+                    html.Div(className="bc-footer__spacer"),
+                ],
+                className="bc-footer__inner",
+            ),
+            _changelog_modal(),
+        ],
+        className="bc-footer",
+    )
+
+
+def _changelog_modal() -> html.Div:
+    """Hidden modal listing the most recent CHANGELOG entries."""
+    return html.Div(
         html.Div(
             [
                 html.Div(
                     [
-                        html.Span(f"Version {config.version()}"),
-                        html.A(
-                            "Documentation",
-                            href=DOCS_URL,
-                            target="_blank",
-                            rel="noopener noreferrer",
-                            className="bc-footer__link",
+                        html.H2("What's new", className="bc-modal__title"),
+                        html.Button(
+                            "✕",
+                            id="footer-changelog-close",
+                            type="button",
+                            className="bc-modal__close",
+                            title="Close",
+                            **{"aria-label": "Close changelog"},
                         ),
                     ],
-                    className="bc-footer__meta",
+                    className="bc-modal__header",
                 ),
-                html.Div(
-                    "Screening tool — results are advisory and must be "
-                    "reviewed by the regional hydrogeologist.",
-                    className="bc-footer__disclaimer",
+                dcc.Markdown(
+                    _recent_changelog(),
+                    className="bc-modal__content",
                 ),
-                # Empty right-hand cell, equal width to the version cell,
-                # so the disclaimer sits at the true page centre rather
-                # than centred in the leftover space beside the version.
-                html.Div(className="bc-footer__spacer"),
             ],
-            className="bc-footer__inner",
+            className="bc-modal__dialog",
         ),
-        className="bc-footer",
+        id="footer-changelog-modal",
+        className="bc-modal",
+        style={"display": "none"},
     )
+
+
+@callback(
+    Output("footer-changelog-modal", "style"),
+    Input("footer-version-btn", "n_clicks"),
+    Input("footer-changelog-close", "n_clicks"),
+    prevent_initial_call=True,
+)
+def _toggle_changelog_modal(_open_clicks: int, _close_clicks: int):
+    """Open the modal on version-button click, close it on the close button."""
+    if ctx.triggered_id == "footer-version-btn":
+        return {"display": "flex"}
+    if ctx.triggered_id == "footer-changelog-close":
+        return {"display": "none"}
+    return no_update
