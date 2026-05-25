@@ -57,14 +57,35 @@ at and near that location and lists them:
 
 *The source-aquifer picker after placing a pumping point.*
 
+### Aquifer transmissivity (T) and storativity (S)
+
+Once an aquifer is selected, the tool fills in **transmissivity (T)**
+and **storativity (S)** from a lookup table keyed to the aquifer's
+subtype. These two values drive the drawdown calculation and are
+shown in a small panel directly under the picker, with the subtype
+that produced them.
+
+To use your own values, tick **Override default T / S** and edit the
+T and S fields. The override applies to this run only; untick it to
+restore the lookup defaults for the selected aquifer.
+
+> **T** is transmissivity in m²/day; **S** is storativity
+> (dimensionless). They describe how readily an aquifer transmits
+> water and how much water it releases from storage — together they
+> govern how the drawdown wave propagates outward from the pumping
+> well. If the aquifer subtype has no reliable default (for example
+> karstic limestone), the panel says so and you must enter T and S
+> yourself.
+
 ### Manual entry
 
-If you choose the manual option (no mapped aquifer at the location), the
-tool reveals a **material** dropdown — *Unconsolidated (sand and gravel)*
-or *Bedrock* — and requires you to enter the aquifer's transmissivity
-(T) and storativity (S) yourself. The same-aquifer filter is not
-available in manual mode. The results page shows an orange "manual
-entry" banner so the run is clearly marked.
+If you choose the "no mapped aquifer" option (offered for points the
+Province has not mapped), the tool reveals a **material** dropdown —
+*Unconsolidated (sand and gravel)* or *Bedrock* — and the T and S
+fields become **mandatory** (there are no lookup defaults to fall
+back on). The same-aquifer filter is not available in manual mode.
+The results page shows an orange "manual entry" banner so the run
+is clearly marked.
 
 ![Manual-entry mode with the orange banner, a material dropdown, and the required T and S input fields]({{ site.baseurl }}/assets/img/manual-entry-mode.png)
 
@@ -74,21 +95,14 @@ entry" banner so the run is clearly marked.
 
 | Parameter | Notes |
 |---|---|
-| **Pumping rate (Q)** | A number plus a unit. Units: Imp GPM, L/min, L/s (default), m³/d, m³/min, m³/s, US GPM. |
+| **Pumping rate (Q)** | A number plus a unit. Units: m³/d (default), m³/min, m³/s, m³/yr, L/min, L/s. |
 | **Pumping duration** | In days. Default 90 days. Quick presets: 30 d, 90 d, 180 d, 1 year, 10 years. |
 | **Buffer radius** | How far out to search for nearby wells. Default 1000 m. |
-| **T and S** | Filled from the aquifer's default values. Tick the override box to enter your own. Required in manual-entry mode. |
-| **Same-aquifer filter** | Off by default. When on, the nearby-well list is narrowed to wells whose location falls inside the source aquifer polygon. |
+| **Same-aquifer filter** | Off by default. When on, the nearby-well list is narrowed to wells whose location falls inside the source aquifer polygon. Disabled in manual-entry mode. |
 
-> **T and S** are transmissivity and storativity — the aquifer
-> properties that drive the drawdown calculation. The tool fills them
-> from a lookup table keyed to the aquifer subtype. If the subtype has no
-> reliable default (for example karstic limestone), you must enter them
-> yourself.
+![Pumping parameters panel with the pumping-rate input and unit dropdown, the duration field with preset buttons, the buffer radius, and the same-aquifer filter toggle]({{ site.baseurl }}/assets/img/setup-page-parameters.png)
 
-![Pumping parameters panel with the pumping-rate input and unit dropdown, the duration field with preset buttons, the buffer radius, and the T/S override controls]({{ site.baseurl }}/assets/img/setup-page-parameters.png)
-
-*The pumping parameters panel: Q with its unit dropdown, duration with quick presets, buffer radius, and T/S inputs.*
+*The pumping parameters panel: Q with its unit dropdown, duration with quick presets, buffer radius, and the same-aquifer filter toggle.*
 
 ## 4. Run the analysis
 

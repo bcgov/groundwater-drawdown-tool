@@ -5,8 +5,7 @@ nav_order: 1
 
 # Groundwater Drawdown Tool
 
-A screening and decision-support tool for BC Water Authorizations staff
-(the Groundwater Allocation Team) to estimate drawdown impacts at nearby
+A screening and decision-support tool for BC Water Authorizations staff to estimate drawdown impacts at nearby
 wells from a proposed groundwater withdrawal, supporting licence
 application reviews under the *Water Sustainability Act*.
 
