@@ -12,6 +12,19 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-05-25
+
+First broadly-installable release. Phase 5 (visual identity, map
+overlays, KML/PDF/HTML exports, logging and disclaimers) and Phase 6
+(documentation site, auto-update on launch, version footer with
+changelog modal) shipped. Distributed through GitHub Releases — end
+users download `setup.bat` from the latest-release URL and the
+installer pulls the matching tool zip. A pre-release security audit
+closed out the open Dependabot advisories.
+
+Pre-release for internal testing by the GIS team; a non-pre-release
+follows for end users once internal sign-off is in.
+
 ### Security
 
 - A pre-release dependency-and-code audit was completed; nine
