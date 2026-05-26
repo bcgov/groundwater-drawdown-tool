@@ -58,8 +58,15 @@ echo To stop the tool, close this window or press Ctrl+C.
 echo ============================================================================
 echo.
 
-REM Open browser after a short delay (background)
-start "" /b cmd /c "timeout /t 4 /nobreak >nul && start http://localhost:8050"
+REM Open the browser only once the Dash server is actually responding.
+REM The previous fixed 4-second delay was enough for warm restarts but
+REM not for a cold first launch — Python + Dash imports take 10-15 s on
+REM a fresh install, so users saw a connection-refused page and had to
+REM refresh by hand. The PowerShell loop below polls localhost:8050 up
+REM to ~90 s, then opens the browser the moment any HTTP response comes
+REM back. Runs in the background so it doesn't hold up the foreground
+REM Python launch on the next line.
+start "" /b powershell -NoProfile -ExecutionPolicy Bypass -Command "for ($i=0; $i -lt 60; $i++) { try { Invoke-WebRequest 'http://localhost:8050' -UseBasicParsing -TimeoutSec 1 | Out-Null; break } catch { Start-Sleep -Milliseconds 500 } }; Start-Process 'http://localhost:8050'"
 
 uv run python -m gwdrawdown.app
 

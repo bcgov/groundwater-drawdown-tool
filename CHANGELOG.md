@@ -16,6 +16,14 @@ Changed, Fixed, Removed.
 
 - The footer's **"What's new"** panel no longer shows an empty
   *"Unreleased"* heading above the current release notes.
+- **First launch on a fresh install no longer shows a
+  connection-refused page.** `run.bat` now waits for the local server
+  to be ready before opening your browser, instead of opening it
+  after a fixed 4-second delay. On a cold first launch the server
+  can take 10–15 seconds to start (Python and Dash have to load); the
+  browser now opens at the moment the page is actually available, so
+  there is no error page to refresh past. Subsequent launches are
+  unchanged — the wait is essentially zero once everything is warm.
 
 ## [0.5.0] — 2026-05-25
 
