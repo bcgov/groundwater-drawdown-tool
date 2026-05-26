@@ -41,10 +41,21 @@ gh auth login    # authenticate against github.com/bcgov/groundwater-drawdown-to
 5. Verify the release page:
    <https://github.com/bcgov/groundwater-drawdown-tool/releases>
 
-Add `-Draft` to publish a draft release for pre-release review:
+By default the release is published as a regular release flagged
+`--latest` — that is what makes `releases/latest/download/setup.bat`
+resolve to it (the canonical install URL the auto-updater uses).
+
+Add `-Draft` to publish a draft release for review:
 
 ```powershell
 .\scripts\publish_release.ps1 -Draft
+```
+
+Add `-Prerelease` to publish as a pre-release (excluded from
+`releases/latest`):
+
+```powershell
+.\scripts\publish_release.ps1 -Prerelease
 ```
 
 A `-SkipTests` flag exists for emergencies; its use is discouraged.
@@ -53,9 +64,9 @@ A `-SkipTests` flag exists for emergencies; its use is discouraged.
 
 The zip is built from an explicit allow-list in `publish_release.ps1`. It
 contains the tool itself — `src/`, `data/`, `pyproject.toml`, `uv.lock`,
-`.python-version`, `setup.bat`, `run.bat`, `version.txt` — plus
-`CHANGELOG.md`, `README.md`, `CLIENT_INSTALL.md`, and
-`references/excel_chart_layout.md`.
+`.python-version`, `setup.bat`, `run.bat`, `_wait_and_open.ps1`,
+`version.txt` — plus `CHANGELOG.md`, `README.md`, `CLIENT_INSTALL.md`,
+and `references/excel_chart_layout.md`.
 
 Developer-only documents (`PROJECT_PLAN.md`, `DATA_REFERENCE.md`,
 `DESIGN_NOTES.md`) and the `docs/` site sources are **not** shipped — they

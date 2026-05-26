@@ -853,13 +853,15 @@ Each tagged release on GitHub carries two assets:
   on subsequent runs.
 - **`groundwater-drawdown-tool.zip`** — the tool payload. Contains
   `src/`, `data/`, `pyproject.toml`, `uv.lock`, `.python-version`,
-  `setup.bat`, `run.bat`, `version.txt`, `CHANGELOG.md`, and the
-  end-user docs (`README.md`, `CLIENT_INSTALL.md`,
-  `references/excel_chart_layout.md`). Explicitly excluded: the
-  developer-only docs (`PROJECT_PLAN.md`, `DATA_REFERENCE.md`,
-  `DESIGN_NOTES.md`), the `/docs` Pages sources, `.venv/`, `outputs/`,
-  `logs/`, `flask_session/`, `.env`, `.git/`, `__pycache__/`, `*.pyc`,
-  `tests/`, `scripts/`, client-confidential reference materials.
+  `setup.bat`, `run.bat`, `_wait_and_open.ps1` (the launch helper
+  that polls the local port before opening the browser, see §6c),
+  `version.txt`, `CHANGELOG.md`, and the end-user docs
+  (`README.md`, `CLIENT_INSTALL.md`, `references/excel_chart_layout.md`).
+  Explicitly excluded: the developer-only docs (`PROJECT_PLAN.md`,
+  `DATA_REFERENCE.md`, `DESIGN_NOTES.md`), the `/docs` Pages sources,
+  `.venv/`, `outputs/`, `logs/`, `flask_session/`, `.env`, `.git/`,
+  `__pycache__/`, `*.pyc`, `tests/`, `scripts/`, client-confidential
+  reference materials.
 
 Both assets are exposed at stable URLs that always resolve to the latest
 release:
@@ -890,9 +892,16 @@ installed (`winget install GitHub.cli`, then `gh auth login` once):
 7. Extracts the matching CHANGELOG section (falls back to `[Unreleased]`
    with a warning if the publisher forgot to cut the version header).
 8. `gh release create v<version> --title "v<version>" --notes-file <…>
-   groundwater-drawdown-tool.zip setup.bat`.
+   --latest groundwater-drawdown-tool.zip setup.bat`. The explicit
+   `--latest` is load-bearing: without it, `gh release create` flagged
+   the first release in the repo as a pre-release, which made
+   `releases/latest/download/setup.bat` return 404 and broke the
+   auto-updater. Fixed after v0.5.0 publish — see commit c22399e.
 
-A `-Draft` flag creates the release in draft state for pre-release review.
+A `-Draft` flag creates the release in draft state for pre-release
+review. A `-Prerelease` flag publishes the release as a pre-release
+(swaps `--latest` for `--prerelease` in step 8); the default is a
+regular `--latest` release.
 
 No CI/CD in Stage 1 — manual is fine for one developer and one client team.
 The publish script is the only contract.
@@ -997,6 +1006,17 @@ What ships:
   version.
 - `run.bat --no-update` skips the check entirely (for slow networks or
   when the user wants to launch immediately).
+- After the (optional) update step, `run.bat` spawns
+  `_wait_and_open.ps1` in the background and starts the Dash app in
+  the foreground. The helper polls TCP port 8050 every ~500 ms (up to
+  90 s) and opens the URL in the default browser via `cmd /c start`
+  the moment the port accepts a connection. This replaced an earlier
+  fixed 4-second delay, which was fine for warm restarts but too short
+  for the cold first launch on a fresh install (Python + Dash imports
+  take 10–15 s the first time, so users were seeing a connection-
+  refused page and refreshing by hand). The helper is a separate
+  `.ps1` file — earlier inline-PowerShell attempts in `run.bat` kept
+  getting mangled by cmd's quote handling. See commit ec54efc.
 
 The mechanism is otherwise unchanged from §6.3 — same install dir,
 same preserve list, same release artifacts. It is a thin invocation
@@ -1025,16 +1045,21 @@ The footer on every page now reads
 ``version.txt`` mtime (the install or auto-update extraction touches
 this file, so the date reflects when the running release landed on
 this machine). The version text is a button — clicking it opens a
-modal showing the most recent CHANGELOG sections, so a user whose
-colleague has a feature they don't see can self-diagnose the version
-gap without touching files. Bounded to the latest few sections
-(`_MAX_CHANGELOG_SECTIONS = 3` in `ui/components/footer.py`) so the
-modal stays scannable.
+modal showing the most recent shipped CHANGELOG sections, so a user
+whose colleague has a feature they don't see can self-diagnose the
+version gap without touching files. Bounded to the latest few
+sections (`_MAX_CHANGELOG_SECTIONS = 3` in `ui/components/footer.py`)
+so the modal stays scannable. The `[Unreleased]` working-set heading
+is filtered out — end users only see shipped releases (the modal is
+opened by users running an installed version, so a developer-side
+"queued for the next release" block is irrelevant and reads as an
+empty heading above the user's actual release notes).
 
 Implementation: small additions to `ui/components/footer.py`
-(`_last_updated_date`, `_recent_changelog`, the modal markup, and a
-``@callback`` that toggles the modal's ``style.display``) plus
-`.bc-modal*` styles in `assets/theme.css`. No new dependencies.
+(`_last_updated_date`, `_recent_changelog` with the `[Unreleased]`
+filter, the modal markup, and a ``@callback`` that toggles the
+modal's ``style.display``) plus `.bc-modal*` styles in
+`assets/theme.css`. No new dependencies.
 
 #### 6.8 Configuration
 
