@@ -328,22 +328,24 @@ downstream interpretation.
 
 ## 11. Pumping rate unit conversions
 
-The setup page accepts pumping rate in any of the units below, matching
-the legacy Excel `Lookup_DB!B3:I10` dropdown. Default is **L/s** (the
-canonical Water Officer unit). All inputs are converted to **m³/day**
-before reaching `core/drawdown.py`. Conversion factors are stored in
+The setup page accepts pumping rate in any of the units below. Default is
+**m³/d**. All inputs are converted to **m³/day** before reaching
+`core/drawdown.py`. Conversion factors are stored in
 `data/unit_conversions.csv` so they're auditable without touching code.
 
 | Unit | Multiplier to m³/day |
 |---|---|
-| Imp GPM | 6.54624 |
 | L/min | 1.44 |
 | L/s | 86.4 |
 | m³/d | 1.0 |
 | m³/min | 1440.0 |
 | m³/s | 86400.0 |
-| US GPM | 5.45099 |
+| m³/yr | 0.00273785 |
 
+The legacy Excel dropdown also included Imp GPM and US GPM, but the
+current tool uses a curated subset of those units. BCGW well yield is still
+handled separately in US GPM when converting the `YIELD` field to
+SI for drawdown calculations.
 (Imperial gallon = 4.54609 L; US gallon = 3.785412 L; conversion factors
 derived in legacy Excel `Lookup_DB!B4:I10`.)
 

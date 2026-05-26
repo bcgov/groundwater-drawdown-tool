@@ -80,12 +80,12 @@ SI throughout. This is where unit bugs hide if they're scattered. See
 
 In addition to BCGW field conversions, this module provides the **pumping-rate
 unit table** that drives the Q-input dropdown on the setup page. The legacy
-Excel tool (`Lookup_DB!B3:I10`) supports: Imp GPM, L/min, **L/s** (default),
-m³/d, m³/min, m³/s, US GPM. Match this list. Default is L/s — Water Officers
-think in L/s (the canonical example pumping rate is `3.97 L/s`). All inputs
-are converted to m³/day before reaching `core/drawdown.py`. The conversion
-factors are sourced from `data/unit_conversions.csv` so they can be
-reviewed without touching code.
+Excel tool (`Lookup_DB!B3:I10`) supported: Imp GPM, L/min, L/s, m³/d, m³/min,
+m³/s, US GPM. The current tool uses a curated subset of that list: L/min,
+L/s, m³/d, m³/min, m³/s, m³/yr, with a default of m³/d. All inputs are converted
+to m³/day before reaching `core/drawdown.py`. The conversion factors are
+sourced from `data/unit_conversions.csv` so they can be reviewed without
+touching code.
 
 **`core/crs_utils.py`** — WGS84 (EPSG:4326) ↔ BC Albers (EPSG:3005) using `pyproj`
 with `always_xy=True`. Used both for inbound user coordinates (lon/lat from the
@@ -267,12 +267,12 @@ the page redirects to login.
 the proposed pumping well (click on map / enter lat-lon / search by tag
 number), parameter inputs (Q with unit dropdown, duration, buffer radius,
 T/S override), and the "Run Analysis" trigger. The pumping-rate input
-matches the legacy Excel: numeric value plus unit dropdown of Imp GPM,
-L/min, L/s (default), m³/d, m³/min, m³/s, US GPM. Pumping duration
-defaults to 90 days (client-confirmed for all of BC; the legacy Excel
-used 100 days for the east-coast Vancouver Island dry-season
-convention, see deck slide 5), with quick-pick presets for 30 days,
-90 days, 180 days, 1 year, and 10 years.
+uses the current tool's supported units: L/min, L/s, m³/d, m³/min,
+m³/s, m³/yr, with a default of m³/d. Pumping duration defaults to 90 days
+(client-confirmed for all of BC; the legacy Excel used 100 days for the
+east-coast Vancouver Island dry-season convention, see deck slide 5),
+with quick-pick presets for 30 days, 90 days, 180 days, 1 year, and 10
+years.
 
 **Single-aquifer filtering (spatial, default OFF).** Once the pumping
 point is placed, the tool queries the aquifer polygon containing it.
