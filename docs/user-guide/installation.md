@@ -76,8 +76,11 @@ Double-click `run.bat`. (Tip: right-click `run.bat` once and choose
 **Send to → Desktop (create shortcut)** so it is easy to find next time.)
 
 A console window opens — leave it running; closing it stops the tool.
-After a few seconds your browser opens to `http://localhost:8050`. If it
-does not open on its own, open any browser and go to that address.
+Once the local server is ready, your browser opens to
+`http://localhost:8050`. **The first launch takes 10–15 seconds** while
+Python loads for the first time; subsequent launches are nearly instant.
+If the browser does not open on its own, open any browser and go to that
+address.
 
 Continue to [First run]({{ site.baseurl }}{% link user-guide/first-run.md %}).
 

@@ -15,12 +15,20 @@ directory and are also offered as a browser download.
 
 ## CSV
 
-Each table on the results page has its own **Export CSV** button. The CSV
-reflects the table's current sort and filter state. The per-well CSV
-includes a derived "Outside Validity" Yes/No column, so the validity
-advisory (shown on screen as a purple row tint) survives the export.
+Each table on the results page has its own **Export CSV** button. The
+CSV reflects the table's current sort and filter state.
 
-Use CSV when you want the raw numbers in a spreadsheet.
+The per-well CSV reflects any **per-well edits** you have made — the
+exported values are the post-override numbers (NPL, finished depth,
+stickup, top of fracture / aquifer / screen) and any recomputed SAD,
+impact, and status that follow from them. A rightmost **Edited**
+column lists, for each row, the field names you adjusted (for example
+`NPL, Stickup`), so a reviewer can see at a glance which inputs are
+yours rather than BCGW's. Rows with no edits leave this column blank.
+
+The per-well CSV also carries a derived **Outside Validity** Yes/No
+column, so the Cooper-Jacob validity advisory (shown on screen as a
+purple row tint) survives the export.
 
 ## KML
 
@@ -28,8 +36,6 @@ A KML file for **Google Earth**. It contains one placemark for the
 pumping well plus one for each observation well, colour-coded by status
 and sized by predicted impact. The full per-well result row travels with
 each placemark as attached data.
-
-Use KML when you want to view the results geographically in Google Earth.
 
 ## PDF
 
@@ -40,23 +46,9 @@ full per-well details table. Every page carries a screening-tool banner,
 and the footer records the run timestamp, run ID, tool version, and
 signed-in user.
 
-Use the PDF as the artifact to attach to a licence assessment file.
-
 ## Interactive HTML map
 
 A single self-contained HTML file with an interactive map — the pumping
 well, the search buffer, and every observation well with clickable
 popups. It opens in any browser with no software to install and stays
 interactive (pan, zoom, switch basemap).
-
-Use the HTML map to share results with someone who does not have the
-tool installed.
-
-## Which format to use
-
-| You want to… | Use |
-|---|---|
-| Work with the numbers in a spreadsheet | CSV |
-| View results in Google Earth | KML |
-| Attach a report to an assessment file | PDF |
-| Share an interactive view with a colleague | HTML map |

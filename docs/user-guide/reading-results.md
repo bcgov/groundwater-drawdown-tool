@@ -20,20 +20,14 @@ If the run used manual entry, an orange banner appears here.
 
 ## Stat cards
 
-A row of summary cards: total wells found, count flagged at-risk, count
-with insufficient data, count outside the Cooper-Jacob validity range,
-and the maximum predicted drawdown.
+A row of summary cards giving the headline counts and figures: **Total
+wells**, **OK**, **At risk**, **Insufficient data**, **Suspect data**,
+**Outside validity**, and **Maximum predicted drawdown**. The same
+status names are used in the per-well details table below.
 
-## At-risk wells summary table
-
-The key artifact for a licence assessment file. It lists only the wells
-where the predicted impact is at least 30% of that well's Safe Available
-Drawdown (SAD), with columns: WTN, reassigned aquifer material, SAD (m),
-impact (m), and impact as a percentage of SAD.
-
-![At-risk wells summary table with WTN, reassigned material, SAD, impact, and impact-percent columns]({{ site.baseurl }}/assets/img/at-risk-table.png)
-
-*The at-risk wells summary table.*
+Below the cards sits an **export bar** with one button per format —
+CSV, KML, PDF, and interactive HTML map. See
+[Exporting results]({{ site.baseurl }}{% link user-guide/exports.md %}).
 
 ## Distance-drawdown chart
 
@@ -41,26 +35,49 @@ A chart of drawdown against distance from the pumping well, matching
 the legacy Excel tool (*iMapBCDistDrawdown*, D. van Everdingen & M.
 Leahey, 2024):
 
-- **Red dots** — each nearby well, labelled with its WTN.
+- **Well dots** — one per nearby well, labelled with its WTN. **Dot
+  colour matches the well's Status** (see [Status flags](#status-flags)
+  below) — the same colour scheme is used on the map below.
 - **Black curve** — the Cooper-Jacob drawdown curve.
 - **Orange bars** — each well's SAD, drawn down from its point.
 - The Y axis is **inverted** — drawdown increases downward, the standard
   hydrogeology convention.
 
-![Distance-drawdown chart with red WTN-labelled well points, a smooth black Cooper-Jacob curve, and vertical orange SAD bars, on an inverted Y axis]({{ site.baseurl }}/assets/img/distance-drawdown-chart.png)
+![Distance-drawdown chart with status-coloured WTN-labelled well points, a smooth black Cooper-Jacob curve, and vertical orange SAD bars, on an inverted Y axis]({{ site.baseurl }}/assets/img/distance-drawdown-chart.png)
 
-*The distance-drawdown chart: wells (red), Cooper-Jacob curve (black), SAD bars (orange).*
+*The distance-drawdown chart: well dots (colour matches Status), Cooper-Jacob curve (black), SAD bars (orange).*
 
-## Map
+## Impact % per well
 
-A colour-coded map of the wells. Marker colour shows drawdown severity
-and marker size shows the magnitude of impact. Clicking a well on the
-map highlights it on the chart, and vice versa — the two views are
-linked.
+A bar chart of each well's predicted impact as a percentage of its
+Safe Available Drawdown (SAD), sorted worst-to-best. A dashed red line
+marks the **30 % at-risk threshold** — bars at or above the line are
+flagged as at-risk. Wells with no computable impact (missing NPL or
+well depth) are excluded from this chart — they appear in the details
+table below with an **INSUFFICIENT_DATA** status.
+
+## Wells in buffer (map view)
+
+A colour-coded map of the wells inside the buffer radius. Marker colour
+matches the **Status** column in the details table; marker size scales
+with the magnitude of predicted impact. Clicking a marker highlights the
+matching point on the distance-drawdown chart, and clicking a chart
+point highlights the matching marker — the two views are linked.
 
 ![Results map with observation wells colour-coded by drawdown severity and sized by predicted impact, around the proposed pumping well at the centre]({{ site.baseurl }}/assets/img/results-map.png)
 
-*The results map. Marker colour shows drawdown severity; marker size shows impact magnitude.*
+*The results map. Marker colour matches the Status column; marker size scales with predicted impact.*
+
+## At-risk wells summary table
+
+Lists only the wells where the predicted impact is at least 30 % of that
+well's Safe Available Drawdown (SAD), with columns: WTN, reassigned
+aquifer material, SAD (m), impact (m), and impact as a percentage of SAD.
+Sorted descending by impact percentage.
+
+![At-risk wells summary table with WTN, reassigned material, SAD, impact, and impact-percent columns]({{ site.baseurl }}/assets/img/at-risk-table.png)
+
+*The at-risk wells summary table.*
 
 ## Per-well details table
 
@@ -80,9 +97,16 @@ Four columns can be edited directly in the table:
 - **Top of fracture / aquifer / screen** — for confined or fractured
   bedrock wells, read from the driller's log.
 
-When you edit a cell, the tool recomputes that well's SAD and status
-immediately, without re-querying BCGW. Edited rows are tinted **light
-yellow** and edited values carry a trailing `*`.
+When you edit a cell, the tool recomputes that well's SAD, status, the
+at-risk summary, and the stat cards above — immediately, with no re-query
+to BCGW. Edited rows are tinted **light yellow**, and the rightmost
+**Edited** column lists which fields were adjusted on each row (so the
+edits survive the CSV export). Click **Reset all overrides** above the
+table to clear every edit in one go.
+
+Both the at-risk and per-well tables have their own **Export CSV** button
+above them — separate from the whole-run exports at the top of the page —
+which exports the table's current sort + filter view.
 
 ![Per-well details table with one row tinted light yellow to mark an edited value and one row tinted light purple to mark outside Cooper-Jacob validity]({{ site.baseurl }}/assets/img/per-well-table.png)
 
@@ -90,14 +114,16 @@ yellow** and edited values carry a trailing `*`.
 
 ## Status flags
 
-Each well is classified:
+Each well is classified. The same colour appears in the stat cards, the
+distance-drawdown chart dots, the map markers, and the per-well table's
+Status column:
 
-| Status | Meaning |
-|---|---|
-| **OK** | Predicted impact is below 30% of the well's SAD. |
-| **AT_RISK** | Predicted impact is 30% of SAD or more. |
-| **INSUFFICIENT_DATA** | SAD could not be computed — a required value (water level or well depth) is missing. |
-| **SUSPECT_DATA** | SAD was computed but is non-positive — the BCGW baseline record for that well looks physically impossible and should be checked against the driller's log. |
+| Status | Colour | Meaning |
+|---|---|---|
+| **OK** | Green | Predicted impact is below 30% of the well's SAD. |
+| **AT_RISK** | Red | Predicted impact is 30% of SAD or more. |
+| **INSUFFICIENT_DATA** | Grey | SAD could not be computed — a required value (water level or well depth) is missing. |
+| **SUSPECT_DATA** | Orange | SAD was computed but is non-positive — the BCGW baseline record for that well looks physically impossible and should be checked against the driller's log. |
 
 Rows with a **light-purple** tint fall outside the Cooper-Jacob validity
 range for this distance and duration — the predicted drawdown for those

@@ -9,11 +9,17 @@ nav_order: 2
 ## Launching the tool
 
 Double-click `run.bat` in the install folder. A console window opens
-(leave it running — closing it stops the tool) and after a few seconds
-your default browser opens to `http://localhost:8050`.
+(leave it running — closing it stops the tool) and your default browser
+opens to `http://localhost:8050` once the local server is ready.
 
 If the browser does not open automatically, open any browser and go to
 `http://localhost:8050` yourself.
+
+> **The first launch is slower.** Cold-starting the tool the first
+> time after install takes about **10–15 seconds** while Python and
+> the tool's libraries load. Subsequent launches are nearly instant.
+> The browser opens automatically once the server is ready — there is
+> nothing you need to refresh.
 
 > **Keep the console window open.** It is the running tool. Minimise it
 > if it is in the way, but do not close it until you are finished.

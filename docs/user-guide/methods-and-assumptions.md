@@ -138,13 +138,36 @@ using the bedrock depth on the driller's log (`Impact!R`):
 Both values appear in the per-well details table. The reassigned value
 is the one used for downstream interpretation.
 
-## Single-source pumping (v1)
+## Current version limitations (v1)
+
+A couple of v1 simplifications worth keeping in mind when interpreting
+results. Both are user-interface limitations, not gaps in the
+underlying math.
+
+### Single pumping well (no superposition)
 
 The v1 user interface accepts a **single** proposed pumping well. The
 underlying math already supports multiple pumping sources — their
 contributions are summed linearly, which is mathematically free for
-Cooper-Jacob (it is linear in Q). Multi-well analyses are a future
-user-interface enhancement, not a new calculation.
+Cooper-Jacob (it is linear in *Q*). Multi-well (superposition)
+analyses are a future user-interface enhancement, not a new
+calculation. If you are screening a proposed development that will
+include several pumping wells, run the tool once for each, keep in
+mind the results do **not** account for interference between them,
+and use professional judgement to combine them.
+
+### Single (T, S) per aquifer subtype (no range)
+
+Each aquifer subtype is assigned **one** default (T, S) pair drawn
+from the Wei et al. (2009) medians. Real aquifer properties vary
+within a subtype, sometimes by orders of magnitude — the median is a
+useful starting point but not the whole picture. The drawdown number
+the tool reports is therefore a **point estimate** using the median
+values, not a range. If you have local pumping-test or driller's-log
+data for the specific aquifer, enter your own T and S via the
+**Override default T / S** toggle on the setup page to anchor the
+estimate to that site. A future version may report a range of
+drawdown estimates that reflects the within-subtype spread of T and S.
 
 ## Assumptions and limitations
 
