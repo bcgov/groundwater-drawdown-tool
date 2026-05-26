@@ -142,6 +142,7 @@ $includes = @(
     '.python-version',
     'setup.bat',
     'run.bat',
+    '_wait_and_open.ps1',
     'version.txt',
     'CHANGELOG.md',
     'README.md',

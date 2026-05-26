@@ -59,14 +59,12 @@ echo ===========================================================================
 echo.
 
 REM Open the browser only once the Dash server is actually responding.
-REM The previous fixed 4-second delay was enough for warm restarts but
-REM not for a cold first launch — Python + Dash imports take 10-15 s on
-REM a fresh install, so users saw a connection-refused page and had to
-REM refresh by hand. The PowerShell loop below polls localhost:8050 up
-REM to ~90 s, then opens the browser the moment any HTTP response comes
-REM back. Runs in the background so it doesn't hold up the foreground
-REM Python launch on the next line.
-start "" /b powershell -NoProfile -ExecutionPolicy Bypass -Command "for ($i=0; $i -lt 60; $i++) { try { Invoke-WebRequest 'http://localhost:8050' -UseBasicParsing -TimeoutSec 1 | Out-Null; break } catch { Start-Sleep -Milliseconds 500 } }; Start-Process 'http://localhost:8050'"
+REM Delegates to _wait_and_open.ps1 (TCP port-poll on 8050, then `cmd
+REM /c start` for the URL). Earlier inline-PowerShell attempts kept
+REM getting mangled by cmd's quote handling — a separate .ps1 file
+REM avoids the escaping problem entirely. Runs in the background so
+REM the foreground Python launch on the next line is not held up.
+start "" /b powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0_wait_and_open.ps1"
 
 uv run python -m gwdrawdown.app
 
