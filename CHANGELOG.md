@@ -12,6 +12,8 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-06-01
+
 ### Changed
 
 - The **documentation site now opens in light mode by default**. 
