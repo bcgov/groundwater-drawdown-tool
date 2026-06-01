@@ -12,6 +12,11 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+### Changed
+
+- The **documentation site now opens in light mode by default**. 
+  The light/dark toggle in the sidebar still works and still remembers your choice per browser.
+
 ### Fixed
 
 - The footer's **"What's new"** panel no longer shows an empty

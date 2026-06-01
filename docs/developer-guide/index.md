@@ -31,5 +31,6 @@ to a server) is mostly packaging work, not a rewrite.
   interpreter management.
 - **Dash** (with `dash-leaflet` and `plotly`) for the UI.
 - **oracledb** (thin mode) for the BCGW Oracle connection.
-- **pyproj** for coordinate transforms, **pandas** for tabular data.
+- **pyproj** for coordinate transforms. 
+- **pandas** for tabular data.
 - **pytest** for the test suite.

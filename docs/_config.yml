@@ -19,7 +19,7 @@ permalink: pretty
 # --- just-the-docs options -------------------------------------------------
 search_enabled: true
 heading_anchors: true
-color_scheme: dark
+color_scheme: light
 back_to_top: true
 back_to_top_text: "Back to top"
 

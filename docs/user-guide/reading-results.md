@@ -56,6 +56,10 @@ flagged as at-risk. Wells with no computable impact (missing NPL or
 well depth) are excluded from this chart — they appear in the details
 table below with an **INSUFFICIENT_DATA** status.
 
+![Impact-percent bar chart, one bar per well sorted worst-to-best, with a dashed red line marking the 30% at-risk threshold]({{ site.baseurl }}/assets/img/impact-percent-chart.png)
+
+*The Impact % per well chart: bars sorted worst-to-best, with the dashed red 30% at-risk threshold line.*
+
 ## Wells in buffer (map view)
 
 A colour-coded map of the wells inside the buffer radius. Marker colour
