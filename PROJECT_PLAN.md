@@ -827,21 +827,24 @@ shipped tool. This sub-stage closes that gap.
 
 #### Release strategy
 
-The first published release is **`v0.5.0`**, cut as a GitHub
-**pre-release** for internal testing by the GIS team. Once that
-internal cycle yields a build the team is comfortable shipping, a
-subsequent non-pre-release is published for end-user (Water Officer)
-testing. Iterations during internal testing are published as further
-pre-releases.
+Every release is published as a regular GitHub release marked
+`--latest` — there are **no GitHub pre-releases**. (An early plan to
+cut internal-testing builds as pre-releases was dropped: GitHub's
+`releases/latest` endpoint excludes pre-releases, which would have
+left the canonical `releases/latest/download/setup.bat` URL pointing
+at a stale build and broken the auto-updater for testers.)
 
-A practical note about the auto-updater (§6c): GitHub's
-`releases/latest` endpoint **excludes pre-releases.** Internal
-testers on a pre-release will therefore not receive automatic updates
-to subsequent pre-releases — they re-run the `setup.bat` they
-downloaded (or download a fresh copy from the specific release page)
-for each iteration. Auto-updates begin once a non-pre-release ships,
-at which point `releases/latest` resolves and the
-`setup.bat --silent-update` path takes over for everyone.
+`v0.5.0` was a pipeline-validation cut — it exercised the publish and
+install path end to end but was never handed to testers. **`v0.5.1`
+is the first build delivered to the GIS team** for internal testing;
+fixes from that cycle ship forward as further `v0.5.x` releases. Once
+the team is comfortable, the same channel carries the build on to
+end-user (Water Officer) testing — the distinction is the version
+number and how it is communicated, not the release's GitHub status.
+
+Because every release is `--latest`, the stable URLs always resolve
+and the `setup.bat --silent-update` auto-updater (§6c) carries every
+install forward to the newest release with no manual re-download.
 
 #### 6.1 The release layout
 
@@ -898,10 +901,9 @@ installed (`winget install GitHub.cli`, then `gh auth login` once):
    `releases/latest/download/setup.bat` return 404 and broke the
    auto-updater. Fixed after v0.5.0 publish — see commit c22399e.
 
-A `-Draft` flag creates the release in draft state for pre-release
-review. A `-Prerelease` flag publishes the release as a pre-release
-(swaps `--latest` for `--prerelease` in step 8); the default is a
-regular `--latest` release.
+A `-Draft` flag creates the release in draft state for reviewing it
+before it goes live. There is no pre-release option — every published
+release is marked `--latest` (see the Release strategy note above).
 
 No CI/CD in Stage 1 — manual is fine for one developer and one client team.
 The publish script is the only contract.
