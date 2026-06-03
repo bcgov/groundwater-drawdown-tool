@@ -12,6 +12,15 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+### Changed
+
+- **When a results table is empty, the message is now a clearly
+  highlighted notice instead of a faint line of text** — and the
+  table's **Export CSV button is hidden when there's nothing to
+  export**. This covers both "no wells were flagged at risk" and "no
+  wells were found in the buffer". The buffer-empty message also
+  suggests increasing the buffer radius and re-running.
+
 ### Fixed
 
 - The **Run Analysis button is now greyed out until you place a pumping

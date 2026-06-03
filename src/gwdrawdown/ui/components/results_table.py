@@ -357,7 +357,23 @@ def make_at_risk_rows(result: AnalysisResult) -> list[dict]:
     ]
 
 
-_EMPTY_MESSAGE_STYLE = {"color": "#555", "fontStyle": "italic"}
+# Empty-state callout. Kept in sync with `_EMPTY_VISIBLE` in
+# `results_page` (the render callback swaps the whole style dict when it
+# reveals the message). A bordered, tinted box reads as a real notice —
+# the previous grey italic line was easy to miss, so a tester clicked a
+# dead Export button several times before noticing there was nothing to
+# export.
+_EMPTY_MESSAGE_STYLE = {
+    "padding": "0.85rem 1.1rem",
+    "marginBottom": "1rem",
+    "backgroundColor": "#eef3f8",
+    "border": "1px solid #b6cee4",
+    "borderLeft": "4px solid var(--bc-brand, #003366)",
+    "borderRadius": "var(--bc-radius, 4px)",
+    "color": "#1a1a1a",
+    "fontSize": "0.95rem",
+    "fontWeight": "500",
+}
 
 
 def build_at_risk_section() -> html.Div:
@@ -384,21 +400,29 @@ def build_at_risk_section() -> html.Div:
                 id="at-risk-helper",
                 style={"fontSize": "0.9rem", "color": "#555"},
             ),
-            html.Button(
-                "Export CSV",
-                id="at-risk-export-btn",
-                n_clicks=0,
-                style={**_EXPORT_BUTTON_STYLE, "marginBottom": "0.5rem"},
-            ),
             dcc.Download(id="at-risk-download"),
             html.Div(
                 id="at-risk-empty-message",
-                children="No wells flagged AT_RISK at the configured threshold.",
+                children=(
+                    "No wells were flagged at risk at the configured "
+                    "threshold — predicted drawdown stays below the "
+                    "at-risk cutoff for every well found in the buffer."
+                ),
                 style={"display": "none", **_EMPTY_MESSAGE_STYLE},
             ),
             html.Div(
                 id="at-risk-table-wrapper",
+                # The Export button lives inside the wrapper so it is
+                # hidden along with the table when there are no at-risk
+                # wells — no separate visibility callback needed, and no
+                # dead "Export CSV" control over an empty table.
                 children=[
+                    html.Button(
+                        "Export CSV",
+                        id="at-risk-export-btn",
+                        n_clicks=0,
+                        style={**_EXPORT_BUTTON_STYLE, "marginBottom": "0.5rem"},
+                    ),
                     dash_table.DataTable(
                         id="at-risk-summary",
                         columns=_columns_for(_AT_RISK_COLUMNS),
@@ -558,32 +582,40 @@ def build_per_well_section() -> html.Div:
                 _PER_WELL_HELPER_CHILDREN,
                 style={"fontSize": "0.9rem", "color": "#555"},
             ),
-            html.Div(
-                [
-                    html.Button(
-                        "Export CSV",
-                        id="per-well-export-btn",
-                        n_clicks=0,
-                        style=_EXPORT_BUTTON_STYLE,
-                    ),
-                    html.Button(
-                        "Reset all overrides",
-                        id="per-well-reset-overrides-btn",
-                        n_clicks=0,
-                        style={**_EXPORT_BUTTON_STYLE, "marginLeft": "0.5rem"},
-                    ),
-                ],
-                style={"marginBottom": "0.5rem"},
-            ),
             dcc.Download(id="per-well-download"),
             html.Div(
                 id="per-well-empty-message",
-                children="No wells returned by the buffer query.",
+                children=(
+                    "No groundwater wells were found within the buffer "
+                    "radius of the pumping point. Try increasing the "
+                    "buffer radius on the Setup page and running the "
+                    "analysis again."
+                ),
                 style={"display": "none", **_EMPTY_MESSAGE_STYLE},
             ),
             html.Div(
                 id="per-well-table-wrapper",
+                # Export / reset controls live inside the wrapper so they
+                # disappear with the table when no wells are returned —
+                # nothing to export or reset when the buffer is empty.
                 children=[
+                    html.Div(
+                        [
+                            html.Button(
+                                "Export CSV",
+                                id="per-well-export-btn",
+                                n_clicks=0,
+                                style=_EXPORT_BUTTON_STYLE,
+                            ),
+                            html.Button(
+                                "Reset all overrides",
+                                id="per-well-reset-overrides-btn",
+                                n_clicks=0,
+                                style={**_EXPORT_BUTTON_STYLE, "marginLeft": "0.5rem"},
+                            ),
+                        ],
+                        style={"marginBottom": "0.5rem"},
+                    ),
                     _per_well_legend(),
                     dash_table.DataTable(
                         id="per-well-details",

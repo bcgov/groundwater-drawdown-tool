@@ -425,10 +425,22 @@ def _coerce_overrides(
 
 _HIDE = {"display": "none"}
 _SHOW = {}
-# Reveal styling for the at-risk / per-well empty-state messages.
-# Matches `_EMPTY_MESSAGE_STYLE` in `results_table` (the hidden form
-# carries the same color + italic so toggling display alone reveals it).
-_EMPTY_VISIBLE = {"color": "#555", "fontStyle": "italic"}
+# Reveal styling for the at-risk / per-well empty-state messages. Kept in
+# sync with `_EMPTY_MESSAGE_STYLE` in `results_table`; the render callback
+# swaps in this whole dict to show the message as a bordered, tinted
+# callout (the old grey italic line was easy to overlook).
+_EMPTY_VISIBLE = {
+    "display": "block",
+    "padding": "0.85rem 1.1rem",
+    "marginBottom": "1rem",
+    "backgroundColor": "#eef3f8",
+    "border": "1px solid #b6cee4",
+    "borderLeft": "4px solid var(--bc-brand, #003366)",
+    "borderRadius": "var(--bc-radius, 4px)",
+    "color": "#1a1a1a",
+    "fontSize": "0.95rem",
+    "fontWeight": "500",
+}
 
 
 def _empty_state(message: str, style: dict[str, str]) -> html.Div:
