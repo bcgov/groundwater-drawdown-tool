@@ -106,6 +106,7 @@ from gwdrawdown.ui.components.results_table import (
     make_per_well_rows,
 )
 from gwdrawdown.ui.components.stat_cards import make_stat_cards
+from gwdrawdown.ui.format_utils import format_float
 from gwdrawdown.ui.session import current_user, is_authenticated
 from gwdrawdown.usage_logger import get_usage_logger
 
@@ -326,8 +327,8 @@ def _summary_block(result: AnalysisResult) -> html.Div:
             row("Source aquifer:", source_text),
             row(
                 "T / S used:",
-                f"T = {inputs.transmissivity_m2_per_day} m²/day, "
-                f"S = {inputs.storativity}{ts_tag}",
+                f"T = {format_float(inputs.transmissivity_m2_per_day)} m²/day, "
+                f"S = {format_float(inputs.storativity)}{ts_tag}",
             ),
             row(
                 "Pumping rate:",

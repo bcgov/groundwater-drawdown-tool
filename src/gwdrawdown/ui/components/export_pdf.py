@@ -45,6 +45,7 @@ from reportlab.platypus import (
 from gwdrawdown.analysis import AnalysisResult, WellResult
 from gwdrawdown.core.flagging import WellStatus
 from gwdrawdown.ui.components.palette import STATUS_PALETTE
+from gwdrawdown.ui.format_utils import format_float
 
 _PAGE_SIZE = landscape(letter)
 _MARGIN = 0.4 * inch
@@ -233,8 +234,8 @@ def _input_parameters_table(result: AnalysisResult, styles: dict) -> Table:
         ("Source aquifer", source),
         (
             "Transmissivity / Storativity",
-            f"T = {inputs.transmissivity_m2_per_day:g} m²/day, "
-            f"S = {inputs.storativity:g}{ts_tag}",
+            f"T = {format_float(inputs.transmissivity_m2_per_day)} m²/day, "
+            f"S = {format_float(inputs.storativity)}{ts_tag}",
         ),
         (
             "Pumping rate",

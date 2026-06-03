@@ -82,6 +82,7 @@ from gwdrawdown.ui.components.footer import make_footer
 from gwdrawdown.ui.components.header import make_header
 from gwdrawdown.ui.components.icons import icon
 from gwdrawdown.ui.components.map_labels import build_boundary_label_markers
+from gwdrawdown.ui.format_utils import format_float
 from gwdrawdown.ui.session import is_authenticated
 
 dash.register_page(__name__, path="/setup", name="Setup")
@@ -141,19 +142,6 @@ def _build_pumping_rate_options() -> list[dict[str, str]]:
 
 def _default_pumping_rate_unit() -> str:
     return units.default_pumping_rate_unit().unit
-
-
-def _format_float(value: float | None) -> str:
-    """Render a float in fixed-point with trailing zeros stripped.
-
-    Python's default ``str(0.00003)`` yields ``"3e-05"``, which is hard
-    to read in a Water Officer-facing UI for storativity values like
-    ``0.00003`` (subtype 5a) or ``0.00064`` (6a/6b). Force fixed-point.
-    """
-    if value is None:
-        return ""
-    formatted = f"{value:.10f}".rstrip("0").rstrip(".")
-    return formatted if formatted else "0"
 
 
 # --- Layout ------------------------------------------------------------------
@@ -1011,8 +999,8 @@ def fetch_ts_lookup(
     return (
         {"subtype_code": subtype, "T": props.T_m2_per_day, "S": props.S},
         (
-            f"Subtype {subtype}: default T = {_format_float(props.T_m2_per_day)} "
-            f"m²/day, S = {_format_float(props.S)}"
+            f"Subtype {subtype}: default T = {format_float(props.T_m2_per_day)} "
+            f"m²/day, S = {format_float(props.S)}"
         ),
         [],
     )

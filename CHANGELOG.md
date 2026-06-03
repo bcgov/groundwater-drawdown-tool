@@ -14,6 +14,10 @@ Changed, Fixed, Removed.
 
 ### Changed
 
+- **Storativity (S) now reads as a plain decimal** (e.g. `0.00003`)
+  in the results-page input parameters and the PDF export, instead of
+  scientific notation (`3e-05`). Transmissivity displays the same way.
+
 - **When a results table is empty, the message is now a clearly
   highlighted notice instead of a faint line of text** — and the
   table's **Export CSV button is hidden when there's nothing to
