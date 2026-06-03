@@ -7,13 +7,10 @@ stripe sits along the bottom edge of the band — the hallmark of BC Gov
 web properties — rendered via ``border-bottom`` on ``.bc-header`` so
 the chrome stays a single tag.
 
-The logo is the official BC positive logo (navy artwork on white),
-cropped from the supplied ``BCID_H_RGB_pos.jpg`` to trim its wide
-clear-space margins down to a small uniform border. Because the
-header band is dark, the asset keeps its white background and
-``.bc-header__logo`` (in ``theme.css``) rounds its corners so it
-reads as a deliberate white panel — the BC brand's treatment for the
-logo in a dark context — rather than a bare image.
+The logo is the official BC Government wordmark SVG, which carries its
+own navy background (``#013366``) — effectively identical to the
+header band (``--bc-brand`` ``#003366``) — so it sits flush in the
+band with no white panel or rounded corners.
 """
 
 from __future__ import annotations
@@ -22,7 +19,7 @@ from dash import get_asset_url, html
 
 from gwdrawdown.ui.session import current_user
 
-_LOGO_ASSET = "bc_logo_header.jpg"
+_LOGO_ASSET = "17_gov3_bc_logo.d331986e.svg"
 
 
 def _logo() -> html.Img:

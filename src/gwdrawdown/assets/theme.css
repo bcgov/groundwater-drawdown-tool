@@ -164,19 +164,16 @@ select {
 }
 .bc-header__brand:hover { color: var(--bc-text-inverse); }
 
-/* BC visual-identity logo. The positive (navy) logo would vanish
- * against the dark header band, so the white-background asset is kept
- * and shown as a rounded white panel — the brand's treatment for the
- * logo in a dark context. Sized by height; width follows the logo's
- * aspect ratio. flex-shrink:0 so it never squashes as the viewport
- * narrows. */
+/* BC visual-identity logo. The official wordmark SVG carries its own
+ * navy background (#013366), which matches the header band, so it sits
+ * flush with no white panel or rounding. Sized by height; width follows
+ * the logo's aspect ratio. flex-shrink:0 so it never squashes as the
+ * viewport narrows. */
 .bc-header__logo {
     height: 40px;
     width: auto;
     display: block;
     flex-shrink: 0;
-    background: #FFFFFF;
-    border-radius: var(--bc-radius);
 }
 
 .bc-header__divider {

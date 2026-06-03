@@ -21,6 +21,10 @@ Changed, Fixed, Removed.
 
 ### Changed
 
+- The **page header now uses the official BC Government wordmark**,
+  which sits flush in the dark-blue band instead of appearing as a
+  white panel.
+
 - **Storativity (S) now reads as a plain decimal** (e.g. `0.00003`)
   in the results-page input parameters and the PDF export, instead of
   scientific notation (`3e-05`). Transmissivity displays the same way.
