@@ -12,6 +12,15 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+### Fixed
+
+- The **Run Analysis button is now greyed out until you place a pumping
+  point**, instead of letting you click it and then showing a "Place a
+  pumping point first" message. Once a point is set (by map click,
+  lat/lon, or well tag number), the button enables and any earlier
+  message clears — so there's no need to scroll back up to check whether
+  a point was placed.
+
 ## [0.5.1] — 2026-06-01
 
 ### Changed

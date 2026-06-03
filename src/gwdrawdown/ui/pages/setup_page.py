@@ -624,6 +624,11 @@ def layout(**_kwargs: object) -> html.Div:
                                 id="setup-run",
                                 n_clicks=0,
                                 type="button",
+                                # Starts disabled until a pumping point is
+                                # placed (see `toggle_run_enabled`). Removes
+                                # the "Place a pumping point first" dead-end
+                                # a tester hit by clicking Run too early.
+                                disabled=True,
                                 className="bc-btn bc-btn--primary bc-btn--large",
                             ),
                             html.Div(
@@ -785,6 +790,27 @@ def update_marker_and_display(point: dict | None) -> tuple[list, str]:
     if point.get("wtn") is not None:
         label += f" | WTN {point['wtn']}"
     return [marker], label
+
+
+@callback(
+    Output("setup-run", "disabled"),
+    Output("setup-run-error", "children", allow_duplicate=True),
+    Input("setup-point-store", "data"),
+    prevent_initial_call="initial_duplicate",
+)
+def toggle_run_enabled(point: dict | None) -> tuple[bool, Any]:
+    """Gate Run Analysis on a placed pumping point.
+
+    The button starts disabled; placing a point by any input mode
+    (map click, lat/lon, or WTN lookup) enables it and clears any
+    stale "Place a pumping point first" error. Tester feedback: that
+    error appeared after an early click and did not clear once a point
+    was placed, so officers scrolled back up to re-check they'd set a
+    point. Disabling the trigger removes the dead-end entirely.
+    """
+    if point:
+        return False, ""
+    return True, no_update
 
 
 def _manual_option() -> dict[str, object]:
