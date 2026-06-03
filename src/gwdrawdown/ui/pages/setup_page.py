@@ -251,6 +251,27 @@ def layout(**_kwargs: object) -> html.Div:
                                         className="bc-form-error",
                                         style={"marginLeft": "0.75rem"},
                                     ),
+                                    # For officers who don't have the WTN to
+                                    # hand: the GWELLS web map lets them find a
+                                    # well's tag number by location. Opens in a
+                                    # new tab so it doesn't disturb the in-
+                                    # progress setup form.
+                                    html.Div(
+                                        [
+                                            "Don't have the well tag number? "
+                                            "Find it by location on the ",
+                                            html.A(
+                                                "BC Groundwater Wells and "
+                                                "Aquifers map",
+                                                href="https://apps.nrs.gov.bc.ca/gwells/",
+                                                target="_blank",
+                                                rel="noopener noreferrer",
+                                            ),
+                                            " (opens in a new tab).",
+                                        ],
+                                        className="bc-form-hint",
+                                        style={"marginTop": "0.5rem"},
+                                    ),
                                 ],
                                 id="setup-wtn-panel",
                                 style={"display": "none", "marginBottom": "0.75rem"},

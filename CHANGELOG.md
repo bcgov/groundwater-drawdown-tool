@@ -12,6 +12,13 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+### Added
+
+- The **"Well tag number" input mode now links to the BC Groundwater
+  Wells and Aquifers map** (apps.nrs.gov.bc.ca/gwells). If you don't
+  have a well tag number handy, you can find one by location on that
+  map; the link opens in a new tab.
+
 ### Changed
 
 - **Storativity (S) now reads as a plain decimal** (e.g. `0.00003`)
