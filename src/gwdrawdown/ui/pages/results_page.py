@@ -67,6 +67,7 @@ from dash import (
     ALL,
     Input,
     Output,
+    State,
     callback,
     clientside_callback,
     ctx,
@@ -363,19 +364,32 @@ def _inputs_fingerprint(inputs_data: dict[str, Any]) -> str:
     Output("well-overrides", "data", allow_duplicate=True),
     Output("selected-well", "data", allow_duplicate=True),
     Input("analysis-inputs", "data"),
+    State("analysis-result", "data"),
     prevent_initial_call="initial_duplicate",
 )
 def run_pipeline_if_needed(
     inputs_data: dict[str, Any] | None,
+    cached_result: dict[str, Any] | None,
 ) -> tuple[Any, Any, Any]:
     """Run the BCGW pipeline when `analysis-inputs` changes.
 
     Caches the result in `analysis-result` so override edits and tab
-    refreshes don't replay the pipeline. Also clears `well-overrides`
-    and `selected-well` on a new run — the previous state referenced
-    WTNs that may not appear in the new well set.
+    refreshes don't replay the pipeline: when the cached result's
+    ``_fingerprint`` still matches the current inputs (e.g. an F5 on
+    this tab re-fires the initial call with unchanged sessionStorage),
+    everything is left untouched — including any per-well overrides
+    the officer has entered. Only a genuinely new run clears
+    `well-overrides` and `selected-well`, because the previous state
+    referenced WTNs that may not appear in the new well set. An error
+    payload carries no fingerprint, so a refresh after a failed run
+    retries the pipeline.
     """
     if not inputs_data:
+        return no_update, no_update, no_update
+    if (
+        cached_result
+        and cached_result.get("_fingerprint") == _inputs_fingerprint(inputs_data)
+    ):
         return no_update, no_update, no_update
     bcgw_user = current_user()
     try:

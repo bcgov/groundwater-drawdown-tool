@@ -38,6 +38,14 @@ Changed, Fixed, Removed.
 
 ### Fixed
 
+- **Refreshing the Results page no longer re-runs the analysis or
+  discards your edits.** Previously, pressing F5 (or restoring the tab)
+  silently re-queried the BC Geographic Warehouse, wiped any per-well
+  values you had overridden in the details table, and recorded the run
+  a second time in the usage statistics. The page now reuses the cached
+  result when the inputs haven't changed, so your overrides survive a
+  refresh.
+
 - The **Run Analysis button is now greyed out until you place a pumping
   point**, instead of letting you click it and then showing a "Place a
   pumping point first" message. Once a point is set (by map click,
