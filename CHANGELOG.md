@@ -12,6 +12,7 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+## [0.5.2] — 2026-06-16
 ### Added
 
 - The **"Well tag number" input mode now links to the BC Groundwater
