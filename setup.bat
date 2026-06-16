@@ -171,8 +171,11 @@ goto :chain_local_setup
 
 :chain_local_setup
 echo.
-echo Files installed to %INSTALL_DIR%.
-echo Running dependency setup inside the install folder...
+echo Tool files copied to %INSTALL_DIR%.
+echo.
+echo NOT DONE YET - installing Python dependencies. This is the slow
+echo step and can take a few minutes on first install. Please wait for
+echo the "Setup complete" message before launching.
 echo.
 pushd "%INSTALL_DIR%"
 call "%INSTALL_DIR%\setup.bat"
