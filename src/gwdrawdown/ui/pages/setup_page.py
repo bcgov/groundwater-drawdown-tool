@@ -650,6 +650,14 @@ def layout(**_kwargs: object) -> html.Div:
                                 disabled=True,
                                 className="bc-btn bc-btn--primary bc-btn--large",
                             ),
+                            html.Button(
+                                "Clear",
+                                id="setup-clear",
+                                n_clicks=0,
+                                type="button",
+                                title="Reset all inputs to start a new analysis",
+                                className="bc-btn bc-btn--secondary",
+                            ),
                             html.Div(
                                 id="setup-run-error",
                                 className="bc-form-error",
@@ -700,6 +708,55 @@ def toggle_input_panels(mode: str) -> tuple[dict, dict]:
     return (
         {**base, "display": "block" if mode == "latlon" else "none"},
         {**base, "display": "block" if mode == "wtn" else "none"},
+    )
+
+
+@callback(
+    Output("setup-point-store", "data", allow_duplicate=True),
+    Output("setup-input-mode", "value", allow_duplicate=True),
+    Output("setup-latlon-lon", "value", allow_duplicate=True),
+    Output("setup-latlon-lat", "value", allow_duplicate=True),
+    Output("setup-wtn-input", "value", allow_duplicate=True),
+    Output("setup-q-value", "value", allow_duplicate=True),
+    Output("setup-q-unit", "value", allow_duplicate=True),
+    Output("setup-duration", "value", allow_duplicate=True),
+    Output("setup-radius", "value", allow_duplicate=True),
+    Output("setup-filter-toggle", "value", allow_duplicate=True),
+    Output("setup-manual-material", "value", allow_duplicate=True),
+    Output("setup-mode-error", "children", allow_duplicate=True),
+    Output("setup-wtn-error", "children", allow_duplicate=True),
+    Output("setup-run-error", "children", allow_duplicate=True),
+    Output("setup-restore-pending", "data", allow_duplicate=True),
+    Input("setup-clear", "n_clicks"),
+    prevent_initial_call=True,
+)
+def clear_form(_n_clicks: int) -> tuple[Any, ...]:
+    """Reset every input to its default for a fresh analysis.
+
+    Tester request: a "start over" control so the officer doesn't have
+    to refresh the page. Clearing ``setup-point-store`` cascades to the
+    aquifer picker, the T/S fields, the run-button enabled state, and
+    the map marker, so those don't need to be reset directly here.
+    ``analysis-inputs`` is left untouched so an open /results tab is not
+    disturbed; ``setup-restore-pending`` is reset to False so the next
+    point placement doesn't auto-restore the previously-run aquifer.
+    """
+    return (
+        None,  # setup-point-store
+        "map",  # setup-input-mode
+        None,  # setup-latlon-lon
+        None,  # setup-latlon-lat
+        None,  # setup-wtn-input
+        200,  # setup-q-value
+        _default_pumping_rate_unit(),  # setup-q-unit
+        config.DEFAULT_PUMPING_DURATION_DAYS,  # setup-duration
+        1000,  # setup-radius
+        [],  # setup-filter-toggle
+        None,  # setup-manual-material
+        "",  # setup-mode-error
+        "",  # setup-wtn-error
+        "",  # setup-run-error
+        False,  # setup-restore-pending
     )
 
 
