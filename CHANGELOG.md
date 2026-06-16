@@ -19,7 +19,17 @@ Changed, Fixed, Removed.
   have a well tag number handy, you can find one by location on that
   map; the link opens in a new tab.
 
+- A **Clear button on the setup page** resets all inputs for a fresh
+  analysis without refreshing the page.
+
 ### Changed
+
+- The **maps are larger on bigger monitors** — both the setup and
+  results maps now grow with the window while still fitting smaller
+  laptop screens.
+
+- A short note under the pumping-duration field explains that the
+  **90-day default applies to all of BC**.
 
 - The **page header now uses the official BC Government wordmark**,
   which sits flush in the dark-blue band instead of appearing as a
@@ -37,6 +47,10 @@ Changed, Fixed, Removed.
   suggests increasing the buffer radius and re-running.
 
 ### Fixed
+
+- The **distance-drawdown chart no longer flips upside down** when you
+  press Autoscale after zooming in. The inverted axis (drawdown growing
+  downward) now stays put, and "Reset axes" returns to it reliably.
 
 - **Refreshing the Results page no longer re-runs the analysis or
   discards your edits.** Previously, pressing F5 (or restoring the tab)
