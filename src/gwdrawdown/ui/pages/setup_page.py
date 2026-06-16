@@ -293,8 +293,12 @@ def layout(**_kwargs: object) -> html.Div:
                                         id="setup-map",
                                         center=MAP_CENTER,
                                         zoom=MAP_ZOOM,
+                                        # Grows with the viewport on larger
+                                        # monitors but floors at the original
+                                        # 380px so small laptops still fit the
+                                        # aquifer picker below without scrolling.
                                         style={
-                                            "height": "380px",
+                                            "height": "clamp(380px, 55vh, 680px)",
                                             "width": "100%",
                                             "borderRadius": "var(--bc-radius, 4px)",
                                         },

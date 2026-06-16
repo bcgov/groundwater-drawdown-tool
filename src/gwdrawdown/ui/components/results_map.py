@@ -57,9 +57,11 @@ _BUFFER_PADDING = 1.15
 # fitting a circular buffer.
 _METRES_PER_PIXEL_Z0 = 156543.03
 
-# Approximate map height in pixels — matches the inline style on
-# `build_map_skeleton()`. If you resize the map, update this so the
-# initial zoom keeps fitting the buffer.
+# Minimum map height in pixels — the floor of the `clamp()` height on
+# `build_map_skeleton()`. The buffer-fit zoom is computed against this
+# floor so the circle still fits on the shortest screens; taller
+# viewports simply leave more room around it. Keep this equal to the
+# clamp floor if you change the map height.
 _MAP_HEIGHT_PX = 480
 
 # Leaflet caps zoom at 19 for OSM tiles.
@@ -349,7 +351,10 @@ def build_map_skeleton() -> html.Div:
                 id="results-map",
                 center=_FALLBACK_CENTER,
                 zoom=_FALLBACK_ZOOM,
-                style={"height": "480px", "width": "100%"},
+                # Grows with the viewport on larger monitors; floors at
+                # `_MAP_HEIGHT_PX` so the buffer-fit zoom math stays safe
+                # (see `_zoom_for_buffer`).
+                style={"height": "clamp(480px, 68vh, 880px)", "width": "100%"},
                 children=[
                     make_layers_control(
                         mode="results", control_id="results-layers-control"
