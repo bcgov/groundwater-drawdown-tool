@@ -39,7 +39,8 @@ Leahey, 2024):
   colour matches the well's Status** (see [Status flags](#status-flags)
   below) — the same colour scheme is used on the map below.
 - **Black curve** — the Cooper-Jacob drawdown curve.
-- **Orange bars** — each well's SAD, drawn down from its point.
+- **Orange bars** — each well's Safe Available Drawdown (SAD), drawn
+  down from its point.
 - The Y axis is **inverted** — drawdown increases downward, the standard
   hydrogeology convention.
 
