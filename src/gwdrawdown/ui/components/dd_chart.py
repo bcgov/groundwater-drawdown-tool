@@ -298,6 +298,21 @@ def make_distance_drawdown_figure(
         )
     )
 
+    # Explicit reversed Y range (large drawdown at the bottom — the
+    # hydrogeology convention). Set explicitly rather than via
+    # autorange="reversed" so the modebar "Reset axes" deterministically
+    # restores the inverted view. Paired with removing the "Autoscale"
+    # button on the results page, this closes a Plotly quirk a tester hit
+    # where autoscaling a zoomed chart flipped the axis upright and would
+    # not recover.
+    y_values = list(curve_y) + list(well_ys) + [pump_y]
+    y_values += [w.sad_m for w in wells if w.sad_m is not None and w.sad_m > 0]
+    y_lo = min(y_values)
+    y_hi = max(y_values)
+    span = y_hi - y_lo
+    y_pad = span * 0.05 if span > 0 else max(abs(y_hi), 1.0) * 0.05
+    y_range = [y_hi + y_pad, y_lo - y_pad]
+
     fig.update_layout(
         title={
             "text": "Distance-Drawdown",
@@ -329,7 +344,8 @@ def make_distance_drawdown_figure(
         # usability mistake (see references/excel_chart_layout.md).
         yaxis={
             "title": "Drawdown Impact [m]",
-            "autorange": "reversed",
+            "range": y_range,
+            "autorange": False,
             "showgrid": True,
             "gridcolor": "#eee",
         },

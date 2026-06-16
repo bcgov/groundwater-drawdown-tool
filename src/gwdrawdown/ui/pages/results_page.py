@@ -188,7 +188,14 @@ def layout(**_kwargs: object) -> html.Div:
                     ),
                     dcc.Graph(
                         id="dd-chart",
-                        config={"displaylogo": False},
+                        # Drop the "Autoscale" button: on the inverted Y
+                        # axis it could flip the axis upright and not
+                        # recover (tester report). "Reset axes" stays and
+                        # restores the explicit reversed range.
+                        config={
+                            "displaylogo": False,
+                            "modeBarButtonsToRemove": ["autoScale2d"],
+                        },
                         style={"marginBottom": "1.5rem"},
                     ),
                     html.H2(
