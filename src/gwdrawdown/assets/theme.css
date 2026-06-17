@@ -282,37 +282,37 @@ select {
 .bc-footer__inner {
     max-width: 1400px;
     margin: 0 auto;
-    padding: var(--bc-space-4) var(--bc-space-5);
+    padding: var(--bc-space-3) var(--bc-space-5);
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--bc-space-5);
+    gap: var(--bc-space-2) var(--bc-space-5);
     font-size: 0.85rem;
 }
 
-/* Footer is a three-cell row: version (left), disclaimer (centre),
- * empty spacer (right). The meta and spacer cells share an equal
- * flex-grow with a zero basis, so the disclaimer cell is pinned to
- * the true horizontal centre of the page. */
+/* Footer is a two-cell row: the tool meta (version + docs link) on the
+ * left, sized to its content and kept on a single line, then the
+ * disclaimer block filling and centred in the remaining width. The
+ * disclaimer carries two lines (results-interpretation + internal-use),
+ * so it must own the slack — letting the meta cell shrink instead made
+ * the version/Documentation links wrap onto a second line. On a very
+ * narrow viewport the inner flex-wrap drops the disclaimer below the
+ * meta rather than overflowing. */
 .bc-footer__meta {
-    flex: 1 1 0;
+    flex: 0 1 auto;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    white-space: nowrap;
     gap: var(--bc-space-4);
     align-items: center;
 }
 
 .bc-footer__disclaimer {
-    flex: 0 1 auto;
-    min-width: 240px;
+    flex: 1 1 240px;
     text-align: center;
     color: rgba(255, 255, 255, 0.75);
     font-size: 0.8rem;
-    line-height: 1.4;
-}
-
-.bc-footer__spacer {
-    flex: 1 1 0;
+    line-height: 1.35;
 }
 
 .bc-footer__link {

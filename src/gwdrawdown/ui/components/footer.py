@@ -127,7 +127,6 @@ def make_footer() -> html.Footer:
                         ],
                         className="bc-footer__disclaimer",
                     ),
-                    html.Div(className="bc-footer__spacer"),
                 ],
                 className="bc-footer__inner",
             ),
