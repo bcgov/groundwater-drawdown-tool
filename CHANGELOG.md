@@ -12,6 +12,23 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+### Added
+
+- An **"internal use only" notice now appears in the footer** of every
+  page: the tool is for internal use and must not be shared outside the
+  organization. This notice shows in the tool only — it is deliberately
+  left off exported reports, maps, and KML files, which may form part of
+  a licence file.
+
+### Changed
+
+- The **results-interpretation disclaimer now names a Qualified
+  Professional** alongside the regional hydrogeologist: results must be
+  interpreted by, or in consultation with, a regional hydrogeologist or
+  a Qualified Professional with expertise in hydrogeology. The updated
+  wording appears in the tool and on every export (PDF, interactive map,
+  KML).
+
 ## [0.5.2] — 2026-06-16
 ### Added
 

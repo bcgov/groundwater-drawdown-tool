@@ -26,6 +26,7 @@ from xml.sax.saxutils import escape
 
 from gwdrawdown.analysis import AnalysisResult, WellResult
 from gwdrawdown.core.crs_utils import to_wgs84
+from gwdrawdown.ui import disclaimers
 from gwdrawdown.ui.components.palette import PUMPING_COLOR, STATUS_COLOR
 
 # A neutral white circle icon hosted by Google; the per-marker
@@ -227,8 +228,7 @@ def build_kml(
     doc_desc = (
         "Screening-level drawdown analysis. Marker colour shows well "
         "status; marker size is proportional to predicted impact. "
-        "Results are advisory and must be reviewed by the regional "
-        "hydrogeologist."
+        + disclaimers.INTERPRETATION_FULL
     )
     wells_folder = (
         "    <Folder>\n"

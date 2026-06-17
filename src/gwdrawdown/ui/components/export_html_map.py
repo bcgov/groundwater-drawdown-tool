@@ -23,6 +23,7 @@ import json
 
 from gwdrawdown.analysis import AnalysisResult, WellResult
 from gwdrawdown.core.crs_utils import to_wgs84
+from gwdrawdown.ui import disclaimers
 from gwdrawdown.ui.components.palette import BUFFER_COLOR, STATUS_COLOR
 
 # Circle-marker radius bounds (pixels) — mirrors
@@ -95,8 +96,7 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
 </style>
 </head>
 <body>
-<div class="banner">SCREENING TOOL — results are advisory and must be
-reviewed by the regional hydrogeologist.</div>
+<div class="banner">__BANNER__</div>
 <div id="map"></div>
 <script>
 var DATA = __PAYLOAD__;
@@ -193,6 +193,7 @@ def build_html_map(
     return (
         _HTML_TEMPLATE.replace("__PAYLOAD__", json.dumps(payload))
         .replace("__BUFFER__", BUFFER_COLOR)
+        .replace("__BANNER__", disclaimers.INTERPRETATION_BANNER)
         .replace(
             "__TITLE__",
             f"Drawdown analysis map — {result.run_id[:8]}",

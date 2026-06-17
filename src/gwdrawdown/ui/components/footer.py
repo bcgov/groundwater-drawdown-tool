@@ -7,7 +7,8 @@ A BC-styled dark-blue strip with:
 - the date that version was installed — the mtime of ``version.txt``,
   which the install / update process touches when it lands the file,
 - a link to the documentation site,
-- a screening-tool disclaimer.
+- the results-interpretation disclaimer and the internal-use notice
+  (see ``ui/disclaimers.py``).
 
 The version text is a button that opens a modal listing the most recent
 ``CHANGELOG.md`` entries, so a user whose colleague has a feature they
@@ -26,6 +27,7 @@ from datetime import datetime
 from dash import Input, Output, callback, ctx, dcc, html, no_update
 
 from gwdrawdown import config
+from gwdrawdown.ui import disclaimers
 
 # Published documentation site (GitHub Pages). Not user-tunable —
 # pointing it elsewhere is a code release, like the BCGW DSN.
@@ -114,9 +116,15 @@ def make_footer() -> html.Footer:
                         ],
                         className="bc-footer__meta",
                     ),
+                    # Two lines: the results-interpretation caveat (also
+                    # carried onto every export) and the tool-only
+                    # internal-use notice (deliberately never exported —
+                    # see ui/disclaimers.py).
                     html.Div(
-                        "Screening tool — results are advisory and must be "
-                        "reviewed by the regional hydrogeologist.",
+                        [
+                            html.Div(disclaimers.INTERPRETATION_BANNER),
+                            html.Div(disclaimers.INTERNAL_USE),
+                        ],
                         className="bc-footer__disclaimer",
                     ),
                     html.Div(className="bc-footer__spacer"),

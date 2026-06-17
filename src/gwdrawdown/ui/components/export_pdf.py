@@ -44,6 +44,7 @@ from reportlab.platypus import (
 
 from gwdrawdown.analysis import AnalysisResult, WellResult
 from gwdrawdown.core.flagging import WellStatus
+from gwdrawdown.ui import disclaimers
 from gwdrawdown.ui.components.palette import STATUS_PALETTE
 from gwdrawdown.ui.format_utils import format_float
 
@@ -511,8 +512,7 @@ def _page_decorations(result: AnalysisResult, user: str, version: str):
         canvas.drawCentredString(
             width / 2,
             height - 16,
-            "SCREENING TOOL — results are advisory and must be reviewed "
-            "by the regional hydrogeologist.",
+            disclaimers.INTERPRETATION_BANNER,
         )
         # Bottom footer — run identity + pagination.
         canvas.setFillColor(colors.HexColor("#666666"))
@@ -555,7 +555,7 @@ def _method_text(u_threshold: float) -> list[str]:
         "confined and fractured-bedrock wells, this may overestimate "
         "SAD, so the driller's log should be reviewed.",
         "These are screening-level estimates and are not a substitute "
-        "for assessment by the regional hydrogeologist.",
+        "for professional assessment. " + disclaimers.INTERPRETATION_FULL,
     ]
 
 _PER_WELL_LEGEND = (
