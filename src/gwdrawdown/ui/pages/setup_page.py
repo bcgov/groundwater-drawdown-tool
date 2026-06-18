@@ -219,6 +219,16 @@ def layout(**_kwargs: object) -> html.Div:
                                         type="button",
                                         className="bc-btn bc-btn--secondary",
                                     ),
+                                    # Inline validation next to the button —
+                                    # same red format and placement as the
+                                    # WTN lookup error, so a missing/partial
+                                    # lat-lon entry is flagged right where the
+                                    # user clicked rather than below the map.
+                                    html.Span(
+                                        id="setup-latlon-error",
+                                        className="bc-form-error",
+                                        style={"marginLeft": "0.75rem"},
+                                    ),
                                 ],
                                 id="setup-latlon-panel",
                                 style={"display": "none", "marginBottom": "0.75rem"},
@@ -734,6 +744,7 @@ def toggle_input_panels(mode: str) -> tuple[dict, dict]:
     Output("setup-manual-material", "value", allow_duplicate=True),
     Output("setup-mode-error", "children", allow_duplicate=True),
     Output("setup-wtn-error", "children", allow_duplicate=True),
+    Output("setup-latlon-error", "children", allow_duplicate=True),
     Output("setup-run-error", "children", allow_duplicate=True),
     Output("setup-restore-pending", "data", allow_duplicate=True),
     Input("setup-clear", "n_clicks"),
@@ -764,6 +775,7 @@ def clear_form(_n_clicks: int) -> tuple[Any, ...]:
         None,  # setup-manual-material
         "",  # setup-mode-error
         "",  # setup-wtn-error
+        "",  # setup-latlon-error
         "",  # setup-run-error
         False,  # setup-restore-pending
     )
@@ -773,6 +785,7 @@ def clear_form(_n_clicks: int) -> tuple[Any, ...]:
     Output("setup-point-store", "data", allow_duplicate=True),
     Output("setup-mode-error", "children"),
     Output("setup-wtn-error", "children"),
+    Output("setup-latlon-error", "children"),
     Input("setup-map", "n_clicks"),
     Input("setup-latlon-submit", "n_clicks"),
     Input("setup-wtn-lookup", "n_clicks"),
@@ -792,51 +805,56 @@ def update_point_store(
     lon_in: float | None,
     lat_in: float | None,
     wtn_in: int | None,
-) -> tuple[Any, str, str]:
+) -> tuple[Any, str, str, str]:
+    # Returns (point, mode_error, wtn_error, latlon_error). Each input
+    # mode owns its own inline error slot so a message lands next to the
+    # control the user just used, not below the map.
     triggered = ctx.triggered_id
 
     if triggered == "setup-map":
         if mode != "map" or not map_click_data:
-            return no_update, "", ""
+            return no_update, "", "", ""
         latlng = map_click_data.get("latlng") or {}
         lat = latlng.get("lat")
         lon = latlng.get("lng")
         if lat is None or lon is None:
-            return no_update, "", ""
+            return no_update, "", "", ""
         lat, lon = float(lat), float(lon)
         x, y = crs_utils.to_albers(lon, lat)
         return (
             {"lon": lon, "lat": lat, "x": x, "y": y, "mode": "map"},
             "",
             "",
+            "",
         )
 
     if triggered == "setup-latlon-submit":
         if mode != "latlon":
-            return no_update, "Switch input mode to 'Lat / Lon' first.", ""
+            return no_update, "", "", "Switch input mode to 'Lat / Lon' first."
         if lon_in is None or lat_in is None:
-            return no_update, "Enter both longitude and latitude.", ""
+            return no_update, "", "", "Enter both longitude and latitude."
         lon, lat = float(lon_in), float(lat_in)
         x, y = crs_utils.to_albers(lon, lat)
         return (
             {"lon": lon, "lat": lat, "x": x, "y": y, "mode": "latlon"},
             "",
             "",
+            "",
         )
 
     if triggered == "setup-wtn-lookup":
         if mode != "wtn":
-            return no_update, "", "Switch input mode to 'Well tag number' first."
+            return no_update, "", "Switch input mode to 'Well tag number' first.", ""
         if not wtn_in:
-            return no_update, "", "Enter a well tag number."
+            return no_update, "", "Enter a well tag number.", ""
         try:
             with get_connection() as conn:
                 row = q.well_by_tag(conn, int(wtn_in))
         except oracledb.DatabaseError as e:
             logger.warning("WTN lookup failed for %r: %s", wtn_in, e)
-            return no_update, "", f"Lookup failed: {e}"
+            return no_update, "", f"Lookup failed: {e}", ""
         if row is None:
-            return no_update, "", f"WTN {int(wtn_in)} not found."
+            return no_update, "", f"WTN {int(wtn_in)} not found.", ""
         x = float(row["X_ALBERS"])
         y = float(row["Y_ALBERS"])
         lon, lat = crs_utils.to_wgs84(x, y)
@@ -853,9 +871,10 @@ def update_point_store(
             },
             "",
             "",
+            "",
         )
 
-    return no_update, "", ""
+    return no_update, "", "", ""
 
 
 @callback(

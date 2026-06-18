@@ -35,6 +35,14 @@ Changed, Fixed, Removed.
 - **Short hints were added under the pumping-rate and buffer-radius
   fields** explaining what each is for.
 
+### Fixed
+
+- In **Lat / Lon** input mode, clicking **Place** without entering both
+  values now shows a red "Enter both longitude and latitude." message
+  right next to the button, instead of appearing to do nothing. (The
+  message was previously shown below the map, where it was easy to
+  miss.)
+
 ## [0.5.2] — 2026-06-16
 ### Added
 
