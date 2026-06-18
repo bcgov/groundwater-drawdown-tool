@@ -29,6 +29,9 @@ Changed, Fixed, Removed.
   wording appears in the tool and on every export (PDF, interactive map,
   KML).
 
+- The **hint under the pumping-duration field is shorter**, now simply
+  "Enter the proposed duration or pick a preset."
+
 ## [0.5.2] — 2026-06-16
 ### Added
 

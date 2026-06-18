@@ -583,9 +583,8 @@ def layout(**_kwargs: object) -> html.Div:
                                                 className="bc-btn-row",
                                             ),
                                             html.Div(
-                                                "Default 90 days — confirmed for all of "
-                                                "BC (no regional variation). Enter the "
-                                                "proposed duration or pick a preset.",
+                                                "Enter the proposed duration or "
+                                                "pick a preset.",
                                                 className="bc-form-hint",
                                             ),
                                         ],
