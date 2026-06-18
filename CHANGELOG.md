@@ -29,11 +29,9 @@ Changed, Fixed, Removed.
   wording appears in the tool and on every export (PDF, interactive map,
   KML).
 
-- The **hint under the pumping-duration field is shorter**, now simply
-  "Enter the proposed duration or pick a preset."
-
-- **Short hints were added under the pumping-rate and buffer-radius
-  fields** explaining what each is for.
+- The **hints under the pumping-parameter fields were tidied up** —
+  clearer, shorter wording under the pumping-rate, duration, and
+  buffer-radius fields.
 
 ### Fixed
 

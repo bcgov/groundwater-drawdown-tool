@@ -559,6 +559,11 @@ def layout(**_kwargs: object) -> html.Div:
                                                 "Enter the proposed withdrawal "
                                                 "rate and its units.",
                                                 className="bc-form-hint",
+                                                # One line — the field sits in a
+                                                # narrow grid column with empty
+                                                # space to its right, so the hint
+                                                # extends there rather than wrapping.
+                                                style={"whiteSpace": "nowrap"},
                                             ),
                                         ],
                                         className="bc-form-field",
@@ -624,6 +629,11 @@ def layout(**_kwargs: object) -> html.Div:
                                                 "Wells within this distance of "
                                                 "the pumping point are assessed.",
                                                 className="bc-form-hint",
+                                                # One line — see the pumping-rate
+                                                # hint above; extends into the
+                                                # empty grid space rather than
+                                                # wrapping.
+                                                style={"whiteSpace": "nowrap"},
                                             ),
                                         ],
                                         className="bc-form-field",
