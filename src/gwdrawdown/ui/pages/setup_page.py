@@ -545,6 +545,11 @@ def layout(**_kwargs: object) -> html.Div:
                                                     "alignItems": "stretch",
                                                 },
                                             ),
+                                            html.Div(
+                                                "Enter the proposed withdrawal "
+                                                "rate and its units.",
+                                                className="bc-form-hint",
+                                            ),
                                         ],
                                         className="bc-form-field",
                                     ),
@@ -604,6 +609,11 @@ def layout(**_kwargs: object) -> html.Div:
                                                 min=1,
                                                 step="any",
                                                 className="bc-form-input",
+                                            ),
+                                            html.Div(
+                                                "Wells within this distance of "
+                                                "the pumping point are assessed.",
+                                                className="bc-form-hint",
                                             ),
                                         ],
                                         className="bc-form-field",

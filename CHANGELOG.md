@@ -32,6 +32,9 @@ Changed, Fixed, Removed.
 - The **hint under the pumping-duration field is shorter**, now simply
   "Enter the proposed duration or pick a preset."
 
+- **Short hints were added under the pumping-rate and buffer-radius
+  fields** explaining what each is for.
+
 ## [0.5.2] — 2026-06-16
 ### Added
 
