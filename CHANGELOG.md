@@ -12,6 +12,8 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+## [0.5.3] — 2026-06-22
+
 ### Added
 
 - An **"internal use only" notice now appears in the footer** of every
