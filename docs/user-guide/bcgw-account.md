@@ -42,10 +42,31 @@ The result is the current status of your account:
 | **OPEN** | Account is active. Sign-in should work. |
 | **LOCKED** | Too many wrong-password attempts. See [Unlocking](#unlocking-a-locked-account) below. |
 | **EXPIRED** | The password has expired. See [Changing your password](#changing-your-password). |
-| **CLOSED** | The account no longer exists. Request a new one through the service desk. |
+| **CLOSED** | The account no longer exists. See [Requesting a new BCGW account](#requesting-a-new-bcgw-account). |
 
 If the query reports no result for your IDIR you do not yet have a BCGW
-account — request one through the NRM Business Service Desk.
+account — see [Requesting a new BCGW account](#requesting-a-new-bcgw-account).
+
+## Requesting a new BCGW account
+
+If you do not have a BCGW account yet, request one through the **NRM
+Business Service Desk** — the same service-desk portal used to unlock a
+locked account:
+
+**<https://apps.nrs.gov.bc.ca/int/jira/servicedesk/customer/portal/1/create/261>**
+
+On that form:
+
+1. For the request type, select **No ESRI License (BCGW Production
+   ONLY)**. The tool connects to production BCGW only and does not need
+   an ESRI/ArcGIS license.
+2. Review the **BCGW Access Agreement** (linked on the same page), then
+   check the **BCGW Data Access Agreement** box to confirm you accept it.
+3. In the **Additional Information** box, add a short note saying you are
+   requesting a *new* BCGW account.
+
+Once the account is created you will receive an IDIR-linked BCGW username
+and password to use on the tool's sign-in screen.
 
 ## Changing your password
 
@@ -76,9 +97,12 @@ forgotten the password, contact the **NRM Business Service Desk**:
 - **Online ticket:**
   <https://apps.nrs.gov.bc.ca/int/jira/servicedesk/customer/portal/1/create/261>
 
-In the ticket include your **IDIR**, the database name (**IDWPROD11**),
-and a one-line description such as *"BCGW account locked, please
-unlock"* or *"BCGW password reset request"*.
+This is the same portal used to [request a new
+account](#requesting-a-new-bcgw-account), so use the **Additional
+Information** box to make clear that you want to *unlock an existing
+locked account* (not create a new one). Include your **IDIR**, the
+database name (**IDWPROD11**), and a one-line description such as *"BCGW
+account locked, please unlock"* or *"BCGW password reset request"*.
 
 ## Saving your password in the browser
 
