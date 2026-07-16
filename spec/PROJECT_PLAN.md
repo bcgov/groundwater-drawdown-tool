@@ -1100,12 +1100,16 @@ need this.
 - The release zip no longer carries `PROJECT_PLAN.md`,
   `DATA_REFERENCE.md`, or `DESIGN_NOTES.md`.
 
-## 7. Open questions, kept visible in the codebase
+## 7. Decision register
 
-These questions were raised at the start of the project. As answers came in,
-each was resolved in code and docs; a few are deliberately deferred to a
-future version. The list is kept here as a record of what was decided and
-why.
+Nothing here is outstanding. These questions were raised at kickoff and are
+now settled — most client-confirmed, two (Q2, Q5) deliberately deferred to a
+future version.
+
+The register is kept because the code cites these Q-numbers directly: `Q1` in
+`core/aquifer_lookup.py`, `Q3`/`Q4`/`Q10` in `config.py`, `Q8` in
+`data_access/db.py`, `Q12` in `ui/pages/setup_page.py`. Each entry records
+what was decided and why, so those citations resolve to something.
 
 - **Q1** (T/S lookup table by aquifer subtype) — **confirmed**: matches
   the legacy Excel `AquiferProperty_DB` exactly (Wei et al. 2009
@@ -1174,9 +1178,6 @@ why.
   the docstring and cite the source (Cooper & Jacob 1946; Theis 1935).
 - Tests for every function in `core/`. Tests in `tests/` mirror the package
   structure.
-- Commit at the end of every phase with a clear message. Don't squash phases.
-- If a design decision wasn't covered in this plan, surface it in chat before
-  implementing. Don't silently invent.
 
 ## 9. References
 

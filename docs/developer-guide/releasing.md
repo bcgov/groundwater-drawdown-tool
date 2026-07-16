@@ -26,6 +26,10 @@ gh auth login    # authenticate against github.com/bcgov/groundwater-drawdown-to
    `[Unreleased]` into a new versioned section
    `## [0.5.0] — YYYY-MM-DD`. The publish script extracts this section as
    the GitHub release notes.
+
+   Water Officers read these notes in the update prompt, so keep entries in
+   plain English: lead with what changed for them, not how it was built, and
+   skip the internal jargon.
 3. **Commit** those two changes on `main` and push.
 4. From the repo root, run:
 
@@ -61,11 +65,11 @@ The zip is built from an explicit allow-list in `publish_release.ps1`. It
 contains the tool itself — `src/`, `data/`, `pyproject.toml`, `uv.lock`,
 `.python-version`, `setup.bat`, `run.bat`, `_wait_and_open.ps1`,
 `version.txt` — plus `CHANGELOG.md`, `README.md`, `CLIENT_INSTALL.md`,
-and `references/excel_chart_layout.md`.
+`LICENSE`, and `references/excel_chart_layout.md`.
 
-Developer-only documents (`PROJECT_PLAN.md`, `DATA_REFERENCE.md`,
-`DESIGN_NOTES.md`) and the `docs/` site sources are **not** shipped — they
-stay in the repository for developers.
+The developer-only documents in `spec/` (`PROJECT_PLAN.md`,
+`DATA_REFERENCE.md`, `DESIGN_NOTES.md`) and the `docs/` site sources are
+**not** shipped — they stay in the repository for developers.
 
 ## How updates reach users
 
@@ -76,4 +80,4 @@ stay in the repository for developers.
   never in the release zip.
 
 The full distribution design — release layout, install/update modes,
-failure modes — is in `PROJECT_PLAN.md` §6.
+failure modes — is in `spec/PROJECT_PLAN.md` §6.

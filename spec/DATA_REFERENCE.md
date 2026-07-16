@@ -1,8 +1,9 @@
 # Data Reference
 
 This document is the source of truth for column names, data types, units, and
-relationships in the BCGW datasets used by this tool. **Do not guess**
-column names — use what is documented here.
+relationships in the BCGW datasets used by this tool. BCGW column names are
+easy to misremember and rarely fail loudly when wrong, so they are recorded
+here verbatim.
 
 ## 1. BCGW datasets used
 
@@ -93,11 +94,15 @@ names from the sample CSV are known. Relevant columns:
 `UNK` means subtype not assigned. Treat the same as a missing entry: requires
 manual T/S input from the user.
 
-## 4. T/S lookup table (sample, pending Q1 client confirmation)
+## 4. T/S lookup table
 
-Source: September 2024 client deck, slide 11. Typed verbatim from the screenshot.
+Client-confirmed (Q1): these values match the legacy Excel
+`AquiferProperty_DB` sheet (Wei et al. 2009 medians). Originally typed from
+the September 2024 client deck, slide 11.
+
 Stored in `data/ts_lookup.csv` with columns
-`subtype_code,subtype_description,T_m2_per_day,S_dimensionless,valid`.
+`subtype_code,subtype_description,T_m2_per_day,S_dimensionless,valid`. Changing
+a value is a CSV edit, not a code change.
 
 | Code | Description | T (m²/day) | S | Valid |
 |---|---|---|---|---|

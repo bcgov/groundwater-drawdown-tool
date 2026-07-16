@@ -88,5 +88,5 @@ src/gwdrawdown/
 - Tests for every function in `core/`, mirroring the package structure.
 
 The full specification — including the Cooper-Jacob equation, the SAD
-formula, and the at-risk rules — is in `PROJECT_PLAN.md`; see
+formula, and the at-risk rules — is in `spec/PROJECT_PLAN.md`; see
 [Reference documents]({{ site.baseurl }}{% link developer-guide/reference.md %}).
