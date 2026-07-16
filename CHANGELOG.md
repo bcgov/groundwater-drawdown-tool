@@ -1,16 +1,21 @@
 # Changelog
 
-All notable changes to the Groundwater Drawdown Tool are recorded here.
-Each release moves items from `[Unreleased]` into a versioned section.
-
-The wording in this file is shown to end users when the tool auto-updates,
-so write entries in plain English. Avoid jargon. Lead with what changed
-from the user's perspective, not how it was implemented.
+All notable changes to the Groundwater Drawdown Tool are recorded here, and
+these notes are what the tool shows you when it updates itself.
 
 Format inspired by [Keep a Changelog](https://keepachangelog.com/) — Added,
 Changed, Fixed, Removed.
 
 ## [Unreleased]
+
+### Added
+
+- The tool is now published under the Apache License 2.0. A `LICENSE`
+  file is included in the install folder.
+
+### Changed
+
+- Updated the README and the developer documentation.
 
 ## [0.5.3] — 2026-06-22
 

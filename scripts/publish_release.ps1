@@ -127,7 +127,7 @@ Write-Host "Staging release files..." -ForegroundColor Cyan
 
 # Top-level files and folders that ship in the release. This is an
 # allow-list: anything not named here is excluded, including the docs/
-# site sources and the developer-only specification documents
+# site sources and the developer-only specification documents in spec/
 # (PROJECT_PLAN.md, DATA_REFERENCE.md, DESIGN_NOTES.md).
 $includes = @(
     'src',
@@ -141,7 +141,9 @@ $includes = @(
     'version.txt',
     'CHANGELOG.md',
     'README.md',
-    'CLIENT_INSTALL.md'
+    'CLIENT_INSTALL.md',
+    # Apache 2.0 §4(a): recipients of the work must get a copy of the licence.
+    'LICENSE'
 )
 
 # Selected files from references/ (the rest are client-confidential).

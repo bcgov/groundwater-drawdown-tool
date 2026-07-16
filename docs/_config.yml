@@ -28,6 +28,16 @@ aux_links:
     - https://github.com/bcgov/groundwater-drawdown-tool
 aux_links_new_tab: true
 
+# Shown at the bottom of every page. The code is Apache 2.0 (see LICENSE in
+# the repo root); this site's content is CC BY 4.0, per B.C. government
+# open source licensing guidance.
+footer_content: >-
+  Copyright &copy; 2026 Province of British Columbia. Documentation licensed
+  under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+  Code licensed under <a
+  href="https://github.com/bcgov/groundwater-drawdown-tool/blob/main/LICENSE">Apache
+  2.0</a>.
+
 # "Edit this page on GitHub" link in the page footer.
 gh_edit_link: true
 gh_edit_link_text: "Edit this page on GitHub"

@@ -1,10 +1,15 @@
 [project]
 name = "gwdrawdown"
-version = "0.1.0"
+# Not the tool's release version. `version.txt` is the source of truth for
+# that — read by `config.version()`, shown in the footer, and used by
+# scripts/publish_release.ps1 to pick the tag. Held at 0.0.0 deliberately:
+# nothing reads this field, and a real-looking number here would drift out
+# of step with version.txt on every release.
+version = "0.0.0"
 description = "GIS-based screening tool for estimating groundwater drawdown impacts at nearby wells, using the Cooper-Jacob (1946) solution against BC's GWELLS / BCGW data."
 readme = "README.md"
 requires-python = "==3.13.*"
-license = { text = "Proprietary" }
+license = { text = "Apache-2.0" }
 authors = [
     { name = "Moez Labiadh", email = "moez.labiadh@gov.bc.ca" },
 ]
