@@ -3,7 +3,7 @@
 A BC-styled dark-blue strip with:
 
 - the tool version (read fresh from ``version.txt`` on each render so the
-  Phase 6 auto-updater can swap the file under a running process),
+  auto-updater can swap the file under a running process),
 - the date that version was installed — the mtime of ``version.txt``,
   which the install / update process touches when it lands the file,
 - a link to the documentation site,

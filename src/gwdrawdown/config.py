@@ -67,7 +67,7 @@ LOG_RETENTION_DAYS: Final[int] = int(os.environ.get("LOG_RETENTION_DAYS", "30"))
 # config edit. The .env override exists so a developer can point usage
 # logging at a local folder during testing. The tool runs fine when the
 # share is unreachable: usage logging silently disables itself and never
-# blocks or crashes the tool. See usage_logger.py and PROJECT_PLAN.md §5d.
+# blocks or crashes the tool. See usage_logger.py.
 USAGE_LOG_DIR: Final[Path] = Path(
     os.environ.get(
         "USAGE_LOG_DIR",
@@ -94,8 +94,8 @@ DASH_DEBUG: Final[bool] = os.environ.get("DASH_DEBUG", "false").lower() in {
 }
 
 # Default pumping duration. The legacy Excel used 100 d (east-coast
-# Vancouver Island dry-season convention); the client directed 90 d in
-# Phase 5, confirmed as the default for all of BC (Q4, Q10).
+# Vancouver Island dry-season convention); the client directed 90 d,
+# confirmed as the default for all of BC (Q4, Q10).
 DEFAULT_PUMPING_DURATION_DAYS: Final[float] = float(
     os.environ.get("DEFAULT_PUMPING_DURATION_DAYS", "90")
 )
@@ -126,8 +126,8 @@ DB_POOL_INCREMENT: Final[int] = int(os.environ.get("DB_POOL_INCREMENT", "1"))
 def version() -> str:
     """Return the current tool version as written in version.txt.
 
-    Read at call time rather than cached so that the Phase 6 auto-updater
-    can swap the file under a running process and the next read picks up
-    the new value.
+    Read at call time rather than cached so that the auto-updater can swap
+    the file under a running process and the next read picks up the new
+    value.
     """
     return VERSION_FILE.read_text(encoding="utf-8").strip()

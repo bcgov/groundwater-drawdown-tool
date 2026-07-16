@@ -23,7 +23,8 @@ def _expected_drawdown_m(Q: float, T: float, S: float, r: float, t: float) -> fl
 
 
 def test_legacy_excel_canonical_case() -> None:
-    """Legacy Excel example from PROJECT_PLAN §6 phase 2.
+    """Legacy Excel canonical example — the validation case for the
+    Cooper-Jacob port (spec/PROJECT_PLAN.md §6, build phase 2).
 
     Inputs: Q = 3.97 L/s = 343.008 m³/day, T = 250 m²/d, S = 0.005,
     t = 180 days, r = 100 m. The Excel uses the log10 form

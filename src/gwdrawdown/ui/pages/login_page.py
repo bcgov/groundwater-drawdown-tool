@@ -1,6 +1,6 @@
 """Login page: BCGW credentials -> connection test -> pool init -> /setup.
 
-Flow on submit (matches PROJECT_PLAN.md §6 phase 4):
+Flow on submit:
 
 1. Open a one-shot ``oracledb.connect()`` with the supplied credentials
    and run ``SELECT 1 FROM DUAL`` to verify them. A standalone connect

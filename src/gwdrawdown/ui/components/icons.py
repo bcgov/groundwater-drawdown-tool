@@ -6,8 +6,8 @@ stroke means the icon picks up its parent's text colour — section
 headings styled in BC navy get navy icons automatically.
 
 Kept as inline ``html.Img`` data URIs rather than served files so
-the tool ships without binary assets and so the auto-updater
-(Phase 6) doesn't have to copy a separate ``icons/`` directory.
+the tool ships without binary assets and so the auto-updater doesn't
+have to copy a separate ``icons/`` directory.
 """
 
 from __future__ import annotations

@@ -1,9 +1,9 @@
 /* BC Gov-aligned theme for the Groundwater Drawdown Tool.
  *
- * Phase 5a.1: design tokens + base typography + page chrome (header,
- * footer, body background, content well). Per-component classes
- * (.btn-primary, .form-input, .card) land in 5a.2 when inline-style
- * dicts in the page modules are migrated out.
+ * Design tokens, base typography, page chrome (header, footer, body
+ * background, content well), and the per-component classes the page
+ * modules use. Everything here is `bc-`-prefixed to keep it clear of
+ * Dash's own class names.
  *
  * Tokens are CSS custom properties on :root so they can be themed at
  * runtime later (e.g. a high-contrast mode) without touching Python.

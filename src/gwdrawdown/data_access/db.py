@@ -1,9 +1,9 @@
 """BCGW Oracle connection pool, lazy-initialised by the login handler.
 
 The pool is **not** created at module import or at app startup. It is
-created the first time a user successfully signs in (Phase 4 calls
-``init_pool(user, password)`` from the login handler) and torn down on
-logout / session expiry / app shutdown via ``close_pool()``.
+created the first time a user successfully signs in (the login handler
+calls ``init_pool(user, password)``) and torn down on logout / session
+expiry / app shutdown via ``close_pool()``.
 
 Sizing is small (default 1-2 from ``config``) because Stage 1 is
 single-user. The pool abstraction itself is kept for Stage 2 deployment
@@ -12,8 +12,8 @@ DESIGN_NOTES.md "Why a connection pool for one user".
 
 User credentials are passed into ``init_pool`` and held inside the
 ``oracledb`` pool object — never assigned to module globals, never
-written to disk. The session layer (Phase 4) holds them in server-side
-session memory only.
+written to disk. The session layer holds them in server-side session
+memory only.
 
 oracledb thin mode is the default in 2.x; no Instant Client is required
 on the user's machine. The pool target (``BCGW_DSN``) is hardcoded in
@@ -53,8 +53,8 @@ _pool: oracledb.ConnectionPool | None = None
 def init_pool(user: str, password: str) -> None:
     """Create the BCGW connection pool for a logged-in user.
 
-    Called by the Phase 4 login handler after credentials have been
-    validated (e.g. by a ``SELECT 1 FROM DUAL`` round-trip). Idempotent
+    Called by the login handler after credentials have been validated
+    (e.g. by a ``SELECT 1 FROM DUAL`` round-trip). Idempotent
     in the sense that calling it twice without an intervening
     ``close_pool()`` raises — the caller (login handler) is responsible
     for tearing down a previous session before starting a new one.

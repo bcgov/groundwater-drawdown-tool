@@ -13,7 +13,7 @@ Wires up:
 
 The connection pool is **not** opened here — it is opened by the login
 handler in ``ui/pages/login_page.py`` after the user's credentials are
-verified. See PROJECT_PLAN.md §6 phase 4 and DESIGN_NOTES.md.
+verified. See DESIGN_NOTES.md "Why a connection pool for one user".
 """
 
 from __future__ import annotations
@@ -38,11 +38,10 @@ logger = logging.getLogger(__name__)
 def _configure_logging() -> None:
     """Configure the root logger: console plus a daily-rotating file.
 
-    Replaces the Phase 4 ``basicConfig``. A ``TimedRotatingFileHandler``
-    rolls ``<LOG_DIR>/gwdrawdown.log`` at midnight and keeps
-    ``config.LOG_RETENTION_DAYS`` days of history. Existing handlers are
-    cleared first so the debug-mode reloader (which re-runs ``main`` in a
-    child process) does not stack duplicate handlers.
+    A ``TimedRotatingFileHandler`` rolls ``<LOG_DIR>/gwdrawdown.log`` at
+    midnight and keeps ``config.LOG_RETENTION_DAYS`` days of history.
+    Existing handlers are cleared first so the debug-mode reloader (which
+    re-runs ``main`` in a child process) does not stack duplicate handlers.
     """
     config.LOG_DIR.mkdir(parents=True, exist_ok=True)
 

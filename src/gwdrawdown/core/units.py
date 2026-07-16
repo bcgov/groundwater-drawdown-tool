@@ -9,7 +9,7 @@ have one place to hide.
 The pumping-rate dropdown shown on the setup page is driven by
 `data/unit_conversions.csv`. The list is a curated subset of the
 legacy Excel `Lookup_DB!B3:I10`: GPM units (Imperial and US) were
-removed in Phase 5a.2 because BC officers don't use them outside
+removed because BC officers don't use them outside
 the BCGW YIELD column (which still routes through
 `us_gpm_to_m3_per_day` separately); m³/yr was added so multi-year
 licence-volume estimates can be entered directly. Default is m³/d.

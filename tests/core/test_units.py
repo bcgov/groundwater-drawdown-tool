@@ -54,9 +54,9 @@ def test_us_gpm_round_trip() -> None:
 
 
 def test_load_pumping_rate_units_returns_six_units() -> None:
-    """Imperial / US GPM were dropped in Phase 5a.2 per client direction
-    (BC officers don't use GPM anywhere outside the legacy BCGW YIELD
-    column, which still flows through `us_gpm_to_m3_per_day` separately).
+    """Imperial / US GPM were dropped per client direction (BC officers
+    don't use GPM anywhere outside the legacy BCGW YIELD column, which
+    still flows through `us_gpm_to_m3_per_day` separately).
     m³/yr was added so multi-year licence-volume estimates can be entered
     directly without the officer pre-converting to daily.
     """

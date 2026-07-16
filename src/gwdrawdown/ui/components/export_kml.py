@@ -4,8 +4,8 @@ Produces a Google-Earth-ready ``.kml`` document: one Placemark for the
 proposed pumping well plus one per observation well, each colour-coded
 by its `WellStatus` and carrying the full per-well result row as
 ``<ExtendedData>``. Clients are more familiar with Google Earth than
-with GeoJSON, so KML is the spatial-export format (PROJECT_PLAN.md §5
-Phase 5c — KML replaces the originally-planned GeoJSON).
+with GeoJSON, so KML is the spatial-export format — it replaced the
+originally-planned GeoJSON for that reason.
 
 Each well marker is also *scaled by predicted impact* (an inline
 ``<IconStyle><scale>``), echoing the proportional marker sizing on the

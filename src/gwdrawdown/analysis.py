@@ -197,7 +197,7 @@ class AnalysisResult:
     # Stable identifier for this analysis run. Generated once when the
     # result is built and carried through override recomputes so a
     # PDF exported twice from the same run shows the same ID. Surfaced
-    # in the PDF footer (PROJECT_PLAN.md §5 Phase 5c).
+    # in the PDF footer.
     run_id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
     def to_json(self) -> dict[str, Any]:

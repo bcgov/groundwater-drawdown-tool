@@ -1,4 +1,4 @@
-"""Phase 3 smoke test for BCGW connectivity and the four queries.
+"""Smoke test for BCGW connectivity and the four queries.
 
 Prompts the developer for BCGW username and password (via ``getpass``,
 never read from ``.env`` — same posture as the eventual login UI), opens
@@ -18,9 +18,9 @@ Usage::
                                             --source-aquifer-id 186
 
 This is **not** a pytest test. The live BCGW database is the system
-under test; mocking SDO_GEOMETRY would prove nothing useful. Per the
-working agreement (PROJECT_PLAN.md §8) Phase 3 is verified by running
-this script with valid credentials and inspecting the output.
+under test; mocking SDO_GEOMETRY would prove nothing useful. The data
+access layer is verified by running this script with valid credentials
+and inspecting the output.
 """
 
 from __future__ import annotations

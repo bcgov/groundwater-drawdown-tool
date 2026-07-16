@@ -1,10 +1,9 @@
 """PDF export of a full analysis run.
 
-Produces the licence-assessment artifact described in PROJECT_PLAN.md
-§5 Phase 5c: input parameters, a summary-card row, a Cooper-Jacob
-assumptions disclaimer, the at-risk summary table, the two result
-charts, and the full per-well details table — mirroring the legacy
-Excel output.
+Produces the licence-assessment artifact: input parameters, a
+summary-card row, a Cooper-Jacob assumptions disclaimer, the at-risk
+summary table, the two result charts, and the full per-well details
+table — mirroring the legacy Excel output.
 
 Page layout (fixed, via explicit ``PageBreak``s):
 
@@ -504,7 +503,8 @@ def _page_decorations(result: AnalysisResult, user: str, version: str):
     def _draw(canvas, doc) -> None:
         width, height = _PAGE_SIZE
         canvas.saveState()
-        # Top screening banner — on every page per PROJECT_PLAN.md §5.
+        # Top screening banner — repeated on every page, so a page that
+        # gets separated from the report still carries the caveat.
         canvas.setFillColor(_BANNER_COLOUR)
         canvas.rect(0, height - 24, width, 24, fill=1, stroke=0)
         canvas.setFillColor(colors.white)

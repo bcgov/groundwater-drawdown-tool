@@ -1,3 +1,3 @@
-"""Reusable Dash components shared across pages. Populated in Phase 4."""
+"""Reusable Dash components shared across pages."""
 
 from __future__ import annotations

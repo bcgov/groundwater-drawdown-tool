@@ -281,9 +281,8 @@ def _manual_entry_banner(material: str | None) -> html.Div:
     """Warning banner shown above the run summary in manual-entry mode.
 
     Surfaces the fact that the run was based on user-supplied material
-    and T/S rather than a mapped aquifer polygon. The reviewer sees
-    this on /results, and the same text is carried into the PDF
-    export when that ships (Phase 5c).
+    and T/S rather than a mapped aquifer polygon. The reviewer sees this
+    on /results, and the same text is carried into the PDF export.
     """
     material_txt = material or "unspecified"
     return html.Div(

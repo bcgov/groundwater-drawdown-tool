@@ -2,8 +2,7 @@
 
 Pure-composition tests with synthetic well rows; no DB. The full
 pipeline orchestrator (`run_analysis`) hits BCGW and is verified
-end-to-end via the smoke test (Phase 3) and the browser walkthrough
-(Phase 4 acceptance).
+end-to-end via `scripts/smoke_test_db.py` and a browser walkthrough.
 """
 
 from __future__ import annotations

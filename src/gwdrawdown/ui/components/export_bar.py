@@ -1,4 +1,4 @@
-"""Run-level export controls for the results page (Phase 5c).
+"""Run-level export controls for the results page.
 
 Two whole-run exports sit beside the per-table CSV buttons:
 

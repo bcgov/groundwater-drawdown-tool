@@ -226,8 +226,8 @@ def aquifers_at_point(
     Implements DATA_REFERENCE.md §6.2. Returns a list because polygons
     can stack vertically (e.g. unconfined sand-and-gravel above
     fractured bedrock); both layers are returned for the same XY. The
-    Phase 4 setup page lets the user pick which one is the "source"
-    aquifer for the same-aquifer filter on ``nearby_wells``.
+    setup page lets the user pick which one is the "source" aquifer for
+    the same-aquifer filter on ``nearby_wells``.
     """
     with conn.cursor() as cur:
         cur.execute(_SQL_AQUIFERS_AT_POINT, {"x": x_albers, "y": y_albers})
