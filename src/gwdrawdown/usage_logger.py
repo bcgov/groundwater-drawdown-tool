@@ -251,9 +251,14 @@ class UsageLogger:
                 "pumping_well_tag_number": inputs.pumping_well_tag_number,
                 "source_aquifer_id": inputs.source_aquifer_id,
                 "source_aquifer_name": inputs.source_aquifer_name,
+                "source_aquifer_material": inputs.source_aquifer_material,
                 "source_subtype_code": inputs.source_subtype_code,
                 "is_manual_mode": inputs.is_manual_mode,
                 "manual_material": inputs.manual_material,
+                # Manual-mode runs only: what the officer passed over.
+                # Useful for spotting places where the delineated
+                # coverage is regularly being rejected.
+                "nearest_mapped_aquifer": inputs.nearest_mapped_aquifer,
                 "transmissivity_m2_per_day": inputs.transmissivity_m2_per_day,
                 "storativity": inputs.storativity,
                 "ts_overridden": inputs.ts_overridden,

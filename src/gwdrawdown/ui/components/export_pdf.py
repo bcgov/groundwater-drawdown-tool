@@ -45,7 +45,7 @@ from gwdrawdown.analysis import AnalysisResult, WellResult
 from gwdrawdown.core.flagging import WellStatus
 from gwdrawdown.ui import disclaimers
 from gwdrawdown.ui.components.palette import STATUS_PALETTE
-from gwdrawdown.ui.format_utils import format_float
+from gwdrawdown.ui.format_utils import format_float, format_source_aquifer
 
 _PAGE_SIZE = landscape(letter)
 _MARGIN = 0.4 * inch
@@ -213,15 +213,12 @@ def _input_parameters_table(result: AnalysisResult, styles: dict) -> Table:
     """
     inputs = result.inputs
     ts_tag = " (override)" if inputs.ts_overridden else ""
-    if inputs.is_manual_mode:
-        source = f"Manual entry ({inputs.manual_material}) — no mapped aquifer"
-        filter_txt = "n/a (manual entry)"
-    else:
-        source = (
-            f"{inputs.source_aquifer_name} (id {inputs.source_aquifer_id}, "
-            f"subtype {inputs.source_subtype_code or '—'})"
-        )
-        filter_txt = "ON" if inputs.same_aquifer_filter else "off"
+    source = format_source_aquifer(inputs)
+    filter_txt = (
+        "n/a (manual entry)"
+        if inputs.is_manual_mode
+        else ("ON" if inputs.same_aquifer_filter else "off")
+    )
 
     rows = [
         ("Run timestamp", result.run_timestamp.strftime("%Y-%m-%d %H:%M:%S")),

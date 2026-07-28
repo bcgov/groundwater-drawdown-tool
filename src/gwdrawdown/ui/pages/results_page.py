@@ -107,7 +107,7 @@ from gwdrawdown.ui.components.results_table import (
     make_per_well_rows,
 )
 from gwdrawdown.ui.components.stat_cards import make_stat_cards
-from gwdrawdown.ui.format_utils import format_float
+from gwdrawdown.ui.format_utils import format_float, format_source_aquifer
 from gwdrawdown.ui.session import current_user, is_authenticated
 from gwdrawdown.usage_logger import get_usage_logger
 
@@ -293,23 +293,32 @@ _MANUAL_BANNER_STYLE = {
 }
 
 
-def _manual_entry_banner(material: str | None) -> html.Div:
+def _manual_entry_banner(inputs: AnalysisInputs) -> html.Div:
     """Warning banner shown above the run summary in manual-entry mode.
 
     Surfaces the fact that the run was based on user-supplied material
     and T/S rather than a mapped aquifer polygon. The reviewer sees this
     on /results, and the same text is carried into the PDF export.
+
+    The banner deliberately no longer claims "no mapped aquifer contains
+    this location": since the "Other" option became available even where
+    polygons *do* overlap, the run means "the officer declared an
+    undelineated aquifer", which is not the same statement. The nearest
+    mapped aquifer is named instead so a reviewer can see what was
+    passed over (client feedback, 2026-07).
     """
-    material_txt = material or "unspecified"
-    return html.Div(
-        [
-            html.Strong("Manual-entry analysis. "),
-            "No mapped aquifer contains the pumping-well location. "
-            f"Material ({material_txt}) and T / S values were supplied by "
-            "the user.",
-        ],
-        style=_MANUAL_BANNER_STYLE,
-    )
+    material_txt = inputs.manual_material or "unspecified"
+    parts: list[Any] = [
+        html.Strong("Undelineated aquifer. "),
+        "The pumping well was recorded as completed in an aquifer that has "
+        f"not been delineated. Material ({material_txt}) and T / S values "
+        "were supplied by the user.",
+    ]
+    if inputs.nearest_mapped_aquifer:
+        parts.append(f" Nearest mapped aquifer: {inputs.nearest_mapped_aquifer}.")
+    else:
+        parts.append(" No mapped aquifer was found near this location.")
+    return html.Div(parts, style=_MANUAL_BANNER_STYLE)
 
 
 def _summary_block(result: AnalysisResult) -> html.Div:
@@ -333,15 +342,12 @@ def _summary_block(result: AnalysisResult) -> html.Div:
             ]
         )
 
-    if inputs.is_manual_mode:
-        source_text = f"{inputs.source_aquifer_name} (no mapped aquifer)"
-        filter_tag = "n/a (manual entry)"
-    else:
-        source_text = (
-            f"{inputs.source_aquifer_name} (id {inputs.source_aquifer_id}, "
-            f"subtype {inputs.source_subtype_code or '—'})"
-        )
-        filter_tag = "ON" if inputs.same_aquifer_filter else "off"
+    source_text = format_source_aquifer(inputs)
+    filter_tag = (
+        "n/a (manual entry)"
+        if inputs.is_manual_mode
+        else ("ON" if inputs.same_aquifer_filter else "off")
+    )
 
     summary_card = html.Div(
         [
@@ -366,7 +372,7 @@ def _summary_block(result: AnalysisResult) -> html.Div:
 
     if inputs.is_manual_mode:
         return html.Div(
-            [_manual_entry_banner(inputs.manual_material), summary_card]
+            [_manual_entry_banner(inputs), summary_card]
         )
     return summary_card
 

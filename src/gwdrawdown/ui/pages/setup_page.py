@@ -701,6 +701,15 @@ def layout(**_kwargs: object) -> html.Div:
                     # Hidden state
                     dcc.Store(id="setup-point-store", storage_type="memory"),
                     dcc.Store(id="setup-lookup-ts-store", storage_type="memory"),
+                    # Structured metadata for the aquifer picker options
+                    # (id, name, material, distance). Written by
+                    # `fetch_aquifers`, read by the Run Analysis packer
+                    # so it never parses a display label back apart.
+                    dcc.Store(
+                        id="setup-aquifer-meta-store",
+                        storage_type="memory",
+                        data=[],
+                    ),
             # Counter incremented on each successful Run Analysis click;
             # a clientside callback watches this and opens /results in
             # a new browser tab. The new tab inherits sessionStorage at
@@ -931,17 +940,40 @@ def toggle_run_enabled(point: dict | None) -> tuple[bool, Any]:
 
 
 def _manual_option() -> dict[str, object]:
-    """Picker option for the manual-entry fallback.
+    """Picker option for the undelineated-aquifer / manual-entry path.
 
-    Pinned at the bottom of the picker only when no aquifer directly
-    contains the point — a point that overlaps a polygon is, by
-    definition, in mapped territory. Selecting it puts the page into
-    manual mode (material dropdown + mandatory T/S).
+    Pinned at the bottom of the picker **always** — including when one
+    or more polygons directly contain the point. A well can sit inside
+    (or beside) mapped aquifers and still be completed in one the
+    Province has not delineated yet, and forcing the officer to pick a
+    polygon they know is wrong would misrepresent the run in the report
+    (client feedback, 2026-07).
+
+    Selecting it puts the page into manual mode: material dropdown,
+    mandatory T/S, spatial filter disabled, ``source_aquifer_id``
+    stored as ``None``.
     """
     return {
-        "label": "No mapped aquifer at this location — enter materials manually",
+        "label": (
+            "Other — completed in an aquifer that has not been "
+            "delineated (enter materials manually)"
+        ),
         "value": MANUAL_AQUIFER_VALUE,
     }
+
+
+def _aquifer_identity(aquifer: dict[str, object]) -> str:
+    """Aquifer number first, material in brackets, then the name.
+
+    Officers recognise and refer to aquifers by number ("Aquifer 199"),
+    not by their formal name, so the number leads and the name trails
+    as context (client feedback, 2026-07). ``MATERIAL`` can be NULL in
+    BCGW; say so rather than rendering an empty bracket.
+    """
+    material = aquifer.get("MATERIAL") or "material not recorded"
+    core = f"Aquifer {int(aquifer['AQUIFER_ID'])} ({material})"
+    name = aquifer.get("NAME")
+    return f"{core} — {name}" if name else core
 
 
 def _containing_option(aquifer: dict[str, object]) -> dict[str, object]:
@@ -952,10 +984,7 @@ def _containing_option(aquifer: dict[str, object]) -> dict[str, object]:
     are direct hits and which are fallback choices.
     """
     return {
-        "label": (
-            f"{aquifer['NAME']} (id {aquifer['AQUIFER_ID']}, "
-            f"{aquifer['SUBTYPE']}) — directly overlapping"
-        ),
+        "label": f"{_aquifer_identity(aquifer)} — directly overlapping",
         "value": int(aquifer["AQUIFER_ID"]),
     }
 
@@ -970,11 +999,33 @@ def _nearby_option(aquifer: dict[str, object]) -> dict[str, object]:
     dist_m = float(aquifer["DISTANCE_M"])
     return {
         "label": (
-            f"{aquifer['NAME']} (id {aquifer['AQUIFER_ID']}, "
-            f"{aquifer['SUBTYPE']}) — {dist_m:.0f} m away "
+            f"{_aquifer_identity(aquifer)} — {dist_m:.0f} m away "
             "(nearby — not directly overlapping)"
         ),
         "value": int(aquifer["AQUIFER_ID"]),
+    }
+
+
+def _aquifer_meta(
+    aquifer: dict[str, object],
+    *,
+    distance_m: float | None,
+) -> dict[str, object]:
+    """Structured record of one picker option, for the meta store.
+
+    The picker options themselves carry only ``label`` / ``value``, and
+    the label is display copy that shouldn't be parsed back apart at
+    Run Analysis time. This is the structured counterpart: the packer
+    reads it to fill ``source_aquifer_name`` / ``source_aquifer_material``
+    on mapped runs, and to name the nearest mapped aquifer on manual
+    runs.
+    """
+    return {
+        "aquifer_id": int(aquifer["AQUIFER_ID"]),
+        "name": aquifer.get("NAME"),
+        "material": aquifer.get("MATERIAL"),
+        "identity": _aquifer_identity(aquifer),
+        "distance_m": distance_m,
     }
 
 
@@ -982,10 +1033,13 @@ def _nearby_option(aquifer: dict[str, object]) -> dict[str, object]:
     Output("setup-aquifer-picker", "options"),
     Output("setup-aquifer-picker", "value", allow_duplicate=True),
     Output("setup-aquifer-help", "children"),
+    Output("setup-aquifer-meta-store", "data"),
     Input("setup-point-store", "data"),
     prevent_initial_call="initial_duplicate",
 )
-def fetch_aquifers(point: dict | None) -> tuple[list[dict], int | None, str]:
+def fetch_aquifers(
+    point: dict | None,
+) -> tuple[list[dict], int | None, str, list[dict]]:
     """Populate the aquifer picker: containing + nearby + manual.
 
     Both spatial queries run on every point placement —
@@ -1005,11 +1059,20 @@ def fetch_aquifers(point: dict | None) -> tuple[list[dict], int | None, str]:
     - Up to ``MAX_NEARBY_AQUIFERS`` nearby polygons below, tagged
       with distance. The nearby query also returns the containing
       polygons (distance 0), so those are de-duplicated out here.
-    - The manual-entry sentinel, appended only when there are no
-      direct hits.
+    - The "Other — not delineated" sentinel, **always** pinned last.
+      It used to appear only when nothing contained the point, which
+      forced officers to attribute a run to a polygon they knew was
+      wrong whenever the well was completed in an undelineated
+      aquifer (client feedback, 2026-07).
+
+    Also writes ``setup-aquifer-meta-store``: the structured
+    counterpart to the display-only picker options, ordered the same
+    way (direct hits, then nearby ascending by distance). The Run
+    Analysis packer reads it so it never has to parse a label back
+    apart.
     """
     if not point:
-        return [], None, "Place a pumping point above to populate this section."
+        return [], None, "Place a pumping point above to populate this section.", []
     try:
         with get_connection() as conn:
             containing = q.aquifers_at_point(
@@ -1023,10 +1086,10 @@ def fetch_aquifers(point: dict | None) -> tuple[list[dict], int | None, str]:
             )
     except oracledb.DatabaseError as e:
         logger.warning("aquifer query failed: %s", e)
-        return [], None, f"Aquifer query failed: {e}"
+        return [], None, f"Aquifer query failed: {e}", []
     except Exception as e:
         logger.exception("Unexpected aquifer query error")
-        return [], None, f"Unexpected error: {e}"
+        return [], None, f"Unexpected error: {e}", []
 
     # SDO_WITHIN_DISTANCE returns the containing polygons too (distance
     # 0); drop them so an aquifer can't appear as both a direct hit and
@@ -1034,11 +1097,25 @@ def fetch_aquifers(point: dict | None) -> tuple[list[dict], int | None, str]:
     containing_ids = {int(a["AQUIFER_ID"]) for a in containing}
     nearby = [a for a in nearby if int(a["AQUIFER_ID"]) not in containing_ids]
 
+    nearby = nearby[:MAX_NEARBY_AQUIFERS]
+
     containing_options = [_containing_option(a) for a in containing]
-    nearby_options = [_nearby_option(a) for a in nearby[:MAX_NEARBY_AQUIFERS]]
+    nearby_options = [_nearby_option(a) for a in nearby]
+    # Same order as the picker, so "first entry" means "best candidate"
+    # to any consumer of the store.
+    meta = [_aquifer_meta(a, distance_m=0.0) for a in containing] + [
+        _aquifer_meta(a, distance_m=float(a["DISTANCE_M"])) for a in nearby
+    ]
+
+    # The "Other — not delineated" sentinel is always last, in every
+    # branch below.
+    options: list[dict[str, object]] = [
+        *containing_options,
+        *nearby_options,
+        _manual_option(),
+    ]
 
     if containing_options:
-        options: list[dict[str, object]] = [*containing_options, *nearby_options]
         auto = point.get("auto_aquifer_id")
         if auto is not None and any(o["value"] == auto for o in options):
             value: int | None = auto
@@ -1053,32 +1130,35 @@ def fetch_aquifers(point: dict | None) -> tuple[list[dict], int | None, str]:
             else f"This point is inside {n_contain} mapped aquifers."
         )
         if nearby_options:
-            help_text = (
-                base + f" Aquifers within {NEARBY_AQUIFER_RADIUS_M:.0f} m are "
-                "also listed below — pick a nearby aquifer instead if it is "
-                "the correct association."
+            base += (
+                f" Aquifers within {NEARBY_AQUIFER_RADIUS_M:.0f} m are also "
+                "listed below — pick a nearby aquifer instead if it is the "
+                "correct association."
             )
         else:
-            help_text = base + " Pick the source aquifer below."
-        return options, value, help_text
+            base += " Pick the source aquifer below."
+        help_text = (
+            base + " If the well is completed in an aquifer that has not "
+            "been delineated, choose \"Other\" at the bottom of the list."
+        )
+        return options, value, help_text, meta
 
-    # No aquifer contains the point — nearby + manual fallback.
-    options = [*nearby_options, _manual_option()]
+    # No aquifer contains the point — nearby options plus the sentinel.
     if nearby_options:
         help_text = (
             "No aquifer directly contains this point. The closest "
             f"{len(nearby_options)} mapped aquifer"
             f"{'s are' if len(nearby_options) != 1 else ' is'} listed "
             "below as fallback choices; pick the best match, or choose "
-            "manual entry if none apply."
+            "\"Other\" if none apply."
         )
     else:
         help_text = (
             f"No mapped aquifers found within {NEARBY_AQUIFER_RADIUS_M:.0f} m "
-            "of this point. Use manual entry to specify the material and "
+            "of this point. Choose \"Other\" to specify the material and "
             "supply T and S values."
         )
-    return options, None, help_text
+    return options, None, help_text, meta
 
 
 @callback(
@@ -1275,7 +1355,7 @@ def apply_duration_preset(*_n_clicks: int) -> float:
     Input("setup-run", "n_clicks"),
     State("setup-point-store", "data"),
     State("setup-aquifer-picker", "value"),
-    State("setup-aquifer-picker", "options"),
+    State("setup-aquifer-meta-store", "data"),
     State("setup-lookup-ts-store", "data"),
     State("setup-ts-override-toggle", "value"),
     State("setup-ts-T", "value"),
@@ -1293,7 +1373,7 @@ def run_analysis_click(
     _n: int,
     point: dict | None,
     aquifer_id: int | None,
-    aquifer_options: list[dict] | None,
+    aquifer_meta: list[dict] | None,
     lookup: dict | None,
     override_toggle: list[str],
     override_T: float | None,
@@ -1313,14 +1393,18 @@ def run_analysis_click(
     - **Mapped mode** (``aquifer_id`` is a positive AQUIFER_ID): T/S
       come from the lookup defaults unless the override toggle is on,
       in which case the inputs are taken from the editable fields.
-      The picker label is copied into ``source_aquifer_name`` so the
-      results summary reads naturally.
+      ``source_aquifer_name`` and ``source_aquifer_material`` are read
+      from ``setup-aquifer-meta-store`` — the structured record behind
+      the picker option, not the display label.
     - **Manual mode** (``aquifer_id == MANUAL_AQUIFER_VALUE``): a
       material must be picked, T/S are mandatory and read directly
       from the input fields (always editable in this mode), the
       stored ``source_aquifer_id`` is ``None`` (the
       ``AnalysisInputs.is_manual_mode`` flag), and
-      ``source_aquifer_name`` is "Manual entry (material)".
+      ``source_aquifer_name`` is "Other — aquifer not delineated".
+      ``nearest_mapped_aquifer`` records the closest mapped polygon (if
+      any) so the report shows the officer declared an undelineated
+      aquifer despite mapped ones being nearby.
     """
     if not point:
         return no_update, no_update, "Place a pumping point first."
@@ -1361,25 +1445,43 @@ def run_analysis_click(
     if not radius_m or radius_m <= 0:
         return no_update, no_update, "Buffer radius must be positive."
 
+    meta_by_id = {
+        int(m["aquifer_id"]): m for m in (aquifer_meta or []) if "aquifer_id" in m
+    }
+
     if is_manual:
-        aquifer_name = f"Manual entry ({manual_material})"
+        aquifer_name = "Other — aquifer not delineated"
+        aquifer_material: str | None = None
         stored_aquifer_id: int | None = None
         stored_subtype: str | None = None
+        # The picker's meta store is ordered best-candidate-first, so
+        # the head of the list is the closest mapped aquifer. Recording
+        # it is the point of the "Other" option: the report should show
+        # that mapped polygons were present and the officer chose not
+        # to attribute the run to any of them.
+        nearest = next(iter(aquifer_meta or []), None)
+        if nearest is None:
+            nearest_mapped: str | None = None
+        else:
+            distance_m = nearest.get("distance_m")
+            nearest_mapped = nearest["identity"]
+            if distance_m is not None:
+                nearest_mapped += (
+                    " (directly overlapping)"
+                    if float(distance_m) <= 0
+                    else f", {float(distance_m):.0f} m away"
+                )
         # In manual mode the spatial filter has no polygon to test
         # against; force it off in the stored inputs so the results
         # summary doesn't display a misleading "filter ON" indicator.
         same_aquifer_filter = False
     else:
-        aquifer_name = next(
-            (
-                o["label"]
-                for o in (aquifer_options or [])
-                if o.get("value") == aquifer_id
-            ),
-            f"Aquifer {aquifer_id}",
-        )
+        picked = meta_by_id.get(int(aquifer_id), {})
+        aquifer_name = picked.get("name") or f"Aquifer {aquifer_id}"
+        aquifer_material = picked.get("material")
         stored_aquifer_id = int(aquifer_id)
         stored_subtype = (lookup or {}).get("subtype_code")
+        nearest_mapped = None
         same_aquifer_filter = "filter" in (filter_toggle or [])
 
     Q_m3_per_day = units.pumping_rate_to_m3_per_day(float(q_value), q_unit)
@@ -1391,6 +1493,8 @@ def run_analysis_click(
         "pumping_y_albers": float(point["y"]),
         "source_aquifer_id": stored_aquifer_id,
         "source_aquifer_name": aquifer_name,
+        "source_aquifer_material": aquifer_material,
+        "nearest_mapped_aquifer": nearest_mapped,
         "source_subtype_code": stored_subtype,
         "transmissivity_m2_per_day": float(T_value),
         "storativity": float(S_value),
@@ -1614,10 +1718,10 @@ def restore_saved_aquifer(
     back to the previous run's aquifer.
 
     Manual-mode replay: ``source_aquifer_id is None`` on the saved
-    inputs means the prior run was manual. We restore to the manual
-    sentinel as long as it appears in the current picker options
-    (it only appears when the new point also has no containing
-    aquifer); otherwise auto-pick from `fetch_aquifers` runs.
+    inputs means the prior run was manual. The "Other" sentinel is now
+    present in every populated picker, so a manual run always restores
+    cleanly (it used to depend on the new point also having no
+    containing aquifer).
     """
     if not pending:
         return no_update, no_update

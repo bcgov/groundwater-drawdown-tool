@@ -103,6 +103,19 @@ class AnalysisInputs:
     u_threshold: float
     at_risk_fraction: float
     manual_material: str | None = None
+    # Aquifer MATERIAL from GW_AQUIFERS_CLASSIFICATION_SVW (e.g. "Sand
+    # and Gravel", "Bedrock"). Displayed in brackets after the aquifer
+    # number, which officers use as the primary identifier (client
+    # feedback, 2026-07). None in manual mode and on runs predating the
+    # field.
+    source_aquifer_material: str | None = None
+    # In manual mode only: a short description of the closest mapped
+    # aquifer to the pumping point, e.g. "Aquifer 199 (Sand and
+    # Gravel), 120 m". Recorded so the report shows the officer
+    # declared an undelineated aquifer *despite* mapped polygons being
+    # nearby — the point of the "Other" option. None when no aquifer
+    # was found within the search radius, and in mapped mode.
+    nearest_mapped_aquifer: str | None = None
     # WELL_TAG_NUMBER of the pumping point when it was located via the
     # "Well tag number" input mode; None for map-click / lat-lon modes.
     # Carried only so the usage log can record which well an officer
@@ -130,6 +143,8 @@ class AnalysisInputs:
         data = {**data}
         data.setdefault("ts_overridden", False)
         data.setdefault("manual_material", None)
+        data.setdefault("source_aquifer_material", None)
+        data.setdefault("nearest_mapped_aquifer", None)
         data.setdefault("pumping_well_tag_number", None)
         return cls(**data)
 

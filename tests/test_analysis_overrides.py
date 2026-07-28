@@ -396,6 +396,37 @@ def test_legacy_inputs_payload_without_wtn_field_loads_cleanly() -> None:
     assert restored.pumping_well_tag_number is None
 
 
+def test_legacy_payload_without_aquifer_identity_fields_loads_cleanly() -> None:
+    """Payloads predating the aquifer-identity fields default to None.
+
+    Testers auto-update on launch, so a results tab opened before the
+    update can deserialise against the new code. `source_aquifer_material`
+    and `nearest_mapped_aquifer` must default rather than raise.
+    """
+    payload = _make_inputs().to_json()
+    payload.pop("source_aquifer_material", None)
+    payload.pop("nearest_mapped_aquifer", None)
+    restored = AnalysisInputs.from_json(payload)
+    assert restored.source_aquifer_material is None
+    assert restored.nearest_mapped_aquifer is None
+
+
+def test_nearest_mapped_aquifer_survives_json_roundtrip() -> None:
+    """Manual-mode runs carry what the officer passed over."""
+    inputs = AnalysisInputs.from_json(
+        {
+            **_make_manual_inputs().to_json(),
+            "nearest_mapped_aquifer": "Aquifer 199 (Sand and Gravel), 120 m away",
+        }
+    )
+    restored = AnalysisInputs.from_json(inputs.to_json())
+    assert (
+        restored.nearest_mapped_aquifer
+        == "Aquifer 199 (Sand and Gravel), 120 m away"
+    )
+    assert restored.is_manual_mode is True
+
+
 def test_apply_overrides_works_in_manual_mode() -> None:
     """Overrides on a manual-mode result still recompute SAD + status.
 

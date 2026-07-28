@@ -6,6 +6,11 @@ just how a number reads on screen / in an export.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from gwdrawdown.analysis import AnalysisInputs
+
 
 def format_float(value: float | None) -> str:
     """Render a float in fixed-point with trailing zeros stripped.
@@ -24,3 +29,36 @@ def format_float(value: float | None) -> str:
         return ""
     formatted = f"{value:.10f}".rstrip("0").rstrip(".")
     return formatted if formatted else "0"
+
+
+def format_source_aquifer(inputs: AnalysisInputs) -> str:
+    """One-line description of the run's source aquifer.
+
+    Shared by the results-page run summary and the PDF input-parameters
+    table so the two can't drift apart.
+
+    Aquifer number leads, material in brackets, name and subtype
+    trailing as context — officers refer to aquifers by number
+    (client feedback, 2026-07). Examples::
+
+        Aquifer 199 (Sand and Gravel) — Cowichan Valley, subtype 1a
+        Other — aquifer not delineated (Unconsolidated); nearest mapped:
+            Aquifer 199 (Sand and Gravel), 120 m away
+
+    In manual mode the ``nearest mapped`` clause is what shows the run
+    was declared undelineated *despite* mapped polygons being nearby;
+    it is omitted when nothing was found within the search radius.
+    """
+    if inputs.is_manual_mode:
+        text = f"{inputs.source_aquifer_name} ({inputs.manual_material or '—'})"
+        if inputs.nearest_mapped_aquifer:
+            text += f"; nearest mapped: {inputs.nearest_mapped_aquifer}"
+        else:
+            text += "; no mapped aquifer nearby"
+        return text
+
+    material = inputs.source_aquifer_material or "material not recorded"
+    text = f"Aquifer {inputs.source_aquifer_id} ({material})"
+    if inputs.source_aquifer_name:
+        text += f" — {inputs.source_aquifer_name}"
+    return f"{text}, subtype {inputs.source_subtype_code or '—'}"
