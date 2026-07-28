@@ -501,6 +501,13 @@ def make_per_well_rows(
 
 
 _PER_WELL_HELPER_CHILDREN = [
+    # NPL is used as a column header, in the SAD explanation, and in the
+    # empty-state copy, but was never expanded anywhere in the UI
+    # (client feedback, 2026-07).
+    html.Strong("NPL "),
+    "= non-pumping (static) water level — depth to water below ground "
+    "when the well is not being pumped, in metres.",
+    html.Br(),
     html.Strong("Editable columns: "),
     "NPL, Finished Depth, Stickup, Top of Frac/Screen.",
     html.Br(),

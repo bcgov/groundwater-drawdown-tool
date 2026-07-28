@@ -186,6 +186,17 @@ def layout(**_kwargs: object) -> html.Div:
                         "Distance-drawdown",
                         className="bc-results-heading",
                     ),
+                    # The hover readout on this chart names s and r
+                    # without defining them; officers less familiar with
+                    # the notation asked for a plain-language key
+                    # (client feedback, 2026-07).
+                    html.P(
+                        "Each point is one well. r = radial distance from the "
+                        "pumping well (m); s = predicted drawdown at that "
+                        "distance (m). The black curve is the Cooper-Jacob "
+                        "solution; hover any point for its values.",
+                        className="bc-results-helper",
+                    ),
                     dcc.Graph(
                         id="dd-chart",
                         # Drop the "Autoscale" button: on the inverted Y
@@ -202,11 +213,16 @@ def layout(**_kwargs: object) -> html.Div:
                         "Impact % per well",
                         className="bc-results-heading",
                     ),
+                    # "dashed red line" was wrong — the threshold line is
+                    # drawn dark on purpose so it doesn't blend into the
+                    # red AT_RISK bars beside it. The caption follows the
+                    # line, not the other way round (client feedback,
+                    # 2026-07).
                     html.P(
-                        "Sorted worst-to-best; dashed red line = at-risk "
-                        "threshold. Wells with no computable impact "
-                        "(missing NPL or depth) are excluded — see the "
-                        "details table below.",
+                        "Sorted by magnitude of impact; the dashed vertical "
+                        "line marks the at-risk threshold. Wells with no "
+                        "computable impact (missing NPL or depth) are "
+                        "excluded — see the details table below.",
                         className="bc-results-helper",
                     ),
                     dcc.Graph(

@@ -17,7 +17,9 @@ Conventions:
   sit at the top of the chart.
 - The at-risk threshold (from ``inputs.at_risk_fraction``) is drawn
   as a vertical dashed line; bars crossing the line are AT_RISK by
-  definition.
+  definition. The line is dark rather than red on purpose — see
+  ``_THRESHOLD_LINE_COLOR``. The results-page caption describes it as
+  "the dashed vertical line" so the wording tracks the colour.
 - Wells with no computable impact (INSUFFICIENT_DATA, SUSPECT_DATA)
   are excluded — their row in the per-well details table is where
   the data-quality conversation belongs. A small caption below the
@@ -189,7 +191,10 @@ def make_impact_chart(
     # past 100 % impact.
     max_pct = max(100.0, max(impact_pct) * 1.05)
 
-    title_text = f"Impact % per well (sorted by severity, {len(wells_with_impact)} wells)"
+    title_text = (
+        "Impact % per well (sorted by magnitude of impact, "
+        f"{len(wells_with_impact)} wells)"
+    )
     if excluded:
         title_text += (
             f" — {excluded} excluded "

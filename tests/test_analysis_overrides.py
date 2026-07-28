@@ -357,11 +357,11 @@ def test_is_manual_mode_false_for_normal_run() -> None:
 
 
 def test_manual_inputs_json_roundtrip_preserves_material() -> None:
-    inputs = _make_manual_inputs(material="Unconsolidated (sand and gravel)")
+    inputs = _make_manual_inputs(material="Unconsolidated")
     restored = AnalysisInputs.from_json(inputs.to_json())
     assert restored == inputs
     assert restored.source_aquifer_id is None
-    assert restored.manual_material == "Unconsolidated (sand and gravel)"
+    assert restored.manual_material == "Unconsolidated"
     assert restored.is_manual_mode is True
 
 

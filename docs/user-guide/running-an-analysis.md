@@ -81,7 +81,7 @@ restore the lookup defaults for the selected aquifer.
 
 If you choose the "no mapped aquifer" option (offered for points the
 Province has not mapped), the tool reveals a **material** dropdown —
-*Unconsolidated (sand and gravel)* or *Bedrock* — and the T and S
+*Unconsolidated* or *Bedrock* — and the T and S
 fields become **mandatory** (there are no lookup defaults to fall
 back on). The same-aquifer filter is not available in manual mode.
 The results page shows an orange "manual entry" banner so the run

@@ -120,8 +120,11 @@ NEARBY_AQUIFER_RADIUS_M: float = 1000.0
 
 # Maximum nearby polygons surfaced in the picker. Keeps the radio
 # list short when the search radius hits a busy area; the SQL ORDER
-# BY DISTANCE_M guarantees these are the closest ones.
-MAX_NEARBY_AQUIFERS: int = 3
+# BY DISTANCE_M guarantees these are the closest ones. Raised from 3
+# to 5 at client request — parts of the Lower Mainland carry several
+# small aquifers within the search radius and three options weren't
+# enough to reach the right one.
+MAX_NEARBY_AQUIFERS: int = 5
 
 
 def _section_heading(icon_name: str, label: str) -> html.H3:

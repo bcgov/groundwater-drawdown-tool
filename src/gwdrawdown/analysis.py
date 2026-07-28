@@ -57,12 +57,17 @@ OVERRIDABLE_FIELDS: Final[tuple[str, ...]] = (
 )
 
 
-# Manual-entry material options offered when the pumping point falls
-# outside every mapped aquifer polygon. Kept narrow (two categories)
-# so the picker is decisive — officers pick T/S separately based on
-# the material they choose.
+# Manual-entry material options offered when the officer declares the
+# pumping well is completed in an aquifer that has not been delineated.
+# Kept narrow (two categories) so the picker is decisive — officers
+# pick T/S separately based on the material they choose.
+#
+# "Unconsolidated" is deliberately unqualified: the earlier wording
+# ("Unconsolidated (sand and gravel)") implied every unconsolidated
+# aquifer is sand and gravel, which is not the case (client feedback,
+# 2026-07).
 MANUAL_AQUIFER_MATERIALS: Final[tuple[str, ...]] = (
-    "Unconsolidated (sand and gravel)",
+    "Unconsolidated",
     "Bedrock",
 )
 

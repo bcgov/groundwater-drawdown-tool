@@ -51,15 +51,15 @@ Leahey, 2024):
 ## Impact % per well
 
 A bar chart of each well's predicted impact as a percentage of its
-Safe Available Drawdown (SAD), sorted worst-to-best. A dashed red line
-marks the **30 % at-risk threshold** — bars at or above the line are
-flagged as at-risk. Wells with no computable impact (missing NPL or
-well depth) are excluded from this chart — they appear in the details
-table below with an **INSUFFICIENT_DATA** status.
+Safe Available Drawdown (SAD), sorted by magnitude of impact. A dashed
+vertical line marks the **30 % at-risk threshold** — bars at or above
+the line are flagged as at-risk. Wells with no computable impact
+(missing NPL or well depth) are excluded from this chart — they appear
+in the details table below with an **INSUFFICIENT_DATA** status.
 
-![Impact-percent bar chart, one bar per well sorted worst-to-best, with a dashed red line marking the 30% at-risk threshold]({{ site.baseurl }}/assets/img/impact-percent-chart.png)
+![Impact-percent bar chart, one bar per well sorted by magnitude of impact, with a dashed vertical line marking the 30% at-risk threshold]({{ site.baseurl }}/assets/img/impact-percent-chart.png)
 
-*The Impact % per well chart: bars sorted worst-to-best, with the dashed red 30% at-risk threshold line.*
+*The Impact % per well chart: bars sorted by magnitude of impact, with the dashed 30% at-risk threshold line.*
 
 ## Wells in buffer (map view)
 
