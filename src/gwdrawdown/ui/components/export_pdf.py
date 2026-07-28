@@ -61,7 +61,7 @@ _HEADER_BG = colors.HexColor("#fafafa")
 _OUTSIDE_VALIDITY_BG = colors.HexColor("#f3e5f5")
 
 # Summary-card accent colours — the shared status-palette foreground
-# plus two local hues, matching `ui/components/stat_cards.py`.
+# plus one local hue, matching `ui/components/stat_cards.py`.
 _SUMMARY_ACCENTS: dict[str, str] = {
     "neutral": "#003366",
     "at_risk": STATUS_PALETTE[WellStatus.AT_RISK][1],
@@ -69,7 +69,6 @@ _SUMMARY_ACCENTS: dict[str, str] = {
     "insufficient": STATUS_PALETTE[WellStatus.INSUFFICIENT_DATA][1],
     "suspect": STATUS_PALETTE[WellStatus.SUSPECT_DATA][1],
     "outside": STATUS_PALETTE[WellStatus.OUTSIDE_VALIDITY][1],
-    "drawdown": "#1565c0",
 }
 
 _EDITABLE_FIELD_LABELS: dict[str, str] = {
@@ -333,14 +332,17 @@ def _summary_cards(result: AnalysisResult, styles: dict) -> Table:
     advisory rule as the on-screen card — wells whose ``u_max`` reaches
     ``inputs.u_threshold`` — not ``result.n_outside_validity`` (which
     the pipeline no longer emits).
+
+    There is deliberately no "Max drawdown" card. It was removed at
+    client request (2026-07): a single headline drawdown figure invites
+    misreading by anyone who doesn't know it is the maximum across the
+    *observation* wells rather than the drawdown at the pumping well.
+    Per-well drawdown remains in the details table, and
+    ``AnalysisResult.max_drawdown_m`` is still computed and written to
+    the usage log — only the display is gone.
     """
     u_threshold = result.inputs.u_threshold
     advisory = sum(1 for w in result.wells if w.u_max >= u_threshold)
-    max_dd = (
-        f"{result.max_drawdown_m:.3f} m"
-        if result.max_drawdown_m is not None
-        else "—"
-    )
     cards = [
         ("Total wells", str(result.n_total), "neutral"),
         ("At risk", str(result.n_at_risk), "at_risk"),
@@ -348,7 +350,6 @@ def _summary_cards(result: AnalysisResult, styles: dict) -> Table:
         ("Insufficient data", str(result.n_insufficient_data), "insufficient"),
         ("Suspect data", str(result.n_suspect_data), "suspect"),
         ("Outside validity", str(advisory), "outside"),
-        ("Max drawdown", max_dd, "drawdown"),
     ]
     n = len(cards)
     card_w = (_CONTENT_WIDTH - (n - 1) * _CARD_GAP) / n
