@@ -422,16 +422,16 @@ def make_distance_drawdown_figure(
         paper_bgcolor="white",
     )
 
-    # Zero-drawdown datum. Added after `update_layout` so it is drawn
-    # against the final axis range. `layer="below"` keeps it behind the
-    # curve, the SAD bars, and the well markers — it is a reference,
-    # not data.
+    # Zero-drawdown datum, requested by the client. Added after
+    # `update_layout` so it is drawn against the final axis range.
+    # `layer="below"` keeps it behind the curve, the SAD bars, and the
+    # well markers — it is a reference, not data.
+    #
+    # Deliberately unlabelled: the Y axis already carries a "0" tick
+    # directly beside it, so an annotation here is duplicate ink.
     fig.add_hline(
         y=0.0,
         line={"color": _ZERO_LINE_COLOR, "width": 1.5, "dash": "dot"},
         layer="below",
-        annotation_text="0 m — no drawdown",
-        annotation_position="top left",
-        annotation_font={"size": 10, "color": _ZERO_LINE_COLOR},
     )
     return fig

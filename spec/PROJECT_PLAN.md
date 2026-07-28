@@ -1104,10 +1104,10 @@ need this.
 
 ### Phase 7 — End-user testing feedback (July 2026) *(shipped v0.5.4)*
 
-The first round of real end-user testing, on `v0.5.3`. Twenty items,
+The first round of real end-user testing, on `v0.5.3`. Twenty-one items,
 none of them structural: no change to the architecture, the layer
 rules, or the Cooper-Jacob / SAD math, and no reported wrong number.
-Seventeen items shipped in `v0.5.4`; three are deferred (below).
+Eighteen shipped in `v0.5.4`; three are deferred (below).
 
 Delivered, grouped as committed:
 
