@@ -535,13 +535,19 @@ def _page_decorations(result: AnalysisResult, user: str, version: str):
     return _draw
 
 
-def _method_text(u_threshold: float) -> list[str]:
+def _method_text(u_threshold: float, at_risk_fraction: float) -> list[str]:
     """Cooper-Jacob method + assumptions, as separate paragraphs.
 
     The "Method and assumptions" wording is the section *heading* —
     it is deliberately not repeated as a lead-in here. The validity
     threshold actually in force (``inputs.u_threshold``) is quoted so
     the reader sees the real number rather than a generic statement.
+
+    Unlike the tool UI — where the client-supplied guidance is split up
+    and placed next to the control each paragraph is about — the PDF
+    carries **all** of it in one section. This is the artifact that
+    lands on the licence file, so it has to stand alone for a reader
+    who never saw the screen.
     """
     return [
         "Drawdown is estimated using the Cooper-Jacob (1946) "
@@ -563,6 +569,8 @@ def _method_text(u_threshold: float) -> list[str]:
         "SAD, so the driller's log should be reviewed.",
         "These are screening-level estimates and are not a substitute "
         "for professional assessment. " + disclaimers.INTERPRETATION_FULL,
+        disclaimers.at_risk_threshold_explanation(at_risk_fraction),
+        *disclaimers.METHOD_GUIDANCE,
     ]
 
 _PER_WELL_LEGEND = (
@@ -623,7 +631,9 @@ def build_pdf(
         Paragraph("Method and assumptions", styles["heading"]),
         *[
             Paragraph(para, styles["disclaimer"])
-            for para in _method_text(u_threshold)
+            for para in _method_text(
+                u_threshold, result.inputs.at_risk_fraction
+            )
         ],
         PageBreak(),
     ]

@@ -1,6 +1,6 @@
-"""Disclaimer placement rules (client direction, 2026-06).
+"""Disclaimer and guidance placement rules (client direction).
 
-Two invariants the client cares about:
+Invariants the client cares about:
 
 - The **interpretation** disclaimer (results must be interpreted by a
   hydrogeologist / Qualified Professional) appears on every exported
@@ -9,24 +9,49 @@ Two invariants the client cares about:
   outside the organization) appears on the tool UI ONLY — never on an
   exported artifact, because a screening output may legitimately leave
   the org as part of a licence file.
+- The **method guidance** (2026-07) is split up on the tool UI so each
+  paragraph sits next to the control it is about, but the PDF carries
+  all of it in one section — that artifact has to stand alone for a
+  reader who never saw the screen.
 
-These tests pin both so a future edit can't silently leak the
-internal-use line into an export or drop the interpretation caveat.
+These tests pin all three so a future edit can't silently leak the
+internal-use line into an export, drop the interpretation caveat, or
+define a guidance paragraph that never reaches a surface.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from gwdrawdown.analysis import AnalysisInputs, AnalysisResult, _compute_well_result
+from gwdrawdown.app import create_app
 from gwdrawdown.core.flagging import WellStatus
 from gwdrawdown.ui import disclaimers
+from gwdrawdown.ui.components import export_pdf
 from gwdrawdown.ui.components.export_html_map import build_html_map
 from gwdrawdown.ui.components.export_kml import build_kml
 from gwdrawdown.ui.components.export_pdf import build_pdf
 from gwdrawdown.ui.components.footer import make_footer
+from gwdrawdown.ui.components.results_table import build_per_well_section
 
 PX, PY = 1_170_000.0, 418_000.0
+
+
+@pytest.fixture(scope="module")
+def results_page():
+    """Import the page module via ``create_app``.
+
+    Page modules call ``dash.register_page`` at import time, which needs
+    a pages-enabled Dash app to exist first — same pattern as
+    ``test_results_page_cache``.
+    """
+    create_app()
+    from gwdrawdown.ui.pages import results_page as rp
+
+    return rp
+
 
 # A fragment of the interpretation wording distinctive enough that its
 # presence proves the full disclaimer made it onto the surface.
@@ -159,3 +184,62 @@ def test_footer_carries_both_disclaimers() -> None:
     strings = _all_strings(make_footer())
     assert disclaimers.INTERPRETATION_BANNER in strings
     assert disclaimers.INTERNAL_USE in strings
+
+
+# --- Method guidance (client wording, 2026-07) ------------------------------
+
+
+def test_method_guidance_covers_every_paragraph() -> None:
+    """`METHOD_GUIDANCE` is what the PDF and the results panel iterate.
+
+    A paragraph defined but left out of the tuple would silently never
+    be shown anywhere.
+    """
+    assert disclaimers.METHOD_GUIDANCE == (
+        disclaimers.ANALYTICAL_SOLUTION,
+        disclaimers.AQUIFER_DEFAULTS,
+        disclaimers.SENSITIVITY_ANALYSIS,
+        disclaimers.VERIFY_SOURCES,
+        disclaimers.CONTACT_HYDROGEOLOGIST,
+    )
+    assert all(len(p) > 80 for p in disclaimers.METHOD_GUIDANCE)
+
+
+def test_threshold_explanation_tracks_the_configured_fraction() -> None:
+    """The wording quotes the real threshold, not a hardcoded 30%."""
+    text = disclaimers.at_risk_threshold_explanation(0.30)
+    assert "30% threshold" in text
+    assert "equal to 30% of the calculated Safe Available Drawdown" in text
+
+    # If the threshold is ever retuned, the sentence follows it.
+    retuned = disclaimers.at_risk_threshold_explanation(0.25)
+    assert "25% threshold" in retuned
+    assert "30%" not in retuned
+
+
+def test_results_page_method_panel_carries_all_guidance(results_page) -> None:
+    """The on-screen panel shows the guidance not tied to one control."""
+    strings = _all_strings(results_page._method_panel())
+    assert disclaimers.ANALYTICAL_SOLUTION in strings
+    assert disclaimers.SENSITIVITY_ANALYSIS in strings
+    assert disclaimers.CONTACT_HYDROGEOLOGIST in strings
+    assert any("threshold indicates" in s for s in strings)
+
+
+def test_per_well_table_carries_the_verify_sources_guidance() -> None:
+    """`VERIFY_SOURCES` sits with the GWELLS links, not in the panel."""
+    strings = _all_strings(build_per_well_section())
+    assert disclaimers.VERIFY_SOURCES in strings
+
+
+def test_pdf_method_section_includes_every_guidance_paragraph() -> None:
+    """The PDF stands alone for a reader who never saw the screen.
+
+    Asserted on `_method_text` rather than the rendered bytes because
+    PDF text streams are compressed — see
+    `test_pdf_does_not_carry_internal_use`.
+    """
+    paragraphs = export_pdf._method_text(0.01, 0.30)
+    for guidance in disclaimers.METHOD_GUIDANCE:
+        assert guidance in paragraphs
+    assert any("threshold indicates" in p for p in paragraphs)

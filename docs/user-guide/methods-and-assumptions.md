@@ -121,7 +121,15 @@ predicted drawdown to SAD:
 | **INSUFFICIENT_DATA** | SAD could not be computed (missing water level or well depth). |
 | **SUSPECT_DATA** | SAD was computed but is non-positive — the GWELLS baseline record is physically impossible and should be reviewed against the driller's log. |
 
-The 30% threshold matches the legacy Excel tool's at-risk filter
+The 30% threshold indicates that the anticipated drawdown impact is
+equal to 30% of the calculated Safe Available Drawdown. This threshold
+serves as a general screening guideline to help identify wells that may
+experience a substantial impact from the proposed groundwater
+diversion. Further interpretation and evaluation should be undertaken
+by, or in consultation with, a Regional Hydrogeologist or Qualified
+Professional.
+
+The threshold itself matches the legacy Excel tool's at-risk filter
 (`Impact!V` and the `InputValues!B30` summary).
 
 ## Reassigned aquifer material
@@ -188,6 +196,43 @@ BC.
 > **Always review.** Results are advisory and must be reviewed by a
 > qualified hydrogeologist. The tool is not a replacement for
 > professional assessment.
+
+## Guidance on using this tool
+
+The following guidance appears throughout the tool and in full in the
+PDF export. It is collected here as the canonical statement.
+
+- This tool estimates the predicted cone of depression resulting from
+  pumping a well. It uses an analytical solution to provide a
+  simplified representation of a complex natural system and may not be
+  applicable in all situations. The results should not be relied upon
+  as the sole basis for decision-making and do not replace the advice
+  of a Qualified Professional or Regional Hydrogeologist.
+- Default aquifer parameter values for British Columbia are based on a
+  limited dataset. Best practice is to evaluate a range of values and
+  conduct a sensitivity analysis of the storage coefficient (S) and
+  transmissivity (T) input parameters.
+- This tool utilizes a single analytical approach (Cooper-Jacob
+  Method). Given the inherent uncertainties associated with aquifer
+  properties, users are encouraged to conduct sensitivity analyses by
+  running multiple simulations using a range of plausible aquifer
+  parameter values to better understand the influence of those
+  uncertainties on predicted drawdown.
+- Users are encouraged to verify information wherever possible,
+  including reviewing scanned driller's logs and other supporting
+  documentation available through the associated GWELLS records.
+- If you have questions regarding the use of this tool or the
+  interpretation of its results, please contact a Regional
+  Hydrogeologist or Qualified Professional.
+
+### Running a sensitivity analysis today
+
+The tool takes one T and one S per run, so a sensitivity analysis is
+currently a manual exercise: run the analysis several times with the
+**Override default T / S** toggle set to a range of plausible values,
+and compare the resulting impact percentages. Exporting each run to PDF
+gives you a set of comparable artifacts — each carries its own run ID
+and timestamp.
 
 ## References
 

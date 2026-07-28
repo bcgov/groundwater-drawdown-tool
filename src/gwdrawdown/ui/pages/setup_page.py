@@ -71,6 +71,7 @@ from gwdrawdown.analysis import MANUAL_AQUIFER_MATERIALS
 from gwdrawdown.core import aquifer_lookup, crs_utils, units
 from gwdrawdown.data_access import get_connection
 from gwdrawdown.data_access import queries as q
+from gwdrawdown.ui import disclaimers
 from gwdrawdown.ui.components.basemaps import (
     WMD_OVERLAY_NAME,
     WMP_OVERLAY_NAME,
@@ -508,6 +509,20 @@ def layout(**_kwargs: object) -> html.Div:
                                     ),
                                 ],
                                 className="bc-form-grid",
+                            ),
+                            # Client guidance (2026-07). Deliberately
+                            # placed against the T/S inputs rather than
+                            # buried in the results-page method panel:
+                            # this is the one piece of guidance that
+                            # should change what the officer *does*, and
+                            # here is where the decision gets made.
+                            html.Div(
+                                disclaimers.AQUIFER_DEFAULTS,
+                                className="bc-form-hint",
+                                style={
+                                    "marginTop": "0.75rem",
+                                    "fontStyle": "italic",
+                                },
                             ),
                         ],
                         className="bc-form-section",

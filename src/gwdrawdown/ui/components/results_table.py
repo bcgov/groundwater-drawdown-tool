@@ -31,6 +31,7 @@ from dash import Input, Output, State, callback, dash_table, dcc, html, no_updat
 
 from gwdrawdown.analysis import OVERRIDABLE_FIELDS, AnalysisResult, WellResult
 from gwdrawdown.core.flagging import WellStatus
+from gwdrawdown.ui import disclaimers
 from gwdrawdown.ui.components.palette import STATUS_PALETTE
 from gwdrawdown.ui.format_utils import format_licence_status
 
@@ -531,6 +532,11 @@ _PER_WELL_HELPER_CHILDREN = [
     "duration, and the well's distance from the pumping point. The "
     "rightmost \"Edited\" column lists which fields you adjusted "
     "(carried through to the CSV export).",
+    html.Br(),
+    # Client guidance (2026-07) placed here rather than in the results
+    # page's method panel: this table is where the GWELLS links and the
+    # override cells live, so it is the moment the advice is actionable.
+    html.Em(disclaimers.VERIFY_SOURCES),
 ]
 
 

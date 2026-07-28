@@ -6,15 +6,21 @@ Layout from top:
 2. Run summary — timestamp, signed-in user, source aquifer, T/S used
    (with "(override)" tag when applicable), Q in m³/day, duration,
    buffer radius, source-aquifer filter on/off (spatial).
-3. Stat cards — six status counts + max drawdown.
-4. Distance-drawdown chart — three traces (wells, Cooper-Jacob
-   curve, SAD bars), inverted Y, log-spaced X. Click a point to
-   select it; the map highlights the matching marker.
-5. Colour-coded map — pumping well + buffer + per-well markers
-   (status colour, impact-magnitude radius). Click a marker to
-   select it; the chart highlights the matching point.
-6. At-risk wells table — filtered to ``WellStatus.AT_RISK`` only.
-7. Per-well details table — full 17-column table with sort, filter,
+3. Stat cards — six status counts. (No max-drawdown tile: removed at
+   client request, see `ui/components/stat_cards.py`.)
+4. "Method, assumptions and limitations" — a collapsed ``<details>``
+   panel carrying the client-supplied guidance that isn't tied to a
+   single control, plus the at-risk threshold explanation.
+5. Distance-drawdown chart — four traces (wells, Cooper-Jacob curve,
+   and SAD bars split into headroom / exceedance), inverted Y,
+   log-spaced X, with a 0 m reference line. Click a point to select
+   it; the map highlights the matching marker.
+6. Colour-coded map — pumping well + buffer + per-well markers
+   (status colour, impact-magnitude radius, dark ring on licensed
+   wells). Click a marker to select it; the chart highlights the
+   matching point.
+7. At-risk wells table — filtered to ``WellStatus.AT_RISK`` only.
+8. Per-well details table — full 19-column table with sort, filter,
    pagination (10/page), CSV export, four editable columns (NPL,
    finished depth, stickup, top of fracture/screen), and a Reset
    button. Status cell colour-coded per `WellStatus`. Rows with
@@ -22,7 +28,7 @@ Layout from top:
    Cooper-Jacob u<threshold advisory are tinted light purple
    (purple wins on rows tripping both). A row-tint legend +
    pagination reminder sit just above the table.
-8. Footer.
+9. Footer.
 
 Render flow: the layout in `layout()` is a *static skeleton* —
 named-id containers (`summary-block-container`, `stat-cards-container`,
@@ -76,12 +82,14 @@ from dash import (
     no_update,
 )
 
+from gwdrawdown import config
 from gwdrawdown.analysis import (
     AnalysisInputs,
     AnalysisResult,
     apply_overrides,
     run_analysis,
 )
+from gwdrawdown.ui import disclaimers
 from gwdrawdown.ui.components.basemaps import (
     WMD_OVERLAY_NAME,
     WMP_OVERLAY_NAME,
@@ -182,6 +190,7 @@ def layout(**_kwargs: object) -> html.Div:
                     html.Div(id="summary-block-container"),
                     html.Div(id="stat-cards-container"),
                     build_export_bar(),
+                    _method_panel(),
                     html.H2(
                         "Distance-drawdown",
                         className="bc-results-heading",
@@ -235,7 +244,9 @@ def layout(**_kwargs: object) -> html.Div:
                         "Sorted by magnitude of impact; the dashed vertical "
                         "line marks the at-risk threshold. Wells with no "
                         "computable impact (missing NPL or depth) are "
-                        "excluded — see the details table below.",
+                        "excluded — see the details table below. For what "
+                        "the threshold means, see \"Method, assumptions and "
+                        "limitations\" above.",
                         className="bc-results-helper",
                     ),
                     dcc.Graph(
@@ -309,6 +320,41 @@ _MANUAL_BANNER_STYLE = {
     "fontSize": "0.9rem",
     "lineHeight": 1.5,
 }
+
+
+def _method_panel() -> html.Details:
+    """Collapsible "Method, assumptions and limitations" disclosure.
+
+    Carries the client-supplied guidance that isn't tied to one control
+    (`disclaimers.METHOD_GUIDANCE`) plus the at-risk threshold
+    explanation. The two paragraphs that *are* tied to a control live
+    next to it instead — ``AQUIFER_DEFAULTS`` under the setup page's
+    T/S inputs and ``VERIFY_SOURCES`` on the per-well table — so they
+    are read at the moment they matter.
+
+    Static, not callback-rendered. The threshold text reads
+    ``config.AT_RISK_DRAWDOWN_FRACTION`` rather than the per-run
+    ``inputs.at_risk_fraction``; the packer copies one into the other,
+    so they agree, and keeping this static avoids adding a twelfth
+    output to `render`'s hand-counted output list.
+
+    A native ``<details>`` rather than a modal: no state to manage, it
+    works before hydration, it prints expanded, and it is
+    keyboard-accessible without extra work.
+    """
+    paragraphs = [
+        *disclaimers.METHOD_GUIDANCE,
+        disclaimers.at_risk_threshold_explanation(
+            config.AT_RISK_DRAWDOWN_FRACTION
+        ),
+    ]
+    return html.Details(
+        [
+            html.Summary("Method, assumptions and limitations"),
+            *[html.P(text) for text in paragraphs],
+        ],
+        className="bc-method-panel",
+    )
 
 
 def _manual_entry_banner(inputs: AnalysisInputs) -> html.Div:

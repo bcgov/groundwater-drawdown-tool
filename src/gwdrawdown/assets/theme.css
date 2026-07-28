@@ -932,3 +932,38 @@ select {
     margin-top: 0;
     margin-bottom: var(--bc-space-3);
 }
+
+/* "Method, assumptions and limitations" disclosure on /results.
+ *
+ * A native <details>/<summary> rather than a callback-driven modal:
+ * it needs no state, works before hydration, prints expanded, and is
+ * keyboard-accessible for free. Collapsed by default so the guidance
+ * is one line at rest — five paragraphs stacked open would push the
+ * results down the page and get scrolled past unread. */
+.bc-method-panel {
+    border: 1px solid var(--bc-border);
+    border-left: 4px solid var(--bc-brand, #003366);
+    border-radius: var(--bc-radius);
+    background: var(--bc-surface, #fff);
+    padding: var(--bc-space-3) var(--bc-space-4);
+    margin-bottom: var(--bc-space-4);
+}
+
+.bc-method-panel > summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--bc-brand, #003366);
+    list-style-position: outside;
+}
+
+.bc-method-panel > summary:hover {
+    text-decoration: underline;
+}
+
+.bc-method-panel p {
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--bc-text);
+    margin: var(--bc-space-3) 0 0 0;
+}
