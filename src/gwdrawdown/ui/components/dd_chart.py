@@ -5,9 +5,20 @@ Implements the legacy Excel `InputValues` chart described in
 scatter traces, inverted Y axis, log-spaced X sampling for the
 Cooper-Jacob curve:
 
-1. **SAD bars (orange)** — one vertical segment per well from its
-   drawdown point down to its SAD value. Drawn first so the wells
-   and curve render on top.
+1. **SAD bars** — one vertical segment per well spanning from its
+   predicted drawdown to its SAD value. Drawn first so the wells and
+   curve render on top. Split across two traces by direction:
+
+   - **orange** where SAD is deeper than the predicted drawdown, so
+     the bar hangs *below* the well point. This is the usual case and
+     the bar reads as remaining headroom.
+   - **red** where the predicted drawdown meets or exceeds SAD, so the
+     bar runs *upward* from the well point. Geometrically the same
+     segment, but the reading inverts — a tester reasonably read a
+     screen full of upward bars as a rendering fault rather than as
+     "every one of these wells is over-impacted" (client feedback,
+     2026-07). Colouring the exceedance case makes the flip read as a
+     warning instead of a glitch.
 2. **Drawdown curve (black)** — Cooper-Jacob evaluated at ~40
    log-spaced X values from 0.1 m to 1.1x max well distance, using
    the same `core.drawdown.cooper_jacob` kernel as the per-well
@@ -34,6 +45,7 @@ import plotly.graph_objects as go
 
 from gwdrawdown.analysis import AnalysisResult, WellResult
 from gwdrawdown.core.drawdown import PumpingSource, cooper_jacob
+from gwdrawdown.core.flagging import WellStatus
 from gwdrawdown.ui.components.palette import (
     PUMPING_COLOR as _PUMPING_COLOR,
 )
@@ -50,7 +62,17 @@ from gwdrawdown.ui.components.palette import (
 # and the map markers all read consistently.
 _CURVE_COLOR = "#000000"
 _SAD_COLOR = "#FFA500"
+# Exceedance bars (drawdown >= SAD) reuse the shared AT_RISK red, so a
+# red bar on the chart and a red status cell in the table are saying
+# the same thing in the same colour.
+_SAD_EXCEEDED_COLOR = STATUS_COLOR[WellStatus.AT_RISK]
 _DEFAULT_WELL_COLOR = "#616161"
+
+# Reference line at zero drawdown — the pre-pumping water level, which
+# every SAD bar and well point is measured down from. Without it the
+# chart has no visual datum (client feedback, 2026-07); the y-range
+# below is forced to include 0 so the line always has somewhere to sit.
+_ZERO_LINE_COLOR = "#9e9e9e"
 
 # r → 0 fallback used in core.drawdown — the pumping well is plotted
 # at this distance rather than at exactly 0 m so it appears on the
@@ -106,18 +128,37 @@ def _sample_curve(
     return ys
 
 
-def _sad_segment_arrays(wells: list[WellResult]) -> tuple[list[Any], list[Any]]:
-    """Build the X/Y arrays for the SAD vertical-bar trace.
+def _sad_segment_arrays(
+    wells: list[WellResult],
+    *,
+    exceeded: bool,
+) -> tuple[list[Any], list[Any]]:
+    """Build the X/Y arrays for one of the two SAD vertical-bar traces.
 
-    Each well contributes two points (top and bottom of its bar)
-    separated from the next well by a ``None`` sentinel, which
-    Plotly renders as a gap. Wells without a valid positive SAD
-    are skipped — there's no headroom bar to draw.
+    Each well contributes two points (the ends of its bar) separated
+    from the next well by a ``None`` sentinel, which Plotly renders as
+    a gap. Wells without a valid positive SAD are skipped — there is no
+    bar to draw.
+
+    Args:
+        wells: The wells to consider.
+        exceeded: When ``True``, return only wells whose predicted
+            drawdown meets or exceeds SAD (bar runs upward from the
+            well point — the over-impacted case, drawn red). When
+            ``False``, return only wells with headroom remaining (bar
+            hangs below the well point, drawn orange).
+
+    Returns:
+        ``(xs, ys)`` ready to hand to a ``mode="lines"`` scatter.
     """
     xs: list[Any] = []
     ys: list[Any] = []
     for w in wells:
         if w.sad_m is None or w.sad_m <= 0:
+            continue
+        # Y grows downward on this chart, so "drawdown deeper than SAD"
+        # is drawdown_m >= sad_m.
+        if (w.drawdown_m >= w.sad_m) != exceeded:
             continue
         xs.extend([w.distance_m, w.distance_m, None])
         ys.extend([w.drawdown_m, w.sad_m, None])
@@ -185,16 +226,22 @@ def make_distance_drawdown_figure(
     # so its 24-px radius doesn't intercept clicks meant for the
     # 10-px well marker beneath it.
 
-    # 1. SAD vertical bars.
-    sad_x, sad_y = _sad_segment_arrays(wells)
-    if sad_x:
+    # 1. SAD vertical bars, split by direction so the over-impacted
+    # case is visually distinct from the ordinary headroom case.
+    for exceeded, colour, label in (
+        (False, _SAD_COLOR, "SAD (headroom remaining)"),
+        (True, _SAD_EXCEEDED_COLOR, "Drawdown exceeds SAD"),
+    ):
+        sad_x, sad_y = _sad_segment_arrays(wells, exceeded=exceeded)
+        if not sad_x:
+            continue
         fig.add_trace(
             go.Scatter(
                 x=sad_x,
                 y=sad_y,
                 mode="lines",
-                line={"color": _SAD_COLOR, "width": 4},
-                name="SAD",
+                line={"color": colour, "width": 4},
+                name=label,
                 hoverinfo="skip",
             )
         )
@@ -305,13 +352,22 @@ def make_distance_drawdown_figure(
     # button on the results page, this closes a Plotly quirk a tester hit
     # where autoscaling a zoomed chart flipped the axis upright and would
     # not recover.
-    y_values = list(curve_y) + list(well_ys) + [pump_y]
+    # Zero is forced into the range so the 0 m reference line always has
+    # somewhere to sit: every plotted drawdown is positive, so a range
+    # derived purely from the data would leave `add_hline(y=0)` outside
+    # the visible area and silently draw nothing.
+    y_values = list(curve_y) + list(well_ys) + [pump_y, 0.0]
     y_values += [w.sad_m for w in wells if w.sad_m is not None and w.sad_m > 0]
     y_lo = min(y_values)
     y_hi = max(y_values)
     span = y_hi - y_lo
-    y_pad = span * 0.05 if span > 0 else max(abs(y_hi), 1.0) * 0.05
-    y_range = [y_hi + y_pad, y_lo - y_pad]
+    base_pad = span * 0.05 if span > 0 else max(abs(y_hi), 1.0) * 0.05
+    # Asymmetric padding: WTN labels are drawn above their marker
+    # ("top center"), so the top of the chart — the small-drawdown
+    # end — needs roughly triple the headroom or labels on the
+    # shallowest wells get clipped against the plot edge (client
+    # feedback, 2026-07).
+    y_range = [y_hi + base_pad, y_lo - base_pad * 3.0]
 
     fig.update_layout(
         title={
@@ -331,10 +387,14 @@ def make_distance_drawdown_figure(
         # pumping triangle at r=0.1 m isn't clipped against the
         # y-axis (rangemode="tozero" snapped the axis to start
         # exactly at 0 and cut the marker in half).
+        # The right-hand margin is widened from the old flush `x_max`:
+        # the furthest well sits at ~0.91 * x_max and its WTN label is
+        # centred on the marker, so a 5-digit tag could overhang the
+        # plot edge and get clipped (client feedback, 2026-07).
         xaxis={
             "title": "Distance [m]",
             "type": "linear",
-            "range": [-x_max * 0.025, x_max],
+            "range": [-x_max * 0.03, x_max * 1.04],
             "showgrid": True,
             "gridcolor": "#eee",
         },
@@ -360,5 +420,18 @@ def make_distance_drawdown_figure(
         height=480,
         plot_bgcolor="white",
         paper_bgcolor="white",
+    )
+
+    # Zero-drawdown datum. Added after `update_layout` so it is drawn
+    # against the final axis range. `layer="below"` keeps it behind the
+    # curve, the SAD bars, and the well markers — it is a reference,
+    # not data.
+    fig.add_hline(
+        y=0.0,
+        line={"color": _ZERO_LINE_COLOR, "width": 1.5, "dash": "dot"},
+        layer="below",
+        annotation_text="0 m — no drawdown",
+        annotation_position="top left",
+        annotation_font={"size": 10, "color": _ZERO_LINE_COLOR},
     )
     return fig

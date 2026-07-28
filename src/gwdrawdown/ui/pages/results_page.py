@@ -191,10 +191,23 @@ def layout(**_kwargs: object) -> html.Div:
                     # the notation asked for a plain-language key
                     # (client feedback, 2026-07).
                     html.P(
-                        "Each point is one well. r = radial distance from the "
-                        "pumping well (m); s = predicted drawdown at that "
-                        "distance (m). The black curve is the Cooper-Jacob "
-                        "solution; hover any point for its values.",
+                        [
+                            "Each point is one well. r = radial distance from "
+                            "the pumping well (m); s = predicted drawdown at "
+                            "that distance (m). The black curve is the "
+                            "Cooper-Jacob solution; hover any point for its "
+                            "values. The dotted line at 0 m is the "
+                            "pre-pumping water level.",
+                            html.Br(),
+                            "Each vertical bar runs between a well's predicted "
+                            "drawdown and its Safe Available Drawdown (SAD). ",
+                            html.Strong("Orange"),
+                            " bars hang below the well point — headroom "
+                            "remains. ",
+                            html.Strong("Red"),
+                            " bars run upward, meaning predicted drawdown has "
+                            "exceeded that well's SAD.",
+                        ],
                         className="bc-results-helper",
                     ),
                     dcc.Graph(
