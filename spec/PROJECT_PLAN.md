@@ -1100,6 +1100,72 @@ need this.
 - The release zip no longer carries `PROJECT_PLAN.md`,
   `DATA_REFERENCE.md`, or `DESIGN_NOTES.md`.
 
+### Phase 7 — End-user testing feedback (July 2026) *(shipped v0.5.4)*
+
+The first round of real end-user testing, on `v0.5.3`. Twenty items,
+none of them structural: no change to the architecture, the layer
+rules, or the Cooper-Jacob / SAD math, and no reported wrong number.
+Seventeen items shipped in `v0.5.4`; three are deferred (below).
+
+Delivered, grouped as committed:
+
+- **Wording and constants.** Nearby aquifer suggestions 3 → 5 (busy
+  Lower Mainland areas); manual material "Unconsolidated (sand and
+  gravel)" → "Unconsolidated"; impact-chart caption corrected (the
+  threshold line is dark on purpose — see
+  `impact_chart._THRESHOLD_LINE_COLOR` — so the caption follows the
+  line, not the reverse); "sorted worst-to-best" → "sorted by
+  magnitude of impact"; plain-language keys for *s* / *r* and NPL.
+- **Aquifer identity + the "Other" option.** Aquifer number leads
+  everywhere, material in brackets. The undelineated-aquifer sentinel
+  is now offered in *every* populated picker, not only when nothing
+  contains the point — a well can sit inside mapped polygons and still
+  be completed in an undelineated aquifer. Because manual mode no
+  longer implies "nothing is mapped here",
+  `AnalysisInputs.nearest_mapped_aquifer` records what was set aside
+  and the results banner names it. A new `setup-aquifer-meta-store`
+  carries structured picker metadata so the Run Analysis packer reads
+  fields rather than parsing a display label.
+- **Max drawdown tile removed** from the results page and the PDF.
+  `AnalysisResult.max_drawdown_m` still computes and still reaches the
+  usage log — only the display is gone.
+- **Distance-drawdown chart.** A 0 m datum line (which required
+  forcing zero into the y-range: every drawdown is positive, so a
+  data-derived range would have drawn nothing); SAD bars split into
+  orange (headroom) and red (drawdown ≥ SAD); asymmetric y-padding and
+  a wider right margin so WTN labels stop clipping.
+- **Licence status end-to-end.** `LICENCE_STATUS` was already queried
+  and already on `WellResult` — it had simply never been displayed. Now
+  on the table, CSV, map pop-up, PDF, KML, and standalone HTML map.
+  Display-only, client-confirmed: it feeds no classification. NULL
+  renders "Unknown", never folded into "Unlicensed". Licensed wells get
+  a dark ring on the map — fill already encodes `WellStatus` and stroke
+  weight encodes selection, so a ring is the channel left.
+- **Method guidance.** Client-supplied paragraphs in
+  `ui/disclaimers.py`, placed next to the control each is about rather
+  than stacked in one block; the PDF carries all of it in one section
+  because that artifact must stand alone.
+
+Deferred, with the reasons recorded so the next pass starts informed:
+
+- **Impact-chart WTN labels thin out** on a busy buffer
+  (`_MAX_CHART_HEIGHT` squeezes bars until Plotly drops ticks).
+- **Distance-drawdown WTN labels overlap** at similar radial
+  distances. The client asked for vertical labels; **plotly 5.24's
+  `go.Scatter` has no `textangle`**, so that needs the labels rebuilt
+  as layout annotations. A cheaper option is alternating
+  `textposition` plus a label on/off toggle. Both items are also
+  bounded by a constraint neither fix escapes: charts are captured as
+  PNGs into a fixed-size PDF page, so "show every WTN" cannot fully
+  survive the export.
+- **Flagging non-delineated aquifers** (e.g. Aquifer 1143) in the
+  per-well table. Deliberately not a hardcoded ID, which would rot the
+  first time BC adds another. Lead to chase first: the new aquifer
+  label renders a null `MATERIAL` as "Aquifer 1143 (material not
+  recorded)", so "has no `MATERIAL`" may be the data-driven rule. One
+  query against `GW_AQUIFERS_CLASSIFICATION_SVW` settles it; pending
+  client consultation either way.
+
 ## 7. Decision register
 
 Nothing here is outstanding. These questions were raised at kickoff and are

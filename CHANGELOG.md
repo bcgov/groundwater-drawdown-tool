@@ -8,14 +8,66 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+## [0.5.4] — 2026-07-28
+
+This release works through the feedback from the end-user testing round.
+
 ### Added
 
-- The tool is now published under the Apache License 2.0. A `LICENSE`
-  file is included in the install folder.
+- **Licensed and unlicensed wells are now shown.** Every well carries its
+  GWELLS licence status — Licensed, Unlicensed, Historical, or Unknown
+  where GWELLS does not say — in the details table, the map pop-up, the
+  CSV, the PDF, the KML, and the standalone map. On the map, a **dark
+  ring** around a marker means the well is currently licensed. Licence
+  status is shown for information only; it does not change any well's
+  status or at-risk result.
+- **An "Other" option in the aquifer picker.** If the well is completed
+  in an aquifer that has not been delineated, you can now say so — even
+  when the point sits on or near mapped aquifers. Pick "Other", choose
+  the material, and enter T and S. The results page and the PDF record
+  the choice, and name the nearest mapped aquifer so a reviewer can see
+  what was set aside.
+- **A "Method, assumptions and limitations" panel on the results page,**
+  collapsed until you open it. It explains what the tool does and does
+  not tell you, and what the 30% at-risk threshold means. Guidance on
+  aquifer defaults now sits with the T and S fields on the setup page,
+  and guidance on checking driller's logs sits with the details table.
+  The PDF export carries all of it in one section.
+- **A 0 m reference line on the distance-drawdown chart,** marking the
+  water level before pumping starts, so the drawdown and SAD bars have
+  a datum to be read against.
+- **Plain-language definitions** of *s* and *r* under the
+  distance-drawdown chart, and of NPL above the details table.
+- The map pop-up now shows the well's **aquifer number**.
 
 ### Changed
 
-- Updated the README and the developer documentation.
+- **Aquifers are now identified by number first,** with the material in
+  brackets — "Aquifer 199 (Sand and Gravel)" — in the aquifer picker,
+  the results summary, and the PDF, since that is how aquifers are
+  usually referred to.
+- **Up to five nearby aquifers are suggested** instead of three, for
+  areas where several small aquifers sit close together.
+- **SAD bars on the distance-drawdown chart are now colour-coded.**
+  Orange means the well has headroom left; **red means predicted
+  drawdown has passed that well's Safe Available Drawdown**. A red bar
+  points upward from the well — that is not a fault, it is the tool
+  showing an over-impacted well. A caption under the chart explains it.
+- The manual-entry material option is now just **"Unconsolidated"**
+  rather than "Unconsolidated (sand and gravel)", which wrongly implied
+  every unconsolidated aquifer is sand and gravel.
+- The impact chart caption now reads **"sorted by magnitude of impact"**
+  and no longer describes the threshold line as red — the line is drawn
+  dark on purpose, so it stays distinct from the red at-risk bars.
+- Well tag numbers no longer get clipped at the top-right of the
+  distance-drawdown chart.
+
+### Removed
+
+- **The "Max drawdown" summary tile,** from both the results page and
+  the PDF. It was easily misread as the drawdown at the pumping well
+  when it was actually the largest drawdown at any nearby well.
+  Per-well drawdown is unchanged in the table, charts, and exports.
 
 ## [0.5.3] — 2026-06-22
 
