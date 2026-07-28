@@ -121,6 +121,27 @@ def test_html_map_well_entry_carries_status_colour_and_radius() -> None:
     assert well["status"] in {s.value for s in WellStatus}
 
 
+def test_html_map_well_entry_carries_licence_and_ring_flag() -> None:
+    """The standalone map mirrors the in-app licensed-well ring."""
+    html = build_html_map(
+        _result(
+            [
+                _row(WELL_TAG_NUMBER=1, LICENCE_STATUS="Licensed"),
+                _row(WELL_TAG_NUMBER=2, LICENCE_STATUS="Historical"),
+                _row(WELL_TAG_NUMBER=3, LICENCE_STATUS=None),
+            ]
+        )
+    )
+    by_wtn = {w["wtn"]: w for w in _payload(html)["wells"]}
+    assert by_wtn[1]["licence"] == "Licensed"
+    assert by_wtn[1]["licensed"] is True
+    # A lapsed licence is not a current one — no ring.
+    assert by_wtn[2]["licence"] == "Historical"
+    assert by_wtn[2]["licensed"] is False
+    assert by_wtn[3]["licence"] == "Unknown"
+    assert by_wtn[3]["licensed"] is False
+
+
 def test_html_map_well_coordinates_are_wgs84() -> None:
     html = build_html_map(_result([_row()]))
     well = _payload(html)["wells"][0]

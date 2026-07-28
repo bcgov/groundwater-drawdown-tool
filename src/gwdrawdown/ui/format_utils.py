@@ -31,6 +31,43 @@ def format_float(value: float | None) -> str:
     return formatted if formatted else "0"
 
 
+# Shown wherever BCGW's LICENCE_STATUS is NULL or blank. GWELLS itself
+# uses "Licensed" / "Unlicensed" / "Historical"; a missing value means
+# the record simply doesn't say, which is not the same as "Unlicensed"
+# and must not be displayed as if it were.
+UNKNOWN_LICENCE_STATUS = "Unknown"
+
+
+def format_licence_status(value: str | None) -> str:
+    """Render BCGW ``LICENCE_STATUS`` for display.
+
+    Values seen in ``GW_WATER_WELLS_WRBC_SVW`` are ``Licensed``,
+    ``Unlicensed`` and ``Historical``; NULL is common. Passed through
+    as-is apart from whitespace, with NULL/blank becoming
+    ``"Unknown"`` — display-only, and deliberately never folded into
+    "Unlicensed", which would assert something the record doesn't say.
+
+    Licence status has **no effect on any risk classification**
+    (client-confirmed, 2026-07); it is context for the officer only.
+    """
+    text = (value or "").strip()
+    return text or UNKNOWN_LICENCE_STATUS
+
+
+def is_licensed(value: str | None) -> bool:
+    """True only for a currently-licensed well.
+
+    Drives the results-map ring. ``Historical`` is deliberately False —
+    a lapsed licence is not a current one — as are ``Unlicensed`` and
+    NULL. Map colour already encodes `WellStatus` and stroke weight
+    encodes selection, so licensing gets exactly one channel: a ring or
+    no ring. Rendering all four states would make a busy buffer
+    unreadable, and the question officers are asking is "which of these
+    are licensed".
+    """
+    return (value or "").strip().casefold() == "licensed"
+
+
 def format_source_aquifer(inputs: AnalysisInputs) -> str:
     """One-line description of the run's source aquifer.
 

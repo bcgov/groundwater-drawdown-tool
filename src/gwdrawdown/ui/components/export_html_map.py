@@ -25,6 +25,7 @@ from gwdrawdown.analysis import AnalysisResult, WellResult
 from gwdrawdown.core.crs_utils import to_wgs84
 from gwdrawdown.ui import disclaimers
 from gwdrawdown.ui.components.palette import BUFFER_COLOR, STATUS_COLOR
+from gwdrawdown.ui.format_utils import format_licence_status, is_licensed
 
 # Circle-marker radius bounds (pixels) — mirrors
 # `results_map._MIN_RADIUS_PX` / `_MAX_RADIUS_PX` so the exported map
@@ -66,6 +67,9 @@ def _well_payload(result: AnalysisResult) -> list[dict[str, object]]:
                     else round(w.impact_fraction * 100, 1)
                 ),
                 "material": w.reassigned_material or "",
+                "licence": format_licence_status(w.licence_status),
+                # Drives the dark ring, mirroring the in-app results map.
+                "licensed": is_licensed(w.licence_status),
                 "url": w.well_details_url or "",
             }
         )
@@ -131,6 +135,14 @@ function esc(s) {
 }
 
 DATA.wells.forEach(function(w) {
+  // Licensed wells get a dark ring outside the marker, matching the
+  // in-app results map. Non-interactive so clicks reach the marker.
+  if (w.licensed) {
+    L.circleMarker([w.lat, w.lon], {
+      radius: w.radius + 3, color: '#212121', weight: 2,
+      fill: false, interactive: false
+    }).addTo(map);
+  }
   var m = L.circleMarker([w.lat, w.lon], {
     radius: w.radius, color: w.color, weight: 1,
     fillColor: w.color, fillOpacity: 0.75
@@ -138,6 +150,7 @@ DATA.wells.forEach(function(w) {
   var rows = [
     '<b>WTN ' + w.wtn + '</b>',
     'Status: ' + esc(w.status),
+    'Licence: ' + esc(w.licence),
     'Distance: ' + w.distance + ' m',
     'Drawdown: ' + w.drawdown + ' m',
     'SAD: ' + (w.sad === null ? '\\u2014' : w.sad + ' m'),

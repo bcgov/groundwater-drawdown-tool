@@ -248,9 +248,14 @@ def layout(**_kwargs: object) -> html.Div:
                         className="bc-results-heading",
                     ),
                     html.P(
-                        "Marker colour matches the Status column; marker size "
-                        "scales with predicted impact. Click a marker to "
-                        "highlight the matching point on the chart above.",
+                        [
+                            "Marker colour matches the Status column; marker "
+                            "size scales with predicted impact. A dark ring "
+                            "marks a currently licensed well (Historical and "
+                            "Unlicensed wells are unringed). Click a marker "
+                            "to highlight the matching point on the chart "
+                            "above.",
+                        ],
                         className="bc-results-helper",
                     ),
                     build_map_skeleton(),

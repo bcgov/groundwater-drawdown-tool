@@ -32,6 +32,7 @@ from dash import Input, Output, State, callback, dash_table, dcc, html, no_updat
 from gwdrawdown.analysis import OVERRIDABLE_FIELDS, AnalysisResult, WellResult
 from gwdrawdown.core.flagging import WellStatus
 from gwdrawdown.ui.components.palette import STATUS_PALETTE
+from gwdrawdown.ui.format_utils import format_licence_status
 
 # Light yellow row tint for any well that has an active override.
 _OVERRIDE_ROW_BG = "#fff8e1"
@@ -59,6 +60,10 @@ _FULL_COLUMNS: list[tuple[str, str, str]] = [
     # (column id, display name, type)
     ("well_tag_number", "WTN", "numeric"),
     ("intended_water_use", "Intended Use", "text"),
+    # Display-only context, never an input to any classification
+    # (client-confirmed, 2026-07). Sits beside Intended Use because
+    # both answer "what kind of well is this?".
+    ("licence_status", "Licence", "text"),
     ("aquifer_id", "Aquifer ID", "numeric"),
     ("finished_well_depth_m", "Finished Depth (m)", "numeric"),
     ("total_depth_drilled_m", "Total Depth (m)", "numeric"),
@@ -126,6 +131,7 @@ _STATUS_PALETTE = STATUS_PALETTE
 _COLUMN_WIDTHS: dict[str, str] = {
     "well_tag_number": "95px",
     "intended_water_use": "140px",
+    "licence_status": "90px",
     "aquifer_id": "70px",
     "finished_well_depth_m": "95px",
     "total_depth_drilled_m": "85px",
@@ -176,6 +182,7 @@ def _well_value(w: WellResult, column_id: str) -> object:
     raw: dict[str, object] = {
         "well_tag_number": w.well_tag_number,
         "intended_water_use": w.intended_water_use,
+        "licence_status": format_licence_status(w.licence_status),
         "aquifer_id": w.aquifer_id,
         "finished_well_depth_m": w.finished_well_depth_m,
         "total_depth_drilled_m": w.total_depth_drilled_m,
@@ -507,6 +514,12 @@ _PER_WELL_HELPER_CHILDREN = [
     html.Strong("NPL "),
     "= non-pumping (static) water level — depth to water below ground "
     "when the well is not being pumped, in metres.",
+    html.Br(),
+    html.Strong("Licence "),
+    "= the well's licensing status as recorded in GWELLS "
+    "(Licensed / Unlicensed / Historical; Unknown where GWELLS does not "
+    "say). Shown for context only — it does not affect any status or "
+    "at-risk calculation.",
     html.Br(),
     html.Strong("Editable columns: "),
     "NPL, Finished Depth, Stickup, Top of Frac/Screen.",

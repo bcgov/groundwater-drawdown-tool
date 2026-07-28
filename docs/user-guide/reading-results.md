@@ -65,9 +65,14 @@ in the details table below with an **INSUFFICIENT_DATA** status.
 
 A colour-coded map of the wells inside the buffer radius. Marker colour
 matches the **Status** column in the details table; marker size scales
-with the magnitude of predicted impact. Clicking a marker highlights the
-matching point on the distance-drawdown chart, and clicking a chart
-point highlights the matching marker — the two views are linked.
+with the magnitude of predicted impact. A **dark ring** around a marker
+means that well is currently **licensed** in GWELLS — wells recorded as
+Unlicensed, Historical, or with no licence status are drawn without a
+ring. Clicking a marker highlights the matching point on the
+distance-drawdown chart, and clicking a chart point highlights the
+matching marker — the two views are linked. The marker pop-up carries
+the well's aquifer number and licence status alongside its drawdown,
+SAD, and impact.
 
 ![Results map with observation wells colour-coded by drawdown severity and sized by predicted impact, around the proposed pumping well at the centre]({{ site.baseurl }}/assets/img/results-map.png)
 
@@ -87,9 +92,14 @@ Sorted descending by impact percentage.
 ## Per-well details table
 
 Every observation well, with the full set of attributes (WTN, intended
-use, aquifer ID, depths, yield, water level, distance, predicted impact,
-SAD, status, and more). The table is sortable, filterable, and
-paginated.
+use, licence status, aquifer ID, depths, yield, water level, distance,
+predicted impact, SAD, status, and more). The table is sortable,
+filterable, and paginated.
+
+**Licence** shows the well's status as recorded in GWELLS — *Licensed*,
+*Unlicensed*, *Historical*, or *Unknown* where GWELLS does not say. It
+is shown for context only and does not affect any status or at-risk
+calculation.
 
 ### Editable columns and live recompute
 

@@ -10,7 +10,11 @@ A dash-leaflet `Map` showing:
   (shared palette with the stat cards and table cells) and sized
   by the predicted impact magnitude. Each marker carries a
   permanent WTN label and an on-click `Popup` with the full
-  per-well summary.
+  per-well summary;
+- a dark, non-interactive ring just outside the marker of every
+  *currently licensed* well (`is_licensed`). See
+  `_LICENSED_RING_COLOR` for why licensing gets a ring rather than a
+  colour.
 
 Cross-linked to the distance-drawdown chart via a memory-scoped
 ``selected-well`` store on the results page. The marker's id is a
@@ -44,6 +48,7 @@ from gwdrawdown.ui.components.palette import (
     SELECTION_COLOR,
     STATUS_COLOR,
 )
+from gwdrawdown.ui.format_utils import format_licence_status, is_licensed
 
 # Padding fraction applied when computing the viewport zoom so the
 # buffer circle has some breathing room around it, not flush
@@ -74,6 +79,18 @@ _MIN_ZOOM = 0
 # carry magnitude information.
 _MIN_RADIUS_PX = 6.0
 _MAX_RADIUS_PX = 18.0
+
+# Licensed wells carry a dark ring drawn just outside their marker.
+# Licensing needs its own visual channel: marker fill already encodes
+# `WellStatus` and stroke weight encodes selection, so a ring (present
+# or absent) is the one axis left. Only *currently* licensed wells get
+# one — Historical, Unlicensed and Unknown render plain, because
+# rendering four states would make a busy buffer unreadable and the
+# question officers are asking is "which of these are licensed"
+# (client request, 2026-07).
+_LICENSED_RING_COLOR = "#212121"
+_LICENSED_RING_GAP_PX = 3.0
+_LICENSED_RING_WEIGHT = 2
 
 # Inline CSS for the pumping-well DivMarker. An upward-pointing
 # triangle drawn with CSS borders + a white outline triangle behind
@@ -146,6 +163,14 @@ def _well_popup_children(w: WellResult) -> list[Any]:
     children: list[Any] = [
         html.Div(f"WTN {w.well_tag_number}", style=_POPUP_HEADER_STYLE),
         _popup_row("Status:", w.well_status.value),
+        # Aquifer number and licence status added at client request
+        # (2026-07): officers identify aquifers by number, and licensing
+        # matters when weighing the implications of an impact.
+        _popup_row(
+            "Aquifer:",
+            "—" if w.aquifer_id is None else f"Aquifer {w.aquifer_id}",
+        ),
+        _popup_row("Licence:", format_licence_status(w.licence_status)),
         _popup_row("Distance:", f"{w.distance_m:.1f} m"),
         _popup_row("Drawdown:", f"{w.drawdown_m:.3f} m"),
         _popup_row("SAD:", sad_txt),
@@ -223,6 +248,25 @@ def make_well_markers(
         color = STATUS_COLOR.get(w.well_status, "#666")
         radius = _radius_for_well(w, max_impact)
         is_selected = selected_wtn is not None and selected_wtn == w.well_tag_number
+        # Licensed ring first, so the interactive well marker below is
+        # drawn on top and keeps ownership of clicks. `interactive=False`
+        # additionally lets clicks fall straight through the ring.
+        if is_licensed(w.licence_status):
+            markers.append(
+                dl.CircleMarker(
+                    center=[lat, lon],
+                    radius=radius + _LICENSED_RING_GAP_PX,
+                    color=_LICENSED_RING_COLOR,
+                    weight=_LICENSED_RING_WEIGHT,
+                    fill=False,
+                    interactive=False,
+                    id={
+                        "type": "well-licence-ring",
+                        "wtn": int(w.well_tag_number),
+                        "status": w.well_status.value,
+                    },
+                )
+            )
         markers.append(
             dl.CircleMarker(
                 center=[lat, lon],

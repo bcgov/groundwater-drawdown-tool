@@ -11,8 +11,15 @@ would be a real defect; these cases pin the shape of both branches.
 
 from __future__ import annotations
 
+import pytest
+
 from gwdrawdown.analysis import AnalysisInputs
-from gwdrawdown.ui.format_utils import format_float, format_source_aquifer
+from gwdrawdown.ui.format_utils import (
+    format_float,
+    format_licence_status,
+    format_source_aquifer,
+    is_licensed,
+)
 
 
 def _inputs(**overrides) -> AnalysisInputs:
@@ -92,6 +99,52 @@ def test_manual_mode_names_the_nearest_mapped_aquifer():
     )
     assert text.startswith("Other — aquifer not delineated (Unconsolidated)")
     assert "nearest mapped: Aquifer 199 (Sand and Gravel), 120 m away" in text
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Licensed", "Licensed"),
+        ("Unlicensed", "Unlicensed"),
+        ("Historical", "Historical"),
+        ("  Licensed  ", "Licensed"),
+        (None, "Unknown"),
+        ("", "Unknown"),
+        ("   ", "Unknown"),
+    ],
+)
+def test_licence_status_display(raw, expected):
+    """NULL becomes "Unknown", never "Unlicensed".
+
+    A blank cell in a printed report reads as "not licensed", which is
+    an assertion GWELLS did not make.
+    """
+    assert format_licence_status(raw) == expected
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Licensed", True),
+        ("licensed", True),  # defensive: BCGW casing is not guaranteed
+        ("Unlicensed", False),
+        # A lapsed licence is not a current one — no ring.
+        ("Historical", False),
+        (None, False),
+        ("", False),
+    ],
+)
+def test_is_licensed_drives_the_map_ring(raw, expected):
+    assert is_licensed(raw) is expected
+
+
+def test_unlicensed_is_not_matched_by_a_substring_check():
+    """Guard against a naive `"licensed" in value` implementation.
+
+    "Unlicensed" contains "licensed"; a substring test would ring every
+    unlicensed well on the map — the exact opposite of the intent.
+    """
+    assert is_licensed("Unlicensed") is False
 
 
 def test_manual_mode_with_no_nearby_aquifer():

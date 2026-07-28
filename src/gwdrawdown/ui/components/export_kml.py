@@ -28,6 +28,7 @@ from gwdrawdown.analysis import AnalysisResult, WellResult
 from gwdrawdown.core.crs_utils import to_wgs84
 from gwdrawdown.ui import disclaimers
 from gwdrawdown.ui.components.palette import PUMPING_COLOR, STATUS_COLOR
+from gwdrawdown.ui.format_utils import format_licence_status
 
 # A neutral white circle icon hosted by Google; the per-marker
 # ``<color>`` element tints it, so one icon serves every status.
@@ -92,6 +93,7 @@ def _well_data(w: WellResult, edited: str) -> list[tuple[str, str]]:
         ("WTN", str(w.well_tag_number)),
         ("Aquifer ID", "" if w.aquifer_id is None else str(w.aquifer_id)),
         ("Intended Use", w.intended_water_use or ""),
+        ("Licence Status", format_licence_status(w.licence_status)),
         ("Distance (m)", _fmt(w.distance_m, 1)),
         ("Finished Depth (m)", _fmt(w.finished_well_depth_m, 2)),
         ("Total Depth (m)", _fmt(w.total_depth_drilled_m, 2)),

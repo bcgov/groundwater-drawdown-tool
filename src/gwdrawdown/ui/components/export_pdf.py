@@ -45,7 +45,11 @@ from gwdrawdown.analysis import AnalysisResult, WellResult
 from gwdrawdown.core.flagging import WellStatus
 from gwdrawdown.ui import disclaimers
 from gwdrawdown.ui.components.palette import STATUS_PALETTE
-from gwdrawdown.ui.format_utils import format_float, format_source_aquifer
+from gwdrawdown.ui.format_utils import (
+    format_float,
+    format_licence_status,
+    format_source_aquifer,
+)
 
 _PAGE_SIZE = landscape(letter)
 _MARGIN = 0.4 * inch
@@ -83,6 +87,7 @@ _EDITABLE_FIELD_LABELS: dict[str, str] = {
 _PER_WELL_COLUMNS: list[tuple[str, str, int | None]] = [
     ("WTN", "well_tag_number", 0),
     ("Use", "intended_water_use", None),
+    ("Lic.", "licence_status", None),
     ("Aq ID", "aquifer_id", 0),
     ("Fin.D", "finished_well_depth_m", 2),
     ("Tot.D", "total_depth_drilled_m", 2),
@@ -104,7 +109,7 @@ _PER_WELL_COLUMNS: list[tuple[str, str, int | None]] = [
 # always fills the frame. The Status column is widened enough to clear
 # the longest value ("INSUFFICIENT_DATA").
 _PER_WELL_WEIGHTS = [
-    34, 62, 30, 35, 35, 37, 42, 31, 31, 52, 54, 37, 44, 39, 33, 31, 68, 48,
+    34, 58, 40, 28, 33, 33, 35, 40, 30, 30, 49, 51, 35, 42, 37, 31, 30, 64, 45,
 ]
 
 _AT_RISK_COLUMNS: list[tuple[str, str, int | None]] = [
@@ -143,6 +148,10 @@ def _well_cell(w: WellResult, key: str, edited: str) -> object:
         return w.well_status.value
     if key == "edited":
         return edited
+    if key == "licence_status":
+        # Normalise NULL to "Unknown" rather than a blank cell, which
+        # would read as "unlicensed" in a printed report.
+        return format_licence_status(w.licence_status)
     return getattr(w, key, None)
 
 

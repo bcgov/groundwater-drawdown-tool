@@ -13,7 +13,13 @@ import base64
 
 from gwdrawdown.analysis import AnalysisInputs, AnalysisResult, _compute_well_result
 from gwdrawdown.core.flagging import WellStatus
-from gwdrawdown.ui.components.export_pdf import build_pdf
+from gwdrawdown.ui.components.export_pdf import (
+    _AT_RISK_COLUMNS,
+    _AT_RISK_WEIGHTS,
+    _PER_WELL_COLUMNS,
+    _PER_WELL_WEIGHTS,
+    build_pdf,
+)
 
 PX, PY = 1_170_000.0, 418_000.0
 
@@ -106,6 +112,22 @@ def _assert_is_pdf(data: object) -> None:
     assert isinstance(data, bytes)
     assert data.startswith(b"%PDF")
     assert len(data) > 1000  # a real document, not an empty shell
+
+
+def test_per_well_column_weights_match_the_column_list() -> None:
+    """Column spec and width weights must stay in lockstep.
+
+    Adding a column without adding a weight (or vice versa) produces a
+    colWidths list of the wrong length. The build tests below would
+    catch it eventually, but with a far less obvious failure than this.
+    """
+    assert len(_PER_WELL_COLUMNS) == len(_PER_WELL_WEIGHTS)
+    assert len(_AT_RISK_COLUMNS) == len(_AT_RISK_WEIGHTS)
+
+
+def test_per_well_table_includes_licence_status() -> None:
+    """Licence status reaches the filed report, not just the screen."""
+    assert any(key == "licence_status" for _, key, _ in _PER_WELL_COLUMNS)
 
 
 def test_build_pdf_with_charts_returns_pdf_bytes() -> None:

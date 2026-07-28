@@ -151,6 +151,25 @@ def test_kml_placemark_carries_extended_data() -> None:
     assert {"WTN", "Distance (m)", "SAD (m)", "Status"} <= data_names
 
 
+def test_kml_carries_licence_status_with_null_as_unknown() -> None:
+    """Licence status reaches Google Earth, and NULL is not left blank."""
+    kml = build_kml(_result([_row(LICENCE_STATUS="Licensed")]))
+    root = ET.fromstring(kml)
+    values = {
+        el.get("name"): (el.findtext(f"{_KML_NS}value") or "")
+        for el in root.iter(f"{_KML_NS}Data")
+    }
+    assert values["Licence Status"] == "Licensed"
+
+    kml = build_kml(_result([_row(LICENCE_STATUS=None)]))
+    root = ET.fromstring(kml)
+    values = {
+        el.get("name"): (el.findtext(f"{_KML_NS}value") or "")
+        for el in root.iter(f"{_KML_NS}Data")
+    }
+    assert values["Licence Status"] == "Unknown"
+
+
 def test_kml_escapes_free_text_fields() -> None:
     kml = build_kml(_result([_row(INTENDED_WATER_USE="Commercial & Industrial")]))
     assert "Commercial &amp; Industrial" in kml
