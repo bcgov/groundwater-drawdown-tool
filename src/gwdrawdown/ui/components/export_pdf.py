@@ -7,9 +7,12 @@ table — mirroring the legacy Excel output.
 
 Page layout (fixed, via explicit ``PageBreak``s):
 
-- Page 1 — input parameters, summary cards, method and assumptions.
-- Page 2 — the distance-drawdown and impact-% charts.
-- Page 3+ — the at-risk wells table (as many pages as it needs).
+- Page 1 — input parameters and summary cards.
+- Page 2 — method and assumptions. Its own page: it shared page 1 until
+  the client-supplied guidance paragraphs pushed it over the boundary
+  and left a two-line orphan page.
+- Pages 3 and 4 — the distance-drawdown and impact-% charts, one each.
+- Then the at-risk wells table (as many pages as it needs).
 - A fresh page onward — the full per-well details table.
 
 The chart images are *not* rendered here. Plotly figures are captured
@@ -620,7 +623,7 @@ def build_pdf(
         for wtn, cells in overrides_by_wtn.items()
     }
 
-    # --- Page 1: parameters, summary, method ---------------------------
+    # --- Page 1: parameters + summary ----------------------------------
     story: list[object] = [
         Paragraph("Groundwater Drawdown Screening Report", styles["title"]),
         Spacer(1, 6),
@@ -628,6 +631,17 @@ def build_pdf(
         _input_parameters_table(result, styles),
         Paragraph("Summary", styles["heading"]),
         _summary_cards(result, styles),
+        PageBreak(),
+    ]
+
+    # --- Page 2: method and assumptions --------------------------------
+    # Its own page. It used to share page 1, but the client-supplied
+    # guidance paragraphs pushed it over the boundary and left a
+    # two-line orphan page. Giving the section a page of its own keeps
+    # the pagination stable however long the guidance grows — and this
+    # is the section a reviewer is most likely to be pointed at, so it
+    # reads better whole than split.
+    story += [
         Paragraph("Method and assumptions", styles["heading"]),
         *[
             Paragraph(para, styles["disclaimer"])

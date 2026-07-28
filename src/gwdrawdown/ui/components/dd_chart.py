@@ -72,7 +72,14 @@ _DEFAULT_WELL_COLOR = "#616161"
 # every SAD bar and well point is measured down from. Without it the
 # chart has no visual datum (client feedback, 2026-07); the y-range
 # below is forced to include 0 so the line always has somewhere to sit.
-_ZERO_LINE_COLOR = "#9e9e9e"
+#
+# Slate blue-grey, dashed, 2 px. The first attempt (1.5 px dotted
+# #9e9e9e) was in the figure but effectively invisible on screen: a
+# y-axis gridline is drawn at 0 as well, so a faint grey dotted line
+# landed straight on top of it and read as part of the grid. This has
+# to be distinguishable from both the #eee gridlines and the black
+# Cooper-Jacob curve.
+_ZERO_LINE_COLOR = "#546e7a"
 
 # r → 0 fallback used in core.drawdown — the pumping well is plotted
 # at this distance rather than at exactly 0 m so it appears on the
@@ -431,7 +438,7 @@ def make_distance_drawdown_figure(
     # directly beside it, so an annotation here is duplicate ink.
     fig.add_hline(
         y=0.0,
-        line={"color": _ZERO_LINE_COLOR, "width": 1.5, "dash": "dot"},
+        line={"color": _ZERO_LINE_COLOR, "width": 2, "dash": "dash"},
         layer="below",
     )
     return fig
