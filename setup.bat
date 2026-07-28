@@ -17,9 +17,11 @@ REM    refresh Python dependencies. No network calls to GitHub.
 REM
 REM 3. SILENT-UPDATE MODE - `setup.bat --silent-update` is called by run.bat
 REM    before launching the app. It queries GitHub for the latest release, and
-REM    if newer than the installed version, downloads and extracts it in place
-REM    and refreshes dependencies. Silent when nothing has changed; never
-REM    blocks the caller on failure. Logs to logs\auto-update.log.
+REM    if STRICTLY NEWER than the installed version, downloads and extracts it
+REM    in place and refreshes dependencies. Silent when nothing has changed;
+REM    never blocks the caller on failure. Logs to logs\auto-update.log.
+REM    Skipped entirely in a git clone - developers update through git, and
+REM    extracting a release zip over a working tree destroys uncommitted work.
 REM
 REM Daily use: double-click run.bat from the install folder.
 REM ============================================================================
@@ -147,9 +149,29 @@ if "!LOCAL_VERSION!"=="" set "LOCAL_VERSION=unknown"
 
 echo Found existing install: version !LOCAL_VERSION!
 
-if /i "!LOCAL_VERSION!"=="!REMOTE_VERSION!" (
+REM Same forward-only rule as the silent path: only a genuinely newer remote
+REM justifies overwriting the install. An unknown local version (missing or
+REM empty version.txt) is the one case that still refreshes - the install is
+REM already broken, this path is interactive, and user data is preserved.
+set "REFRESH_INSTALL=0"
+if /i "!LOCAL_VERSION!"=="unknown" (
+    set "REFRESH_INSTALL=1"
+) else (
+    call :compare_versions "!LOCAL_VERSION!" "!REMOTE_VERSION!"
+    if "!REMOTE_IS_NEWER!"=="1" set "REFRESH_INSTALL=1"
+)
+
+if "!REFRESH_INSTALL!"=="0" (
     echo.
-    echo The tool is already up to date.
+    if /i "!LOCAL_VERSION!"=="!REMOTE_VERSION!" (
+        echo The tool is already up to date.
+    ) else (
+        echo Your installed version ^(!LOCAL_VERSION!^) is newer than the latest
+        echo published release ^(!REMOTE_VERSION!^). Leaving it untouched.
+        echo.
+        echo To go back to the published release, delete the install folder
+        echo and run this installer again.
+    )
     echo.
     echo To launch the tool, double-click:
     echo   %INSTALL_DIR%\run.bat
@@ -259,6 +281,29 @@ if errorlevel 1 (
 exit /b 0
 
 
+REM ============================================================================
+REM :compare_versions <local> <remote>
+REM
+REM Sets REMOTE_IS_NEWER=1 only when <remote> is strictly newer than <local>,
+REM and 0 otherwise - same version, older version, or anything that cannot be
+REM parsed. VERSION_COMPARE_FAILED=1 flags the unparseable case so the caller
+REM can log it; note that case still yields REMOTE_IS_NEWER=0, because
+REM "we cannot tell" must never authorise overwriting an install.
+REM
+REM Comparison is delegated to PowerShell's [version] type so 0.5.10 sorts
+REM after 0.5.9. A plain string compare gets that backwards.
+REM ============================================================================
+:compare_versions
+set "REMOTE_IS_NEWER=0"
+set "VERSION_COMPARE_FAILED=0"
+set "_CMP_RESULT="
+for /f "usebackq delims=" %%C in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "try { if ([version]'%~2' -gt [version]'%~1') { 'NEWER' } else { 'NOT_NEWER' } } catch { 'UNPARSEABLE' }"`) do set "_CMP_RESULT=%%C"
+if "!_CMP_RESULT!"=="NEWER" set "REMOTE_IS_NEWER=1"
+if "!_CMP_RESULT!"=="UNPARSEABLE" set "VERSION_COMPARE_FAILED=1"
+if "!_CMP_RESULT!"=="" set "VERSION_COMPARE_FAILED=1"
+exit /b 0
+
+
 :network_error
 echo.
 echo ERROR: Could not reach GitHub to check for the latest release.
@@ -287,6 +332,18 @@ set "UPDATE_LOG=%INSTALL_DIR%logs\auto-update.log"
 
 if not exist "%INSTALL_DIR%logs" mkdir "%INSTALL_DIR%logs" >nul 2>nul
 
+REM --- Developer-clone guard ------------------------------------------------
+REM A git clone updates through git, never through the release zip. Without
+REM this guard, running run.bat inside a working tree extracts the published
+REM release over the developer's source files and silently destroys any
+REM uncommitted work. Note this is NOT about the version comparison below:
+REM a perfectly legitimate upgrade would clobber the tree just the same.
+REM Checked before the GitHub call so a clone makes no network request at all.
+if exist "%INSTALL_DIR%.git" (
+    >> "%UPDATE_LOG%" echo [%DATE% %TIME%] Developer clone detected ^(.git present^) - auto-update skipped.
+    exit /b 0
+)
+
 set "LOCAL_VERSION="
 if exist "%INSTALL_DIR%version.txt" set /p LOCAL_VERSION=<"%INSTALL_DIR%version.txt"
 
@@ -303,10 +360,21 @@ if "!REMOTE_VERSION!"=="" (
     exit /b 0
 )
 
-REM Same version - nothing to do, exit silently.
-if /i "!LOCAL_VERSION!"=="!REMOTE_VERSION!" exit /b 0
+REM Only move FORWARD. An equality check alone is not enough: "different"
+REM includes "older", so a local copy ahead of the published release would
+REM download and extract the older one over itself and announce it as an
+REM update. That bites in two real cases - a developer clone carrying an
+REM unreleased version bump, and a release yanked or rolled back on GitHub,
+REM which would silently downgrade every install on next launch.
+call :compare_versions "!LOCAL_VERSION!" "!REMOTE_VERSION!"
+if not "!REMOTE_IS_NEWER!"=="1" (
+    if "!VERSION_COMPARE_FAILED!"=="1" (
+        >> "%UPDATE_LOG%" echo [%DATE% %TIME%] Could not compare versions ^(local '!LOCAL_VERSION!', remote '!REMOTE_VERSION!'^) - update skipped.
+    )
+    exit /b 0
+)
 
-REM Different version - perform an in-place update.
+REM Remote is genuinely newer - perform an in-place update.
 echo.
 echo An update is available: !LOCAL_VERSION! -^> !REMOTE_VERSION!
 echo Downloading...
