@@ -33,7 +33,7 @@ from gwdrawdown.analysis import OVERRIDABLE_FIELDS, AnalysisResult, WellResult
 from gwdrawdown.core.flagging import WellStatus
 from gwdrawdown.ui import disclaimers
 from gwdrawdown.ui.components.palette import STATUS_PALETTE
-from gwdrawdown.ui.format_utils import format_licence_status
+from gwdrawdown.ui.format_utils import format_aquifer_id, format_licence_status
 
 # Light yellow row tint for any well that has an active override.
 _OVERRIDE_ROW_BG = "#fff8e1"
@@ -65,7 +65,13 @@ _FULL_COLUMNS: list[tuple[str, str, str]] = [
     # (client-confirmed, 2026-07). Sits beside Intended Use because
     # both answer "what kind of well is this?".
     ("licence_status", "Licence", "text"),
-    ("aquifer_id", "Aquifer ID", "numeric"),
+    # Text, not numeric: the cell carries "1143 (not delineated)" for an
+    # aquifer number GWELLS uses but BC has never delineated (client
+    # feedback, 2026-07). The cost is alphabetical sort on the column —
+    # the same trade-off already accepted on the editable columns, and
+    # filtering (which is how officers pick out one aquifer) is
+    # unaffected.
+    ("aquifer_id", "Aquifer ID", "text"),
     ("finished_well_depth_m", "Finished Depth (m)", "numeric"),
     ("total_depth_drilled_m", "Total Depth (m)", "numeric"),
     ("bedrock_depth_m", "Bedrock Depth (m)", "numeric"),
@@ -103,7 +109,8 @@ _AT_RISK_COLUMNS: list[tuple[str, str, str]] = [
 
 _NUMERIC_FORMAT_BY_COLUMN: dict[str, str] = {
     "well_tag_number": "{:d}",
-    "aquifer_id": "{:d}",
+    # aquifer_id is deliberately absent — `_well_value` hands back an
+    # already-formatted string from `format_aquifer_id`.
     "finished_well_depth_m": "{:.2f}",
     "total_depth_drilled_m": "{:.2f}",
     "bedrock_depth_m": "{:.2f}",
@@ -133,7 +140,9 @@ _COLUMN_WIDTHS: dict[str, str] = {
     "well_tag_number": "95px",
     "intended_water_use": "140px",
     "licence_status": "90px",
-    "aquifer_id": "70px",
+    # Wide enough for "1143 (not delineated)" to wrap to two lines
+    # rather than one word per line.
+    "aquifer_id": "105px",
     "finished_well_depth_m": "95px",
     "total_depth_drilled_m": "85px",
     "bedrock_depth_m": "90px",
@@ -184,7 +193,9 @@ def _well_value(w: WellResult, column_id: str) -> object:
         "well_tag_number": w.well_tag_number,
         "intended_water_use": w.intended_water_use,
         "licence_status": format_licence_status(w.licence_status),
-        "aquifer_id": w.aquifer_id,
+        "aquifer_id": format_aquifer_id(
+            w.aquifer_id, not_delineated=w.aquifer_not_delineated
+        ),
         "finished_well_depth_m": w.finished_well_depth_m,
         "total_depth_drilled_m": w.total_depth_drilled_m,
         "bedrock_depth_m": w.bedrock_depth_m,
@@ -521,6 +532,17 @@ _PER_WELL_HELPER_CHILDREN = [
     "(Licensed / Unlicensed / Historical; Unknown where GWELLS does not "
     "say). Shown for context only — it does not affect any status or "
     "at-risk calculation.",
+    html.Br(),
+    # Client feedback, 2026-07: a tester hit Aquifer 1143 and had no way
+    # to tell it apart from a normal aquifer number.
+    html.Strong("Aquifer ID "),
+    "= the aquifer GWELLS assigns the well to. A number marked ",
+    html.Em("(not delineated)"),
+    " is one GWELLS uses but the provincial aquifer layer has no mapped "
+    "polygon for — it is not a formally delineated aquifer. The well is "
+    "still analysed as normal; drawdown does not depend on whether the "
+    "aquifer has been mapped. A blank cell means GWELLS assigns the "
+    "well to no aquifer at all.",
     html.Br(),
     html.Strong("Editable columns: "),
     "NPL, Finished Depth, Stickup, Top of Frac/Screen.",

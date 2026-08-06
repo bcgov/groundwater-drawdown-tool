@@ -15,6 +15,7 @@ import pytest
 
 from gwdrawdown.analysis import AnalysisInputs
 from gwdrawdown.ui.format_utils import (
+    format_aquifer_id,
     format_float,
     format_licence_status,
     format_source_aquifer,
@@ -145,6 +146,27 @@ def test_unlicensed_is_not_matched_by_a_substring_check():
     unlicensed well on the map — the exact opposite of the intent.
     """
     assert is_licensed("Unlicensed") is False
+
+
+@pytest.mark.parametrize(
+    ("aquifer_id", "not_delineated", "expected"),
+    [
+        (199, False, "199"),
+        (1143, True, "1143 (not delineated)"),
+        # No aquifer at all — a blank cell, not a dash: the table and
+        # CSV want it empty, and callers that want a placeholder add
+        # their own.
+        (None, False, ""),
+        # Defensive: a NULL aquifer id can never be undelineated, but
+        # the formatter must not invent "None (not delineated)" if a
+        # caller passes both.
+        (None, True, ""),
+    ],
+)
+def test_aquifer_id_display(aquifer_id, not_delineated, expected):
+    assert (
+        format_aquifer_id(aquifer_id, not_delineated=not_delineated) == expected
+    )
 
 
 def test_manual_mode_with_no_nearby_aquifer():

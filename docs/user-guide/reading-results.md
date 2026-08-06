@@ -101,6 +101,15 @@ filterable, and paginated.
 is shown for context only and does not affect any status or at-risk
 calculation.
 
+**Aquifer ID** is the aquifer GWELLS assigns the well to. A number
+marked **(not delineated)** — for example *1143 (not delineated)* — is
+one GWELLS uses but the provincial aquifer layer has no mapped polygon
+for, so it is not a formally delineated aquifer. Those wells are still
+analysed and still shown: predicted drawdown does not depend on whether
+the aquifer has been mapped. A blank cell means GWELLS assigns the well
+to no aquifer at all, which is a different thing. The marker also
+appears in the map pop-up, the CSV, the PDF, and the KML.
+
 ### Editable columns and live recompute
 
 Four columns can be edited directly in the table:

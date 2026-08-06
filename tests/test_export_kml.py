@@ -39,7 +39,7 @@ def _row(**overrides) -> dict:
     return base
 
 
-def _compute(row: dict):
+def _compute(row: dict, **kwargs):
     return _compute_well_result(
         row,
         pumping_x=PX,
@@ -50,6 +50,7 @@ def _compute(row: dict):
         duration_days=100.0,
         u_threshold=0.01,
         at_risk_fraction=0.30,
+        **kwargs,
     )
 
 
@@ -76,8 +77,8 @@ def _inputs() -> AnalysisInputs:
     )
 
 
-def _result(rows: list[dict]) -> AnalysisResult:
-    wells = [_compute(r) for r in rows]
+def _result(rows: list[dict], **kwargs) -> AnalysisResult:
+    wells = [_compute(r, **kwargs) for r in rows]
     counts = {s: 0 for s in WellStatus}
     for w in wells:
         counts[w.well_status] += 1
@@ -168,6 +169,37 @@ def test_kml_carries_licence_status_with_null_as_unknown() -> None:
         for el in root.iter(f"{_KML_NS}Data")
     }
     assert values["Licence Status"] == "Unknown"
+
+
+def test_kml_marks_an_undelineated_aquifer() -> None:
+    """The flag rides the same field the table and PDF use.
+
+    Google Earth is where a reviewer looks at the well in its spatial
+    context, so "this aquifer number has no polygon behind it" belongs
+    there too.
+    """
+    kml = build_kml(
+        _result(
+            [_row(AQUIFER_ID=1143)],
+            undelineated_aquifer_ids=frozenset({1143}),
+        )
+    )
+    root = ET.fromstring(kml)
+    values = {
+        el.get("name"): (el.findtext(f"{_KML_NS}value") or "")
+        for el in root.iter(f"{_KML_NS}Data")
+    }
+    assert values["Aquifer ID"] == "1143 (not delineated)"
+
+
+def test_kml_leaves_a_delineated_aquifer_as_a_bare_number() -> None:
+    kml = build_kml(_result([_row(AQUIFER_ID=186)]))
+    root = ET.fromstring(kml)
+    values = {
+        el.get("name"): (el.findtext(f"{_KML_NS}value") or "")
+        for el in root.iter(f"{_KML_NS}Data")
+    }
+    assert values["Aquifer ID"] == "186"
 
 
 def test_kml_escapes_free_text_fields() -> None:

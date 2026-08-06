@@ -57,7 +57,7 @@ def _row(**overrides) -> dict:
     return base
 
 
-def _compute(row: dict) -> WellResult:
+def _compute(row: dict, **kwargs) -> WellResult:
     return _compute_well_result(
         row,
         pumping_x=PX,
@@ -68,6 +68,7 @@ def _compute(row: dict) -> WellResult:
         duration_days=DURATION,
         u_threshold=U_THRESH,
         at_risk_fraction=THRESHOLD,
+        **kwargs,
     )
 
 
@@ -128,6 +129,22 @@ def test_override_stickup_lifts_sad_by_stickup_times_fraction() -> None:
     assert out.stickup_m == pytest.approx(1.0)
     # SAD = (top - NPL + stickup) * 0.7 -> +0.7 m for a 1 m stickup.
     assert out.sad_m == pytest.approx(base_sad + 0.7)
+
+
+def test_recompute_carries_the_undelineated_aquifer_flag() -> None:
+    """An override edit must not silently drop the display flag.
+
+    The flag comes from a BCGW lookup the recompute path deliberately
+    doesn't repeat (no round trip on a cell edit), so it has to be
+    carried forward off the base row.
+    """
+    base = _compute(
+        _row(AQUIFER_ID=1143), undelineated_aquifer_ids=frozenset({1143})
+    )
+    assert base.aquifer_not_delineated is True
+    out = _recompute(base, {"stickup_m": 1.0})
+    assert out.aquifer_not_delineated is True
+    assert out.aquifer_id == 1143
 
 
 def test_override_finished_depth_changes_sad_when_no_top_override() -> None:
@@ -266,6 +283,27 @@ def test_well_result_json_roundtrip_preserves_enum_values() -> None:
     assert payload["well_status"] == base.well_status.value
     restored = WellResult.from_json(payload)
     assert restored == base
+
+
+def test_well_result_json_roundtrip_preserves_the_delineation_flag() -> None:
+    base = _compute(
+        _row(AQUIFER_ID=1143), undelineated_aquifer_ids=frozenset({1143})
+    )
+    restored = WellResult.from_json(base.to_json())
+    assert restored == base
+    assert restored.aquifer_not_delineated is True
+
+
+def test_legacy_well_payload_without_the_delineation_flag_loads_cleanly() -> None:
+    """A tab open across an update replays a payload predating the flag.
+
+    Absent means "not checked", which shows no marker — the same
+    posture as the initial pipeline pass.
+    """
+    payload = _compute(_row()).to_json()
+    payload.pop("aquifer_not_delineated", None)
+    restored = WellResult.from_json(payload)
+    assert restored.aquifer_not_delineated is False
 
 
 def test_well_result_json_roundtrip_with_none_fields() -> None:

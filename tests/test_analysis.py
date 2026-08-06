@@ -7,8 +7,10 @@ end-to-end via `scripts/smoke_test_db.py` and a browser walkthrough.
 
 from __future__ import annotations
 
+import oracledb
 import pytest
 
+from gwdrawdown import analysis
 from gwdrawdown.analysis import _compute_well_result
 from gwdrawdown.core.drawdown import DrawdownStatus
 from gwdrawdown.core.flagging import WellStatus
@@ -52,7 +54,7 @@ def _row(**overrides) -> dict:
     return base
 
 
-def _compute(row: dict) -> object:
+def _compute(row: dict, **kwargs) -> object:
     return _compute_well_result(
         row,
         pumping_x=PX,
@@ -63,6 +65,7 @@ def _compute(row: dict) -> object:
         duration_days=DURATION,
         u_threshold=U_THRESH,
         at_risk_fraction=THRESHOLD,
+        **kwargs,
     )
 
 
@@ -206,3 +209,90 @@ def test_metadata_pass_through() -> None:
     assert result.well_class == "Water Supply"
     assert result.licence_status == "Unlicensed"
     assert "gwells" in result.well_details_url
+
+
+# --- Undelineated aquifers ---------------------------------------------------
+#
+# GWELLS assigns some wells an AQUIFER_ID with no polygon in
+# GW_AQUIFERS_CLASSIFICATION_SVW (client-reported; confirmed against
+# live BCGW for 1143). `run_analysis` resolves the set once per run and
+# hands it to the per-well composition.
+
+
+def test_aquifer_id_in_the_undelineated_set_is_flagged() -> None:
+    result = _compute(
+        _row(AQUIFER_ID=1143), undelineated_aquifer_ids=frozenset({1143})
+    )
+    assert result.aquifer_id == 1143
+    assert result.aquifer_not_delineated is True
+
+
+def test_delineated_aquifer_is_not_flagged() -> None:
+    result = _compute(
+        _row(AQUIFER_ID=186), undelineated_aquifer_ids=frozenset({1143})
+    )
+    assert result.aquifer_not_delineated is False
+
+
+def test_well_with_no_aquifer_is_not_flagged_as_undelineated() -> None:
+    """NULL AQUIFER_ID and "assigned to an undelineated ID" are different.
+
+    A well GWELLS assigns to no aquifer at all has nothing to say about
+    delineation, so it must not carry the marker.
+    """
+    result = _compute(
+        _row(AQUIFER_ID=None), undelineated_aquifer_ids=frozenset({1143})
+    )
+    assert result.aquifer_id is None
+    assert result.aquifer_not_delineated is False
+
+
+def test_flag_defaults_off_when_the_lookup_did_not_run() -> None:
+    """No set supplied means "not checked", which flags nothing.
+
+    Degrading to no marker is the safe direction — the alternative is
+    telling an officer an aquifer is undelineated on no evidence.
+    """
+    assert _compute(_row(AQUIFER_ID=1143)).aquifer_not_delineated is False
+
+
+# --- Resolving the undelineated set ------------------------------------------
+
+
+def test_undelineated_set_is_the_difference_against_bcgw(monkeypatch) -> None:
+    """One query for the whole buffer; missing IDs are undelineated."""
+    asked: list[set[int]] = []
+
+    def fake_lookup(_conn, aquifer_ids):
+        asked.append(set(aquifer_ids))
+        return {186}
+
+    monkeypatch.setattr(analysis.q, "delineated_aquifer_ids", fake_lookup)
+    rows = [
+        _row(AQUIFER_ID=186),
+        _row(AQUIFER_ID=1143),
+        _row(AQUIFER_ID=186),  # duplicate: asked about once
+        _row(AQUIFER_ID=None),  # no aquifer: nothing to ask about
+    ]
+    assert analysis._undelineated_aquifer_ids(object(), rows) == frozenset({1143})
+    assert asked == [{186, 1143}]
+
+
+def test_no_aquifer_ids_in_the_buffer_skips_the_query(monkeypatch) -> None:
+    def fail(_conn, _ids):
+        raise AssertionError("should not query with nothing to look up")
+
+    monkeypatch.setattr(analysis.q, "delineated_aquifer_ids", fail)
+    rows = [_row(AQUIFER_ID=None), _row(AQUIFER_ID=None)]
+    assert analysis._undelineated_aquifer_ids(object(), rows) == frozenset()
+
+
+def test_lookup_failure_costs_the_flag_not_the_analysis(monkeypatch) -> None:
+    """A dead lookup must not assert that aquifers are undelineated."""
+
+    def boom(_conn, _ids):
+        raise oracledb.DatabaseError("ORA-00942: table or view does not exist")
+
+    monkeypatch.setattr(analysis.q, "delineated_aquifer_ids", boom)
+    rows = [_row(AQUIFER_ID=1143)]
+    assert analysis._undelineated_aquifer_ids(object(), rows) == frozenset()

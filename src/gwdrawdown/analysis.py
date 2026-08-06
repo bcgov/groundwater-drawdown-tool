@@ -19,9 +19,11 @@ Per-well composition (`_compute_well_result`):
 6. At-risk classification via ``core.flagging.flag``.
 
 The orchestrator (`run_analysis`) issues the same-aquifer-filtered
-``nearby_wells`` query and runs the per-well composition over the
-returned rows. It assumes ``data_access.init_pool`` has already been
-called (UI flow); callers see ``PoolNotInitialisedError`` otherwise.
+``nearby_wells`` query, resolves which of the returned wells sit in an
+aquifer BC has not formally delineated (`_undelineated_aquifer_ids`),
+and runs the per-well composition over the rows. It assumes
+``data_access.init_pool`` has already been called (UI flow); callers
+see ``PoolNotInitialisedError`` otherwise.
 """
 
 from __future__ import annotations
@@ -29,9 +31,12 @@ from __future__ import annotations
 import logging
 import math
 import uuid
+from collections.abc import Container
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any, Final
+
+import oracledb
 
 from gwdrawdown.core.drawdown import (
     DrawdownResult,
@@ -156,6 +161,14 @@ class WellResult:
     well_tag_number: int
     aquifer_id: int | None
     distance_m: float
+    # True when ``aquifer_id`` is set but has no polygon in
+    # GW_AQUIFERS_CLASSIFICATION_SVW — GWELLS assigned the well to an
+    # aquifer BC has not formally delineated (client feedback,
+    # 2026-07). Distinct from ``aquifer_id is None``, which means
+    # GWELLS assigned the well to no aquifer at all. Display-only: the
+    # drawdown math does not care whether an aquifer is delineated, so
+    # these wells are flagged, never filtered out.
+    aquifer_not_delineated: bool
     finished_well_depth_m: float | None
     total_depth_drilled_m: float | None
     bedrock_depth_m: float | None
@@ -194,6 +207,10 @@ class WellResult:
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> WellResult:
         data = {**data}
+        # A tab left open across an update can replay a payload written
+        # before the undelineated-aquifer flag existed; absent means
+        # "not checked", which shows no flag.
+        data.setdefault("aquifer_not_delineated", False)
         data["drawdown_status"] = DrawdownStatus(data["drawdown_status"])
         data["sad_status"] = SADStatus(data["sad_status"])
         data["well_status"] = WellStatus(data["well_status"])
@@ -321,10 +338,15 @@ def _compute_well_result(
     duration_days: float,
     u_threshold: float,
     at_risk_fraction: float,
+    undelineated_aquifer_ids: Container[int] = frozenset(),
 ) -> WellResult:
     """Pure composition: one BCGW well row -> one WellResult.
 
     Has no DB or UI dependencies — unit-testable with synthetic rows.
+
+    ``undelineated_aquifer_ids`` is the set `run_analysis` resolved from
+    BCGW before the loop (see `_undelineated_aquifer_ids`); the default
+    empty set means "not checked", which flags nothing.
     """
     finished_m = _to_si_or_none(well_row.get("FINISHED_WELL_DEPTH"), feet_to_metres)
     total_depth_m = _to_si_or_none(well_row.get("TOTAL_DEPTH_DRILLED"), feet_to_metres)
@@ -364,10 +386,15 @@ def _compute_well_result(
         )
     )
 
+    aquifer_id = (
+        int(well_row["AQUIFER_ID"]) if well_row.get("AQUIFER_ID") is not None else None
+    )
+
     return WellResult(
         well_tag_number=int(well_row["WELL_TAG_NUMBER"]),
-        aquifer_id=(
-            int(well_row["AQUIFER_ID"]) if well_row.get("AQUIFER_ID") is not None else None
+        aquifer_id=aquifer_id,
+        aquifer_not_delineated=(
+            aquifer_id is not None and aquifer_id in undelineated_aquifer_ids
         ),
         distance_m=distance_m,
         finished_well_depth_m=finished_m,
@@ -464,6 +491,7 @@ def recompute_well(
     return WellResult(
         well_tag_number=base.well_tag_number,
         aquifer_id=base.aquifer_id,
+        aquifer_not_delineated=base.aquifer_not_delineated,
         distance_m=base.distance_m,
         finished_well_depth_m=finished,
         total_depth_drilled_m=base.total_depth_drilled_m,
@@ -562,6 +590,54 @@ def effective_u_threshold(inputs: AnalysisInputs) -> float:
     return float("inf")
 
 
+def _undelineated_aquifer_ids(
+    conn: oracledb.Connection,
+    well_rows: list[dict[str, Any]],
+) -> frozenset[int]:
+    """Which AQUIFER_IDs on these wells have no delineated polygon.
+
+    GWELLS assigns some wells an ``AQUIFER_ID`` that has no row in
+    ``GW_AQUIFERS_CLASSIFICATION_SVW`` — an aquifer BC has not formally
+    delineated (a client-reported case, confirmed against live BCGW for
+    ID 1143 on 2026-08-06). One extra round trip resolves the whole
+    buffer: collect the distinct IDs, ask which of them exist, and take
+    the difference.
+
+    Deliberately data-driven rather than a hardcoded ID list, which
+    would rot the first time BC delineates 1143 or adds another
+    placeholder ID.
+
+    A failure here costs a display flag, not the analysis, so a database
+    error is logged and treated as "nothing to flag" — degrading to no
+    marker is safe, whereas claiming an aquifer is undelineated on the
+    strength of a failed query is not.
+    """
+    candidates = {
+        int(row["AQUIFER_ID"])
+        for row in well_rows
+        if row.get("AQUIFER_ID") is not None
+    }
+    if not candidates:
+        return frozenset()
+    try:
+        delineated = q.delineated_aquifer_ids(conn, candidates)
+    except oracledb.DatabaseError as e:
+        logger.warning(
+            "Delineated-aquifer lookup failed for %d aquifer id(s); "
+            "wells will show no delineation flag: %s",
+            len(candidates),
+            e,
+        )
+        return frozenset()
+    undelineated = frozenset(candidates - delineated)
+    if undelineated:
+        logger.info(
+            "Aquifer id(s) with no delineated polygon: %s",
+            ", ".join(str(a) for a in sorted(undelineated)),
+        )
+    return undelineated
+
+
 def run_analysis(inputs: AnalysisInputs) -> AnalysisResult:
     """Run the full pipeline against the live BCGW pool.
 
@@ -596,6 +672,9 @@ def run_analysis(inputs: AnalysisInputs) -> AnalysisResult:
             radius_m=inputs.buffer_radius_m,
             aquifer_id=aquifer_filter,
         )
+        # Same connection, one extra round trip: which of the aquifers
+        # these wells claim actually exist as delineated polygons.
+        undelineated = _undelineated_aquifer_ids(conn, rows)
 
     u_threshold = effective_u_threshold(inputs)
 
@@ -610,6 +689,7 @@ def run_analysis(inputs: AnalysisInputs) -> AnalysisResult:
             duration_days=inputs.duration_days,
             u_threshold=u_threshold,
             at_risk_fraction=inputs.at_risk_fraction,
+            undelineated_aquifer_ids=undelineated,
         )
         for row in rows
     ]

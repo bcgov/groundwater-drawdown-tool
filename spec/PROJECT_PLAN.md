@@ -1107,7 +1107,7 @@ need this.
 The first round of real end-user testing, on `v0.5.3`. Twenty-one items,
 none of them structural: no change to the architecture, the layer
 rules, or the Cooper-Jacob / SAD math, and no reported wrong number.
-Eighteen are built; three are deferred (below). The release is deliberately
+Nineteen are built; two are deferred (below). The release is deliberately
 held: `version.txt` stays at the last published version until every item is
 either implemented or explained to the client, so `CHANGELOG.md` keeps these
 notes under `[Unreleased]` and no installed copy sees them. Cutting the
@@ -1152,6 +1152,19 @@ Delivered, grouped as committed:
   `ui/disclaimers.py`, placed next to the control each is about rather
   than stacked in one block; the PDF carries all of it in one section
   because that artifact must stand alone.
+- **Undelineated aquifers flagged.** An `AQUIFER_ID` on a well row with
+  no matching row in `GW_AQUIFERS_CLASSIFICATION_SVW` is not a formally
+  delineated aquifer — confirmed against live BCGW (1143 returns no
+  rows there; the earlier `MATERIAL IS NULL` hypothesis was tested and
+  is dead — that predicate matches nothing across the whole view).
+  `queries.delineated_aquifer_ids` asks the view once per run with the
+  buffer's distinct IDs and `analysis._undelineated_aquifer_ids` takes
+  the difference, so the rule is data-driven and self-maintaining
+  rather than a hardcoded 1143. Flagged wells are still shown and still
+  analysed — the drawdown math does not care whether a polygon exists;
+  `format_utils.format_aquifer_id` renders "1143 (not delineated)" for
+  the table, CSV, map pop-up, PDF and KML alike. A failed lookup costs
+  the marker, not the run.
 
 Deferred, with the reasons recorded so the next pass starts informed:
 
@@ -1165,13 +1178,6 @@ Deferred, with the reasons recorded so the next pass starts informed:
   bounded by a constraint neither fix escapes: charts are captured as
   PNGs into a fixed-size PDF page, so "show every WTN" cannot fully
   survive the export.
-- **Flagging non-delineated aquifers** (e.g. Aquifer 1143) in the
-  per-well table. Deliberately not a hardcoded ID, which would rot the
-  first time BC adds another. Lead to chase first: the new aquifer
-  label renders a null `MATERIAL` as "Aquifer 1143 (material not
-  recorded)", so "has no `MATERIAL`" may be the data-driven rule. One
-  query against `GW_AQUIFERS_CLASSIFICATION_SVW` settles it; pending
-  client consultation either way.
 
 ## 7. Decision register
 

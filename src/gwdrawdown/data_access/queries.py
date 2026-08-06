@@ -1,4 +1,4 @@
-"""Parameterised SQL templates for the four BCGW queries the tool needs.
+"""Parameterised SQL templates for the BCGW queries the tool needs.
 
 This module is the **only** place SQL strings exist in the codebase
 (working agreement, PROJECT_PLAN.md §8). Every query uses bind
@@ -19,6 +19,9 @@ The queries match DATA_REFERENCE.md §6:
    for the T/S lookup (DATA_REFERENCE.md §6.3).
 5. ``well_by_tag`` — fetch one well by its provincial tag number
    (DATA_REFERENCE.md §6.4).
+6. ``delineated_aquifer_ids`` — of a set of AQUIFER_IDs seen on well
+   rows, which ones actually have a polygon in the aquifer view
+   (DATA_REFERENCE.md §6.5).
 
 All spatial parameters are BC Albers metres (EPSG:3005). The caller is
 responsible for projecting WGS84 input via ``core.crs_utils.to_albers``
@@ -33,6 +36,7 @@ in ``core.well_classification``. This layer does no business logic.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Any
 
 import oracledb
@@ -154,6 +158,30 @@ SELECT
 FROM WHSE_WATER_MANAGEMENT.GW_WATER_WELLS_WRBC_SVW w
 WHERE w.WELL_TAG_NUMBER = :well_tag_number
 """
+
+# Query 6.5: of a set of AQUIFER_IDs, which are formally delineated.
+# GWELLS assigns some wells an AQUIFER_ID that has no polygon in
+# GW_AQUIFERS_CLASSIFICATION_SVW (verified against live BCGW,
+# 2026-08-06: AQUIFER_ID 1143 returns no rows there). Those IDs are
+# not formally delineated aquifers, and the tool flags them in the
+# per-well output. The rule is data-driven on purpose — a hardcoded
+# ID list would rot the first time BC delineates one of them or adds
+# another.
+#
+# ``{placeholders}`` is filled with generated bind-variable NAMES
+# (``:id0, :id1, …``) only — never with values. The IDs themselves are
+# still bound, so this does not breach the no-f-string-user-input rule.
+_SQL_DELINEATED_AQUIFER_IDS = """
+SELECT DISTINCT a.AQUIFER_ID
+FROM WHSE_WATER_MANAGEMENT.GW_AQUIFERS_CLASSIFICATION_SVW a
+WHERE a.AQUIFER_ID IN ({placeholders})
+"""
+
+# Oracle rejects an IN list longer than 1000 expressions (ORA-01795).
+# A buffer typically spans well under 20 distinct aquifers so one pass
+# is the norm, but chunking costs nothing and keeps a huge buffer from
+# failing the whole run.
+_MAX_IN_LIST = 500
 
 
 # --- Public functions --------------------------------------------------------
@@ -289,6 +317,45 @@ def subtype_code_for_aquifer(
         if row is None:
             return None
         return row[0]
+
+
+def delineated_aquifer_ids(
+    conn: oracledb.Connection,
+    aquifer_ids: Iterable[int],
+) -> set[int]:
+    """Return the subset of ``aquifer_ids`` that have a mapped polygon.
+
+    Implements DATA_REFERENCE.md §6.5. Callers pass the distinct
+    ``AQUIFER_ID`` values seen on well rows; anything missing from the
+    returned set has no row in ``GW_AQUIFERS_CLASSIFICATION_SVW`` and
+    is therefore not a formally delineated aquifer.
+
+    Args:
+        conn: Live Oracle connection.
+        aquifer_ids: Aquifer IDs to test. Duplicates and ``None`` are
+            ignored; an empty input short-circuits with no query.
+
+    Returns:
+        The delineated IDs, as a set. Never larger than the input.
+        The caller computes the undelineated set by difference —
+        this function deliberately reports what *exists* rather than
+        what is missing, so a partial result can never be mistaken
+        for "these are undelineated".
+    """
+    ids = sorted({int(a) for a in aquifer_ids if a is not None})
+    if not ids:
+        return set()
+    found: set[int] = set()
+    with conn.cursor() as cur:
+        for start in range(0, len(ids), _MAX_IN_LIST):
+            chunk = ids[start : start + _MAX_IN_LIST]
+            names = [f"id{i}" for i in range(len(chunk))]
+            sql = _SQL_DELINEATED_AQUIFER_IDS.format(
+                placeholders=", ".join(f":{n}" for n in names)
+            )
+            cur.execute(sql, dict(zip(names, chunk, strict=True)))
+            found.update(int(row[0]) for row in cur.fetchall() if row[0] is not None)
+    return found
 
 
 def well_by_tag(

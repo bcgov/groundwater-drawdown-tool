@@ -48,7 +48,11 @@ from gwdrawdown.ui.components.palette import (
     SELECTION_COLOR,
     STATUS_COLOR,
 )
-from gwdrawdown.ui.format_utils import format_licence_status, is_licensed
+from gwdrawdown.ui.format_utils import (
+    format_aquifer_id,
+    format_licence_status,
+    is_licensed,
+)
 
 # Padding fraction applied when computing the viewport zoom so the
 # buffer circle has some breathing room around it, not flush
@@ -168,7 +172,14 @@ def _well_popup_children(w: WellResult) -> list[Any]:
         # matters when weighing the implications of an impact.
         _popup_row(
             "Aquifer:",
-            "—" if w.aquifer_id is None else f"Aquifer {w.aquifer_id}",
+            (
+                "—"
+                if w.aquifer_id is None
+                else "Aquifer "
+                + format_aquifer_id(
+                    w.aquifer_id, not_delineated=w.aquifer_not_delineated
+                )
+            ),
         ),
         _popup_row("Licence:", format_licence_status(w.licence_status)),
         _popup_row("Distance:", f"{w.distance_m:.1f} m"),

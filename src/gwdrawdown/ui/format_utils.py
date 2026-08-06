@@ -68,6 +68,37 @@ def is_licensed(value: str | None) -> bool:
     return (value or "").strip().casefold() == "licensed"
 
 
+# Marker appended to a well's aquifer number when GWELLS assigns it an
+# AQUIFER_ID that has no polygon in GW_AQUIFERS_CLASSIFICATION_SVW.
+# Reads as an attribute of the aquifer, not a data error — the well is
+# still analysed and still shown.
+NOT_DELINEATED_SUFFIX = "(not delineated)"
+
+
+def format_aquifer_id(aquifer_id: int | None, *, not_delineated: bool) -> str:
+    """Render a well's aquifer number for display.
+
+    One formatter behind every surface that shows a well's aquifer —
+    the per-well table (and the CSV built from it), the map pop-up, the
+    PDF and the KML — so the flag can't appear on one and not another.
+
+    Three cases::
+
+        199                      delineated aquifer
+        1143 (not delineated)    an ID GWELLS uses that BC has not
+                                 formally delineated
+        ""                       GWELLS assigns the well no aquifer
+
+    The empty string, not a dash: callers that want a placeholder
+    supply their own, and the table / CSV want a genuinely blank cell.
+    """
+    if aquifer_id is None:
+        return ""
+    if not_delineated:
+        return f"{aquifer_id} {NOT_DELINEATED_SUFFIX}"
+    return str(aquifer_id)
+
+
 def format_source_aquifer(inputs: AnalysisInputs) -> str:
     """One-line description of the run's source aquifer.
 

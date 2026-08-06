@@ -38,6 +38,15 @@ move under a version heading when the release is actually cut.
 - **Plain-language definitions** of *s* and *r* under the
   distance-drawdown chart, and of NPL above the details table.
 - The map pop-up now shows the well's **aquifer number**.
+- **Aquifer numbers that are not formally delineated are now marked.**
+  GWELLS assigns some wells to an aquifer number the provincial aquifer
+  layer has no mapped polygon for — Aquifer 1143 is one. Those now read
+  "1143 (not delineated)" in the details table, the map pop-up, the CSV,
+  the PDF, and the KML, so it is clear the number is not a mapped
+  aquifer. The wells are still included and still analysed; a blank
+  Aquifer ID still means GWELLS assigns the well to no aquifer at all.
+  The check is made against the aquifer layer on every run rather than
+  against a fixed list, so it keeps up as more aquifers are delineated.
 
 ### Changed
 

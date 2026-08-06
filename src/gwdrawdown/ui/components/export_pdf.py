@@ -49,6 +49,7 @@ from gwdrawdown.core.flagging import WellStatus
 from gwdrawdown.ui import disclaimers
 from gwdrawdown.ui.components.palette import STATUS_PALETTE
 from gwdrawdown.ui.format_utils import (
+    format_aquifer_id,
     format_float,
     format_licence_status,
     format_source_aquifer,
@@ -91,7 +92,10 @@ _PER_WELL_COLUMNS: list[tuple[str, str, int | None]] = [
     ("WTN", "well_tag_number", 0),
     ("Use", "intended_water_use", None),
     ("Lic.", "licence_status", None),
-    ("Aq ID", "aquifer_id", 0),
+    # Text, not a number: the cell may read "1143 (not delineated)".
+    # decimals=None also routes it through `Paragraph` so it wraps
+    # inside the column instead of overflowing.
+    ("Aq ID", "aquifer_id", None),
     ("Fin.D", "finished_well_depth_m", 2),
     ("Tot.D", "total_depth_drilled_m", 2),
     ("Bdrk.D", "bedrock_depth_m", 2),
@@ -110,9 +114,11 @@ _PER_WELL_COLUMNS: list[tuple[str, str, int | None]] = [
 ]
 # Relative column weights — scaled to the content width so the table
 # always fills the frame. The Status column is widened enough to clear
-# the longest value ("INSUFFICIENT_DATA").
+# the longest value ("INSUFFICIENT_DATA"). Aq ID carries the widest
+# word of "1143 (not delineated)" ("delineated)"), and the width it
+# needs comes out of Use, whose values wrap anyway.
 _PER_WELL_WEIGHTS = [
-    34, 58, 40, 28, 33, 33, 35, 40, 30, 30, 49, 51, 35, 42, 37, 31, 30, 64, 45,
+    34, 40, 40, 46, 33, 33, 35, 40, 30, 30, 49, 51, 35, 42, 37, 31, 30, 64, 45,
 ]
 
 _AT_RISK_COLUMNS: list[tuple[str, str, int | None]] = [
@@ -155,6 +161,12 @@ def _well_cell(w: WellResult, key: str, edited: str) -> object:
         # Normalise NULL to "Unknown" rather than a blank cell, which
         # would read as "unlicensed" in a printed report.
         return format_licence_status(w.licence_status)
+    if key == "aquifer_id":
+        # Same formatter as the screen table and the KML, so an
+        # undelineated aquifer is marked identically in all three.
+        return format_aquifer_id(
+            w.aquifer_id, not_delineated=w.aquifer_not_delineated
+        )
     return getattr(w, key, None)
 
 
@@ -582,7 +594,12 @@ _PER_WELL_LEGEND = (
     "threshold, so the drawdown number is shown but should be treated "
     "with caution at that distance / duration. The Status cell keeps "
     "its own colour. The &quot;Edited&quot; column lists any per-well "
-    "fields adjusted by the reviewer."
+    "fields adjusted by the reviewer. "
+    "<b>Aq ID.</b> An aquifer number marked "
+    "&quot;(not delineated)&quot; is one GWELLS uses but the provincial "
+    "aquifer layer has no mapped polygon for; the well is still "
+    "analysed as normal. A blank cell means GWELLS assigns the well to "
+    "no aquifer at all."
 )
 
 

@@ -224,6 +224,41 @@ WHERE AQUIFER_ID = :aquifer_id
 Standard equality query on `WELL_TAG_NUMBER`. Returns the same fields as
 query 6.1 plus the geometry transformed back to WGS84 for map placement.
 
+### 6.5 Which aquifer IDs are formally delineated
+
+```sql
+SELECT DISTINCT AQUIFER_ID
+FROM WHSE_WATER_MANAGEMENT.GW_AQUIFERS_CLASSIFICATION_SVW
+WHERE AQUIFER_ID IN (:id0, :id1, ...)
+```
+
+`GW_WATER_WELLS_WRBC_SVW.AQUIFER_ID` can hold an ID that has **no row**
+in `GW_AQUIFERS_CLASSIFICATION_SVW` — GWELLS assigns the well to an
+aquifer BC has not formally delineated, so there is no polygon behind
+the number. Verified against live BCGW on 2026-08-06: `AQUIFER_ID =
+1143` returns no rows from the classification view, while
+`WHERE MATERIAL IS NULL` returns none at all (so a null material is
+*not* the signal).
+
+Run once per analysis over the distinct aquifer IDs of the returned
+wells; anything absent from the result is undelineated and is marked
+`1143 (not delineated)` in the per-well output. Deliberately
+data-driven — a hardcoded ID list would rot the first time BC
+delineates 1143 or issues another placeholder ID. The bind list is
+chunked at 500 to stay inside Oracle's 1000-expression `IN` limit.
+
+Two states stay distinct downstream:
+
+| State | Meaning |
+|---|---|
+| `AQUIFER_ID` is NULL | GWELLS assigns the well to no aquifer at all |
+| `AQUIFER_ID` set, no row in the view | assigned to an ID that is not delineated |
+
+This only affects a *well's own* aquifer number. Such an ID can never
+be picked as the **source** aquifer: both `aquifers_at_point` and
+`aquifers_near_point` select from the classification view, so an ID
+missing from it cannot be offered.
+
 ## 7. Sample data files
 
 Files used to validate schema understanding and port behaviour from the
