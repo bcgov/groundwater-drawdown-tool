@@ -1102,12 +1102,17 @@ need this.
 - The release zip no longer carries `PROJECT_PLAN.md`,
   `DATA_REFERENCE.md`, or `DESIGN_NOTES.md`.
 
-### Phase 7 — End-user testing feedback (July 2026) *(shipped v0.5.4)*
+### Phase 7 — End-user testing feedback (July 2026) *(built, not yet released)*
 
 The first round of real end-user testing, on `v0.5.3`. Twenty-one items,
 none of them structural: no change to the architecture, the layer
 rules, or the Cooper-Jacob / SAD math, and no reported wrong number.
-Eighteen shipped in `v0.5.4`; three are deferred (below).
+Eighteen are built; three are deferred (below). The release is deliberately
+held: `version.txt` stays at the last published version until every item is
+either implemented or explained to the client, so `CHANGELOG.md` keeps these
+notes under `[Unreleased]` and no installed copy sees them. Cutting the
+version header and running `scripts/publish_release.ps1` is the last step,
+on the client's sign-off.
 
 Delivered, grouped as committed:
 

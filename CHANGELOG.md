@@ -8,9 +8,8 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
-## [0.5.4] — 2026-07-28
-
-This release works through the feedback from the end-user testing round.
+Working through the feedback from the end-user testing round. These notes
+move under a version heading when the release is actually cut.
 
 ### Added
 
