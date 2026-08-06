@@ -53,8 +53,8 @@ def _well(**row_overrides):
     )
 
 
-def _result() -> AnalysisResult:
-    well = _well()
+def _result(wells: list | None = None) -> AnalysisResult:
+    wells = wells if wells is not None else [_well()]
     inputs = AnalysisInputs(
         pumping_lon=-123.6,
         pumping_lat=48.7,
@@ -77,8 +77,8 @@ def _result() -> AnalysisResult:
     )
     return AnalysisResult(
         inputs=inputs,
-        wells=[well],
-        n_total=1,
+        wells=wells,
+        n_total=len(wells),
         n_at_risk=0,
         n_ok=0,
         n_insufficient_data=0,
@@ -116,6 +116,93 @@ def test_zero_reference_line_is_drawn():
         s for s in fig.layout.shapes if s.type == "line" and s.y0 == 0 and s.y1 == 0
     ]
     assert len(zero_lines) == 1
+
+
+# --- WTN labels (item 4a) ----------------------------------------------------
+#
+# Wells at similar radial distances sit at similar X, so labels drawn
+# on one side collide. plotly 5.24's go.Scatter has no `textangle`, so
+# the fix is alternating sides plus a switch-off.
+
+
+def _wells_trace(fig):
+    return next(t for t in fig.data if t.name == "Wells")
+
+
+def _spread_wells(count: int) -> list:
+    """`count` wells at gently increasing distance from the pumping point."""
+    return [
+        _well(
+            WELL_TAG_NUMBER=1000 + i,
+            X_ALBERS=PX + 200.0 + i * 5.0,
+            Y_ALBERS=PY,
+        )
+        for i in range(count)
+    ]
+
+
+def test_wtn_labels_alternate_above_and_below():
+    fig = make_distance_drawdown_figure(_result(_spread_wells(4)))
+    assert list(_wells_trace(fig).textposition) == [
+        "top center",
+        "bottom center",
+        "top center",
+        "bottom center",
+    ]
+
+
+def test_labels_alternate_by_distance_not_by_row_order():
+    """Neighbours in distance must land on opposite sides.
+
+    BCGW returns wells in its own order; alternating by that order
+    would leave adjacent points sharing a side by luck, which is the
+    collision the fix exists to prevent.
+    """
+    near = _well(WELL_TAG_NUMBER=1, X_ALBERS=PX + 100.0, Y_ALBERS=PY)
+    far = _well(WELL_TAG_NUMBER=2, X_ALBERS=PX + 900.0, Y_ALBERS=PY)
+    middle = _well(WELL_TAG_NUMBER=3, X_ALBERS=PX + 500.0, Y_ALBERS=PY)
+    # Row order: near, far, middle. Distance order: near, middle, far.
+    fig = make_distance_drawdown_figure(_result([near, far, middle]))
+    positions = dict(
+        zip([1, 2, 3], _wells_trace(fig).textposition, strict=True)
+    )
+    assert positions[1] == "top center"  # nearest
+    assert positions[3] == "bottom center"  # middle
+    assert positions[2] == "top center"  # furthest
+
+
+def test_labels_can_be_switched_off():
+    """The crowded-buffer fallback: markers only, hover still names them."""
+    fig = make_distance_drawdown_figure(_result(), show_labels=False)
+    trace = _wells_trace(fig)
+    assert trace.mode == "markers"
+    assert trace.hovertext  # the WTN is still reachable
+
+
+def test_hiding_labels_tightens_the_y_padding():
+    """Label headroom is only worth paying for when there are labels."""
+    with_labels = make_distance_drawdown_figure(_result())
+    without = make_distance_drawdown_figure(_result(), show_labels=False)
+    bottom_a, top_a = with_labels.layout.yaxis.range
+    bottom_b, top_b = without.layout.yaxis.range
+    assert (bottom_a - top_a) > (bottom_b - top_b)
+
+
+def test_label_padding_is_applied_at_both_ends():
+    """Labels alternate, so the deepest well can carry one below it.
+
+    The old asymmetric padding cleared the top only, which was right
+    when every label sat above its marker and is not any more.
+    """
+    fig = make_distance_drawdown_figure(_result(_spread_wells(4)))
+    bottom, top = fig.layout.yaxis.range
+    wells = _result(_spread_wells(4)).wells
+    deepest = max(w.drawdown_m for w in wells)
+    sads = [w.sad_m for w in wells if w.sad_m is not None and w.sad_m > 0]
+    lowest_drawn = max([deepest, *sads])
+    # Real headroom past the lowest ink, not a hairline.
+    assert bottom > lowest_drawn
+    assert (bottom - lowest_drawn) > (lowest_drawn - top) * 0.02
 
 
 class _FakeWell:

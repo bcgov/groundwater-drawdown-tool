@@ -31,6 +31,17 @@ Cooper-Jacob curve:
    integer WTN so the results-page callback can map a chart click
    back to a well for cross-linking with the map.
 
+   WTN labels **alternate above and below** their marker in order of
+   distance, and can be switched off entirely (``show_labels``).
+   Wells at similar radial distances sit at similar X, so labels all
+   drawn on the same side collide (client feedback, 2026-07). The
+   client asked for vertical labels; plotly 5.24's ``go.Scatter`` has
+   **no ``textangle``** (verified), so rotation would mean rebuilding
+   every label as a layout annotation. Alternating sides costs one
+   array, separates any adjacent pair, and the toggle — the client's
+   own fallback suggestion — covers the buffer so busy that no
+   placement rule saves it.
+
 The result page also injects a translucent ring around the
 ``selected_wtn`` so the user can see which well the chart and map
 are agreeing on at any moment.
@@ -172,6 +183,27 @@ def _sad_segment_arrays(
     return xs, ys
 
 
+def _label_positions(wells: list[WellResult]) -> list[str]:
+    """Alternate WTN labels above / below their marker, by distance.
+
+    Returned in the same order as ``wells`` (Plotly reads
+    ``textposition`` positionally), but the alternation is assigned in
+    order of *distance* — the axis along which labels actually collide.
+    Neighbouring points therefore always land on opposite sides, which
+    is the whole point; alternating by BCGW row order would leave
+    adjacent labels on the same side by chance.
+
+    Ties on distance are broken by well tag number so the same buffer
+    always renders identically.
+    """
+    ranked = sorted(wells, key=lambda w: (w.distance_m, w.well_tag_number))
+    side_by_wtn = {
+        w.well_tag_number: ("top center" if i % 2 == 0 else "bottom center")
+        for i, w in enumerate(ranked)
+    }
+    return [side_by_wtn[w.well_tag_number] for w in wells]
+
+
 def _empty_figure(message: str) -> go.Figure:
     """Tiny placeholder figure used when there's nothing to plot."""
     fig = go.Figure()
@@ -197,6 +229,7 @@ def make_distance_drawdown_figure(
     result: AnalysisResult,
     *,
     selected_wtn: int | None = None,
+    show_labels: bool = True,
 ) -> go.Figure:
     """Build the distance-drawdown Plotly figure for `result`.
 
@@ -205,6 +238,10 @@ def make_distance_drawdown_figure(
         selected_wtn: Well tag number of the currently-selected well, if
             any. Drawn as a translucent ring around the well point so
             the map and chart visually agree.
+        show_labels: Draw the WTN beside each well point. Off strips
+            the chart back to markers for a buffer crowded enough that
+            no label placement helps; hover still names every well.
+            Whatever is on screen is what the PDF export captures.
 
     Returns:
         A `plotly.graph_objects.Figure`. The caller wraps it in a
@@ -315,14 +352,14 @@ def make_distance_drawdown_figure(
         go.Scatter(
             x=well_xs,
             y=well_ys,
-            mode="markers+text",
+            mode="markers+text" if show_labels else "markers",
             marker={
                 "color": well_colors,
                 "size": 11,
                 "line": {"color": "white", "width": 1},
             },
             text=well_text,
-            textposition="top center",
+            textposition=_label_positions(wells),
             textfont={"size": 10},
             name="Wells",
             customdata=customdata,
@@ -369,12 +406,14 @@ def make_distance_drawdown_figure(
     y_hi = max(y_values)
     span = y_hi - y_lo
     base_pad = span * 0.05 if span > 0 else max(abs(y_hi), 1.0) * 0.05
-    # Asymmetric padding: WTN labels are drawn above their marker
-    # ("top center"), so the top of the chart — the small-drawdown
-    # end — needs roughly triple the headroom or labels on the
-    # shallowest wells get clipped against the plot edge (client
-    # feedback, 2026-07).
-    y_range = [y_hi + base_pad, y_lo - base_pad * 3.0]
+    # Room for the labels themselves, or the plot edge clips them
+    # (client feedback, 2026-07). Now needed at BOTH ends: labels
+    # alternate above and below their marker, so the deepest well can
+    # carry one below it just as the shallowest can carry one above.
+    # With labels off there is nothing to clear, so the chart uses the
+    # data's own bounds and reads tighter.
+    label_pad = base_pad * 3.0 if show_labels else base_pad
+    y_range = [y_hi + label_pad, y_lo - label_pad]
 
     fig.update_layout(
         title={

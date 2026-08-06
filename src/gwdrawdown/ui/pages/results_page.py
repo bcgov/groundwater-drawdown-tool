@@ -219,6 +219,26 @@ def layout(**_kwargs: object) -> html.Div:
                         ],
                         className="bc-results-helper",
                     ),
+                    # Well tag numbers alternate above and below their
+                    # point, which separates any adjacent pair. On a
+                    # buffer crowded enough that no placement rule
+                    # helps, this switches them off entirely — the
+                    # client's own suggested fallback. Hover still
+                    # names every well, and the PDF captures whatever
+                    # is on screen.
+                    dcc.Checklist(
+                        id="dd-labels-toggle",
+                        options=[
+                            {
+                                "label": " Show well tag numbers on the chart",
+                                "value": "show",
+                            }
+                        ],
+                        value=["show"],
+                        className="bc-results-helper",
+                        style={"marginBottom": "0.25rem"},
+                        inputStyle={"marginRight": "0.3rem"},
+                    ),
                     dcc.Graph(
                         id="dd-chart",
                         # Drop the "Autoscale" button: on the inverted Y
@@ -685,11 +705,13 @@ def _resolve_current(
     Input("analysis-result", "data"),
     Input("well-overrides", "data"),
     Input("selected-well", "data"),
+    Input("dd-labels-toggle", "value"),
 )
 def render_chart_and_map(
     result_data: dict[str, Any] | None,
     overrides_data: dict[str, Any] | None,
     selected_data: int | dict[str, Any] | None,
+    dd_label_toggle: list[str] | None,
 ) -> tuple[Any, Any, Any, Any]:
     """Redraw both charts and the well-marker layer.
 
@@ -698,12 +720,22 @@ def render_chart_and_map(
     not retrigger dash_table reconciliation. The two charts and the
     map all consume the same `selected-well` so selection stays in
     sync across views.
+
+    The WTN-label toggle only affects the distance-drawdown figure;
+    it shares this callback rather than owning one so there is a
+    single place that turns cached result + overrides into figures.
+    Redrawing the map markers on a toggle click is wasted work, but
+    it is cheap and keeps the render path undivided.
     """
     current = _resolve_current(result_data, overrides_data)
     if current is None:
         return no_update, no_update, no_update, no_update
     selected_wtn = _coerce_selected_wtn(selected_data)
-    dd_figure = make_distance_drawdown_figure(current, selected_wtn=selected_wtn)
+    dd_figure = make_distance_drawdown_figure(
+        current,
+        selected_wtn=selected_wtn,
+        show_labels="show" in (dd_label_toggle or []),
+    )
     impact_figure = make_impact_chart(current, selected_wtn=selected_wtn)
     pumping_layer = make_pumping_layer(current)
     well_markers = make_well_markers(current, selected_wtn=selected_wtn)

@@ -1107,12 +1107,13 @@ need this.
 The first round of real end-user testing, on `v0.5.3`. Twenty-one items,
 none of them structural: no change to the architecture, the layer
 rules, or the Cooper-Jacob / SAD math, and no reported wrong number.
-Nineteen are built; two are deferred (below). The release is deliberately
-held: `version.txt` stays at the last published version until every item is
-either implemented or explained to the client, so `CHANGELOG.md` keeps these
-notes under `[Unreleased]` and no installed copy sees them. Cutting the
-version header and running `scripts/publish_release.ps1` is the last step,
-on the client's sign-off.
+**All twenty-one are built** — two (3d, 4a) were deferred mid-batch and
+then picked up rather than left to a second pass. The release is
+deliberately held: `version.txt` stays at the last published version until
+every item is either implemented or explained to the client, so
+`CHANGELOG.md` keeps these notes under `[Unreleased]` and no installed copy
+sees them. Cutting the version header and running
+`scripts/publish_release.ps1` is the last step, on the client's sign-off.
 
 Delivered, grouped as committed:
 
@@ -1166,18 +1167,30 @@ Delivered, grouped as committed:
   the table, CSV, map pop-up, PDF and KML alike. A failed lookup costs
   the marker, not the run.
 
-Deferred, with the reasons recorded so the next pass starts informed:
-
-- **Impact-chart WTN labels thin out** on a busy buffer
-  (`_MAX_CHART_HEIGHT` squeezes bars until Plotly drops ticks).
-- **Distance-drawdown WTN labels overlap** at similar radial
-  distances. The client asked for vertical labels; **plotly 5.24's
-  `go.Scatter` has no `textangle`**, so that needs the labels rebuilt
-  as layout annotations. A cheaper option is alternating
-  `textposition` plus a label on/off toggle. Both items are also
-  bounded by a constraint neither fix escapes: charts are captured as
-  PNGs into a fixed-size PDF page, so "show every WTN" cannot fully
-  survive the export.
+- **Chart label crowding (3d + 4a), fixed as one job.** Both were
+  originally deferred; both are bounded by a constraint neither fix
+  escapes — charts are captured as PNGs into a fixed-size PDF page, so
+  "show every WTN" cannot fully survive the export however the screen
+  behaves. The screen is therefore where each was fixed, and each
+  states its limit rather than hiding it.
+  - *4a, distance-drawdown.* The client asked for vertical labels;
+    **plotly 5.24's `go.Scatter` has no `textangle`** (verified), so
+    rotation would mean rebuilding every label as a layout annotation.
+    `_label_positions` alternates top/bottom **in order of distance** —
+    the axis along which labels actually collide — which separates any
+    adjacent pair for the cost of one array. `show_labels` (a tickbox
+    on the results page, wired through `render_chart_and_map`) covers
+    the buffer no placement rule saves; it was the client's own
+    fallback suggestion. The y-padding that item 4d added at the top
+    now applies at both ends, since labels can sit below a marker.
+  - *3d, impact chart.* Plotly thins category ticks once bars are
+    squeezed, so the chart drew 40 bars and 13 labels.
+    `_MAX_CHART_HEIGHT` 720 → 1200 and `dtick=1` force every WTN onto
+    the axis while a bar has `_MIN_LABELLED_BAR_PX` to sit in (~86
+    wells); past that the thinning stands and the caption says so.
+    The cap is not raised further on purpose — the PDF box-fits this
+    chart onto one page, so height traded for screen legibility comes
+    straight out of the report.
 
 ## 7. Decision register
 

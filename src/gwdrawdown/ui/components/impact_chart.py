@@ -28,6 +28,11 @@ Conventions:
 - If any well's impact exceeds 100 %, the X axis extends to fit it
   (no clipping); the threshold line stays at 30 % (or whatever the
   config value is).
+- Every bar carries its WTN on the y axis wherever there is room to
+  read it — Plotly's automatic tick thinning is overridden, because a
+  chart showing 40 bars and 13 labels reads as a rendering fault
+  (client feedback, 2026-07). Past the point where labels genuinely
+  cannot fit, the thinning stands and the caption says so.
 """
 
 from __future__ import annotations
@@ -54,8 +59,58 @@ _BAR_PIXEL_HEIGHT = 24
 # Floor / ceiling so a 1-well buffer doesn't get a 30 px chart and
 # a 200-well buffer doesn't get a 4800 px chart that overshadows
 # everything else on the page.
+#
+# The ceiling was 720, which is where item 3d came from: past ~26
+# wells the bars compress until Plotly starts thinning the y-axis
+# ticks, and WTNs silently disappear from a chart that still shows
+# every bar. 1200 lets ~46 wells through at full spacing and ~86
+# with every WTN still labelled (see `_MIN_LABELLED_BAR_PX`).
+#
+# Not raised further on purpose. The PDF export captures this chart
+# at its rendered size and box-fits it into one fixed page, so every
+# extra pixel of height shrinks the whole chart in the report. 1200
+# is the point where the screen gains a lot and the PDF loses little.
 _MIN_CHART_HEIGHT = 220
-_MAX_CHART_HEIGHT = 720
+_MAX_CHART_HEIGHT = 1200
+
+# Vertical space per bar below which labelling every well stops being
+# legible and starts being a grey smear. Above it the y axis is
+# forced to show every WTN (`dtick=1`); below it Plotly's own tick
+# thinning is left alone and the caption says so, which is the honest
+# failure mode — a reader who can see labels are missing knows to use
+# hover or the details table.
+_MIN_LABELLED_BAR_PX = 13
+# Below this the WTN ticks are still all drawn, just smaller.
+_COMFORTABLE_BAR_PX = 18
+
+# Vertical chrome (title, axis, margins) outside the plotting area,
+# used to turn a chart height into a per-bar height.
+_CHART_CHROME_PX = 80
+
+
+def _chart_height(well_count: int) -> int:
+    """Pixel height for ``well_count`` bars, clamped to the bounds."""
+    return max(
+        _MIN_CHART_HEIGHT,
+        min(_MAX_CHART_HEIGHT, _CHART_CHROME_PX + _BAR_PIXEL_HEIGHT * well_count),
+    )
+
+
+def _wtn_axis_settings(height: int, well_count: int) -> tuple[dict, bool]:
+    """Y-axis tick settings, and whether every WTN gets a label.
+
+    Plotly thins category ticks on its own once bars are tight, which
+    is how a chart ends up showing 40 bars and 13 labels (item 3d,
+    client feedback 2026-07). Where there is room, ``dtick=1`` overrides
+    that so bar and label always correspond; where there genuinely
+    isn't, the thinning stands and the caller says so in the caption
+    rather than letting the reader assume the labels are complete.
+    """
+    bar_px = (height - _CHART_CHROME_PX) / max(well_count, 1)
+    if bar_px < _MIN_LABELLED_BAR_PX:
+        return {}, False
+    font_size = 10 if bar_px >= _COMFORTABLE_BAR_PX else 8
+    return {"dtick": 1, "tickfont": {"size": font_size}}, True
 
 
 def _empty_figure(message: str) -> go.Figure:
@@ -191,6 +246,11 @@ def make_impact_chart(
     # past 100 % impact.
     max_pct = max(100.0, max(impact_pct) * 1.05)
 
+    height = _chart_height(len(wells_with_impact))
+    tick_settings, all_wtns_labelled = _wtn_axis_settings(
+        height, len(wells_with_impact)
+    )
+
     title_text = (
         "Impact % per well (sorted by magnitude of impact, "
         f"{len(wells_with_impact)} wells)"
@@ -199,6 +259,12 @@ def make_impact_chart(
         title_text += (
             f" — {excluded} excluded "
             "(no computable impact; see per-well table)"
+        )
+    if not all_wtns_labelled:
+        # Say it rather than let the reader assume the axis is complete.
+        title_text += (
+            "<br><sub>Too many wells to label every bar — hover a bar for "
+            "its WTN, or use the details table below.</sub>"
         )
 
     fig.update_layout(
@@ -225,11 +291,9 @@ def make_impact_chart(
             "title": "WTN",
             "type": "category",
             "automargin": True,
+            **tick_settings,
         },
-        height=max(
-            _MIN_CHART_HEIGHT,
-            min(_MAX_CHART_HEIGHT, 80 + _BAR_PIXEL_HEIGHT * len(wells_with_impact)),
-        ),
+        height=height,
         margin={"l": 80, "r": 30, "t": 60, "b": 50},
         plot_bgcolor="white",
         paper_bgcolor="white",

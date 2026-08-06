@@ -69,6 +69,17 @@ move under a version heading when the release is actually cut.
   dark on purpose, so it stays distinct from the red at-risk bars.
 - Well tag numbers no longer get clipped at the top-right of the
   distance-drawdown chart.
+- **Well tag numbers on the distance-drawdown chart now alternate
+  above and below their point,** so wells at similar distances from
+  the pumping well stop printing on top of each other. When even that
+  isn't enough, a new **"Show well tag numbers on the chart"** tickbox
+  turns them off — hovering a point still names the well, and the PDF
+  captures the chart as you left it.
+- **The Impact % chart now keeps a WTN on every bar.** It grows taller
+  as the buffer gets busier instead of squeezing the bars until labels
+  silently dropped out. Past roughly 85 wells there is genuinely no
+  room left, and the caption now says so rather than leaving you to
+  spot the gaps.
 
 ### Removed
 

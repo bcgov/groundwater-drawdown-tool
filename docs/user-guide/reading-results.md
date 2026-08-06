@@ -44,6 +44,13 @@ Leahey, 2024):
 - The Y axis is **inverted** — drawdown increases downward, the standard
   hydrogeology convention.
 
+WTN labels **alternate above and below** their dot, so two wells at
+similar distances from the pumping well don't print on top of each
+other. On a busy buffer even that isn't enough — untick **Show well tag
+numbers on the chart** above the chart to strip it back to dots.
+Hovering any dot still names the well, and the PDF export captures the
+chart exactly as you left it on screen.
+
 ![Distance-drawdown chart with status-coloured WTN-labelled well points, a smooth black Cooper-Jacob curve, and vertical orange SAD bars, on an inverted Y axis]({{ site.baseurl }}/assets/img/distance-drawdown-chart.png)
 
 *The distance-drawdown chart: well dots (colour matches Status), Cooper-Jacob curve (black), SAD bars (orange).*
@@ -56,6 +63,11 @@ vertical line marks the **30 % at-risk threshold** — bars at or above
 the line are flagged as at-risk. Wells with no computable impact
 (missing NPL or well depth) are excluded from this chart — they appear
 in the details table below with an **INSUFFICIENT_DATA** status.
+
+The chart grows taller as the buffer gets busier so that **every bar
+keeps its WTN**. Past roughly 85 wells there is no longer room to label
+them all; the caption says so when that happens, and you can hover a
+bar for its WTN or read them off the details table.
 
 ![Impact-percent bar chart, one bar per well sorted by magnitude of impact, with a dashed vertical line marking the 30% at-risk threshold]({{ site.baseurl }}/assets/img/impact-percent-chart.png)
 
