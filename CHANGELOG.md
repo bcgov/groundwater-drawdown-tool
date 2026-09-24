@@ -8,6 +8,7 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+## [0.5.5] — 2026-09-24
 ### Added
 
 - **The PDF report now includes the results map.** A new page, after
@@ -26,7 +27,7 @@ Changed, Fixed, Removed.
   from a file, which is how the downloaded map is opened. The file now
   uses Esri basemaps (Streets, the default, plus Topographic and
   Satellite), which work from a file. Maps downloaded with an earlier
-  version still show the blocked tiles; download them again. The map on
+  version still show the blocked tiles. The map on
   the results page itself was not affected.
 
 ## [0.5.4] — 2026-08-12
