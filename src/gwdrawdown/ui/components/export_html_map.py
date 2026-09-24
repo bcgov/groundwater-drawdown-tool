@@ -6,7 +6,9 @@ well, its buffer circle, and every observation well as a circle marker
 — colour-coded by `WellStatus` and sized by predicted impact, with a
 click popup carrying the per-well summary.
 
-This is the export-side counterpart of the live results-page map.
+This is the export-side counterpart of the live results-page map. (The
+PDF report carries a static print of the same map — see
+`export_pdf_map`.)
 
 Basemaps are Esri only — Streets (default), Topographic, Satellite.
 The file is opened from disk, and a ``file://`` page sends no HTTP
@@ -43,8 +45,12 @@ _MIN_RADIUS_PX = 6.0
 _MAX_RADIUS_PX = 18.0
 
 
-def _radius(w: WellResult, max_impact: float) -> float:
-    """Marker radius scaled linearly to impact magnitude."""
+def marker_radius_px(w: WellResult, max_impact: float) -> float:
+    """Marker radius scaled linearly to impact magnitude.
+
+    Also used by the PDF map (`export_pdf_map`), so all three maps size
+    a well's marker the same way.
+    """
     if w.impact_fraction is None or max_impact <= 0:
         return _MIN_RADIUS_PX
     fraction = max(0.0, min(1.0, w.impact_fraction / max_impact))
@@ -65,7 +71,7 @@ def _well_payload(result: AnalysisResult) -> list[dict[str, object]]:
                 "lat": lat,
                 "lon": lon,
                 "color": STATUS_COLOR.get(w.well_status, "#666666"),
-                "radius": round(_radius(w, max_impact), 1),
+                "radius": round(marker_radius_px(w, max_impact), 1),
                 "status": w.well_status.value,
                 "distance": round(w.distance_m, 1),
                 "drawdown": round(w.drawdown_m, 4),

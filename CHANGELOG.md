@@ -8,6 +8,17 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+### Added
+
+- **The PDF report now includes the results map.** A new page, after
+  the method section, shows the whole search buffer around the pumping
+  well: every well coloured by status and sized by predicted impact, a
+  dark ring on licensed wells, well tag numbers, a scale bar and a north
+  arrow. The background follows the basemap you picked on the results
+  map (OpenStreetMap prints as Esri Streets, which looks much the same).
+  If the background map can't be downloaded when the PDF is made, the
+  map is still drawn, on a plain background, and the page says so.
+
 ### Fixed
 
 - **The downloadable HTML map no longer shows "Access blocked" tiles.**

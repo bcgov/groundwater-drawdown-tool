@@ -82,6 +82,14 @@ to a page opened straight from a file, so older files show a grid of
 the map from the results page. Current versions use Esri basemaps, which
 work from a file.
 
+## The PDF map page says "No basemap"
+
+The background map is downloaded from Esri's map service when the PDF is
+made. If that fails (no internet connection, or the service did not
+respond), the map is still drawn on a plain background, and the wells,
+buffer and scale bar are all still correct. Check your internet
+connection and download the PDF again to get the background map.
+
 ## Getting more help
 
 Contact your project lead. Include the contents of the `run.bat` console

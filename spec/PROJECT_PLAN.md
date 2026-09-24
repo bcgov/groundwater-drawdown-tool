@@ -754,7 +754,8 @@ bisectable:
     taints the browser canvas, so a reliable image export isn't
     feasible. The standalone HTML is both reliable to generate
     (pure string templating) and more useful — it stays
-    interactive.
+    interactive. *(Both superseded in Phase 7b: the PDF now carries
+    a server-drawn map, and the HTML file uses Esri basemaps.)*
   - **CSV.** The per-well CSV gains a derived "Outside Validity"
     Yes/No column so the validity advisory (a purple row tint
     on screen, which CSV can't carry) survives the export.
@@ -1194,7 +1195,7 @@ Delivered, grouped as committed:
 
 ### Phase 7b — Map exports (September 2026 client feedback) *(built, not yet released)*
 
-Client-reported, on the map exports.
+Two client-reported items, both on the map exports.
 
 - **HTML map "Access blocked".** Not a regression in the tool: the
   export's OSM tile URL was unchanged since Phase 5c. OSM's tile
@@ -1217,6 +1218,22 @@ Client-reported, on the map exports.
     cache" (`maps.gov.bc.ca/arcgis/rest/services/province/roads_wm`)
     serves `{z}/{y}/{x}` tiles with no Referer check (tested 2026-09),
     though its service notes say it "may change at any time".
+- **Map in the PDF.** A new page after the method section
+  (`ui/components/export_pdf_map.py`). The browser-capture route stays
+  closed (5c), so the map is drawn server-side: Esri tiles fetched with
+  stdlib `urllib` (Windows certificate store and system proxy, which
+  `requests` + certifi would miss behind TLS inspection), stitched with
+  Pillow, then the buffer, markers, licence rings, pumping well, WTN
+  labels, north arrow and scale bar drawn as reportlab vectors. OSM
+  cannot be the print source either: its policy forbids server-side
+  fetching. It is framed on the buffer at a whole-number zoom chosen
+  for ~1.5 image px per printed pt, and follows the officer's basemap
+  pick through the `LayersControl` `baseLayer` prop (OSM → Esri
+  Streets). The fetch sits in the export callback so `build_pdf` stays
+  pure. It is all-or-nothing, with one retry per tile and a 20 s cap;
+  on failure the map draws on a plain background and the caption says
+  so. WTN labels try above / below / right / left and take the least
+  crowded spot, never dropping one, per the chart-label feedback above.
 
 ## 7. Decision register
 

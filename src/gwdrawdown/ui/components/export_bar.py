@@ -6,14 +6,17 @@ Two whole-run exports sit beside the per-table CSV buttons:
   for opening in Google Earth (clients are more familiar with Google
   Earth than GeoJSON, so KML is the spatial-export format).
 - **PDF** — the full licence-assessment artifact: parameters, the
-  at-risk table, both charts, and the per-well details table.
+  results map, both charts, the at-risk table, and the per-well
+  details table.
 
 The PDF needs the two Plotly charts as images. Rather than render them
 server-side (which would pull in ``kaleido`` and a bundled Chromium),
 a clientside callback captures the already-drawn charts with
 ``Plotly.toImage`` and stashes the PNG data-URIs in a Store. The
 server-side build callback then fires off that Store, decodes the
-images, and streams the PDF back. So the export is a two-hop chain:
+images, fetches the results map's basemap tiles
+(`export_pdf_map.fetch_basemap`), and streams the PDF back. So the
+export is a two-hop chain:
 
     PDF button click
       -> clientside capture  -> ``pdf-chart-images`` Store
@@ -45,6 +48,10 @@ from gwdrawdown.analysis import AnalysisResult, apply_overrides
 from gwdrawdown.ui.components.export_html_map import build_html_map
 from gwdrawdown.ui.components.export_kml import build_kml
 from gwdrawdown.ui.components.export_pdf import build_pdf
+from gwdrawdown.ui.components.export_pdf_map import (
+    basemap_source_for,
+    fetch_basemap,
+)
 from gwdrawdown.ui.session import current_user
 
 logger = logging.getLogger(__name__)
@@ -215,18 +222,23 @@ def _decode_data_uri(uri: object) -> bytes | None:
     Input("pdf-chart-images", "data"),
     State("analysis-result", "data"),
     State("well-overrides", "data"),
+    State("results-layers-control", "baseLayer"),
     prevent_initial_call=True,
 )
 def export_pdf(
     images: dict[str, Any] | None,
     result_data: dict[str, Any] | None,
     overrides_data: dict[str, Any] | None,
+    base_layer: str | None,
 ) -> object:
     """Build the PDF once the clientside callback has captured the charts.
 
     Fired by a change to ``pdf-chart-images`` (written only on a PDF
     button click). The chart PNGs may be ``None`` if the browser
-    capture failed — `build_pdf` substitutes a placeholder note.
+    capture failed — `build_pdf` substitutes a placeholder note. The
+    map page uses the basemap picked on the results map
+    (``base_layer``); if its tiles cannot be fetched, the map prints
+    without one.
     """
     if not images:
         return no_update
@@ -241,6 +253,7 @@ def export_pdf(
         overrides_by_wtn=overrides,
         dd_chart_png=_decode_data_uri(images.get("dd")),
         impact_chart_png=_decode_data_uri(images.get("impact")),
+        map_basemap=fetch_basemap(current, basemap_source_for(base_layer)),
     )
     return dcc.send_bytes(pdf_bytes, f"drawdown-report-{current.run_id[:8]}.pdf")
 

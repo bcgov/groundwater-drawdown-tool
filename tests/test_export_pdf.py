@@ -3,14 +3,17 @@
 The PDF layout itself is hard to assert on without a parser; these
 tests pin the contract that matters: `build_pdf` returns a non-empty
 PDF byte string for every input shape it must handle — with and
-without chart images, with overrides, in manual-entry mode, and with
-an empty well set.
+without chart images and a map basemap, with overrides, in manual-entry
+mode, and with an empty well set. The map page itself is tested in
+`test_export_pdf_map.py`.
 """
 
 from __future__ import annotations
 
 import base64
+import io
 
+from PIL import Image
 from reportlab.pdfbase.pdfmetrics import stringWidth
 
 from gwdrawdown.analysis import AnalysisInputs, AnalysisResult, _compute_well_result
@@ -25,6 +28,8 @@ from gwdrawdown.ui.components.export_pdf import (
     _well_cell,
     build_pdf,
 )
+from gwdrawdown.ui.components.export_pdf_map import fetch_basemap
+from gwdrawdown.ui.components.tile_sources import ESRI_STREETS
 from gwdrawdown.ui.format_utils import NOT_DELINEATED_SUFFIX
 
 PX, PY = 1_170_000.0, 418_000.0
@@ -195,6 +200,20 @@ def test_build_pdf_with_charts_returns_pdf_bytes() -> None:
         impact_chart_png=_TINY_PNG,
     )
     _assert_is_pdf(pdf)
+
+
+def test_build_pdf_with_a_map_basemap() -> None:
+    """The map page embeds a fetched basemap (here from a fake tile getter)."""
+    result = _result([_row(WELL_TAG_NUMBER=1), _row(WELL_TAG_NUMBER=2)])
+    buffer = io.BytesIO()
+    Image.new("RGB", (256, 256), "#cfe3c8").save(buffer, "PNG")
+    basemap = fetch_basemap(result, ESRI_STREETS, get=lambda _url: buffer.getvalue())
+    assert basemap is not None
+    with_map = build_pdf(result, user="ANALYST1", version="0.4.0", map_basemap=basemap)
+    _assert_is_pdf(with_map)
+    # The basemap image is really in there: the file is bigger for it.
+    without = build_pdf(result, user="ANALYST1", version="0.4.0")
+    assert len(with_map) > len(without)
 
 
 def test_build_pdf_without_charts_falls_back_cleanly() -> None:

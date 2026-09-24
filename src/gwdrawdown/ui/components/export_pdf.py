@@ -11,7 +11,8 @@ Page layout (fixed, via explicit ``PageBreak``s):
 - Page 2 — method and assumptions. Its own page: it shared page 1 until
   the client-supplied guidance paragraphs pushed it over the boundary
   and left a two-line orphan page.
-- Pages 3 and 4 — the distance-drawdown and impact-% charts, one each.
+- Page 3 — the results map (`export_pdf_map`).
+- Pages 4 and 5 — the distance-drawdown and impact-% charts, one each.
 - Then the at-risk wells table (as many pages as it needs).
 - A fresh page onward — the full per-well details table.
 
@@ -20,9 +21,12 @@ in the browser (a clientside callback calls ``Plotly.toImage``) and the
 resulting PNG bytes are handed to `build_pdf`. This keeps the heavy
 headless-browser dependency (``kaleido``) out of the install and
 guarantees the PDF charts match exactly what the officer saw on screen.
+The map's basemap is likewise fetched before `build_pdf` is called
+(`export_pdf_map.fetch_basemap`) and handed in.
 
 The module is otherwise pure: given an `AnalysisResult` plus the two
-PNG byte strings it returns the PDF as ``bytes``. No Dash imports.
+PNG byte strings and the basemap it returns the PDF as ``bytes``. No
+Dash imports.
 """
 
 from __future__ import annotations
@@ -47,6 +51,13 @@ from reportlab.platypus import (
 from gwdrawdown.analysis import AnalysisResult, WellResult
 from gwdrawdown.core.flagging import WellStatus
 from gwdrawdown.ui import disclaimers
+from gwdrawdown.ui.components.export_pdf_map import (
+    Basemap,
+    MapLegend,
+    ResultsMap,
+    basemap_credit,
+    map_caption,
+)
 from gwdrawdown.ui.components.palette import STATUS_PALETTE
 from gwdrawdown.ui.format_utils import (
     format_aquifer_id,
@@ -198,6 +209,16 @@ def _make_styles() -> dict[str, ParagraphStyle]:
             leading=10,
             spaceAfter=6,
             textColor=colors.HexColor("#444444"),
+        ),
+        # Basemap credit under the map: smaller and italic, so it reads
+        # as a credit line rather than part of the note above it.
+        "credit": ParagraphStyle(
+            "gwCredit",
+            parent=base["BodyText"],
+            fontName="Helvetica-Oblique",
+            fontSize=6.5,
+            leading=8.5,
+            textColor=colors.HexColor("#555555"),
         ),
         "legend": ParagraphStyle(
             "gwLegend",
@@ -611,6 +632,7 @@ def build_pdf(
     overrides_by_wtn: dict[int, dict[str, float | None]] | None = None,
     dd_chart_png: bytes | None = None,
     impact_chart_png: bytes | None = None,
+    map_basemap: Basemap | None = None,
 ) -> bytes:
     """Render a full analysis run to a PDF document.
 
@@ -624,6 +646,9 @@ def build_pdf(
         dd_chart_png: PNG bytes of the distance-drawdown chart captured
             in the browser, or ``None`` if capture failed.
         impact_chart_png: PNG bytes of the impact-% chart, or ``None``.
+        map_basemap: The results map's basemap from
+            `export_pdf_map.fetch_basemap`, or ``None`` if it could not
+            be fetched — the map is then drawn on a plain background.
 
     Returns:
         The PDF document as ``bytes``.
@@ -669,7 +694,23 @@ def build_pdf(
         PageBreak(),
     ]
 
-    # --- Pages 2 & 3: one chart per page -------------------------------
+    # --- Page 3: results map -------------------------------------------
+    # Client request (2026-09). Drawn server-side, framed on the buffer;
+    # see `export_pdf_map` for why it is not a capture of the live map.
+    story += [
+        Paragraph("Results map", styles["heading"]),
+        ResultsMap(result, map_basemap, width=_CONTENT_WIDTH),
+        Spacer(1, 4),
+        MapLegend(result, width=_CONTENT_WIDTH),
+        Spacer(1, 4),
+        Paragraph(map_caption(result, map_basemap), styles["disclaimer"]),
+    ]
+    credit = basemap_credit(map_basemap)
+    if credit is not None:
+        story.append(Paragraph(credit, styles["credit"]))
+    story.append(PageBreak())
+
+    # --- Pages 4 & 5: one chart per page -------------------------------
     # Each chart gets its own page — the impact chart in particular can
     # be tall, since its on-screen height scales with the well count.
     chart_max_h = 6.7 * inch
@@ -694,7 +735,7 @@ def build_pdf(
         PageBreak(),
     ]
 
-    # --- Page 3+: at-risk wells table ----------------------------------
+    # --- Page 6+: at-risk wells table ----------------------------------
     story.append(
         Paragraph(f"At-risk wells ({result.n_at_risk})", styles["heading"])
     )

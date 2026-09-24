@@ -40,11 +40,21 @@ each placemark as attached data.
 ## PDF
 
 A landscape PDF report, one section per page: input parameters and a
-summary-card row with the method-and-assumptions disclaimer; the
+summary-card row; the method and assumptions; the results map; the
 distance-drawdown and impact charts; the at-risk summary table; and the
 full per-well details table. Every page carries a screening-tool banner,
 and the footer records the run timestamp, run ID, tool version, and
 signed-in user.
+
+The **results map** page shows the whole search buffer around the
+pumping well, with every well coloured by status and sized by predicted
+impact, a dark ring on each licensed well, well tag numbers, a scale bar
+and a north arrow. It always shows the full buffer, however you last
+panned or zoomed the map on screen. The background follows the basemap
+you picked on the results map; OpenStreetMap, the default, prints as
+Esri Streets, which looks much the same. The background is downloaded
+when the PDF is made. If that fails, the map is drawn on a plain
+background and the page says so.
 
 ## Interactive HTML map
 
