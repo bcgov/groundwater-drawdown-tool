@@ -104,6 +104,23 @@ def test_build_html_map_is_a_complete_document() -> None:
     assert "</html>" in html.strip()
 
 
+def test_html_map_uses_no_openstreetmap_tiles() -> None:
+    """The file opens from disk, where OSM answers "Access blocked".
+
+    A ``file://`` page sends no Referer, and OSM's tile servers refuse
+    browser requests without one — client-reported (2026-09) as a map
+    covered in "Access blocked" tiles. Only Esri basemaps are offered.
+    """
+    html = build_html_map(_result([_row()]))
+    assert "tile.openstreetmap.org" not in html
+    match = re.search(r"var BASEMAPS = (\[.*?\]);", html, re.DOTALL)
+    assert match, "embedded BASEMAPS list not found"
+    basemaps = json.loads(match.group(1))
+    assert [b["name"] for b in basemaps] == ["Streets", "Topographic", "Satellite"]
+    assert all(b["url"].startswith("https://server.arcgisonline.com/") for b in basemaps)
+    assert all("Esri" in b["attribution"] for b in basemaps)
+
+
 def test_html_map_payload_has_pumping_and_one_entry_per_well() -> None:
     html = build_html_map(_result([_row(WELL_TAG_NUMBER=1), _row(WELL_TAG_NUMBER=2)]))
     data = _payload(html)

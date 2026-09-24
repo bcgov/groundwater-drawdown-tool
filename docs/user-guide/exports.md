@@ -52,3 +52,8 @@ A single self-contained HTML file with an interactive map — the pumping
 well, the search buffer, and every observation well with clickable
 popups. It opens in any browser with no software to install and stays
 interactive (pan, zoom, switch basemap).
+
+The basemaps in the file are Esri **Streets** (shown first),
+**Topographic** and **Satellite**. OpenStreetMap is not offered: its
+servers refuse map tiles to a page opened from a file on your computer.
+The file needs an internet connection to draw its basemap.

@@ -42,39 +42,30 @@ from typing import Final, Literal
 import dash_leaflet as dl
 from dash import html
 
+from gwdrawdown.ui.components.tile_sources import ESRI_IMAGERY, ESRI_TOPO
+
 # --- Basemap URLs and attributions ------------------------------------------
 
 # OpenStreetMap. The default `dl.TileLayer()` already points here, but
 # we set the URL explicitly so all three basemaps follow the same
-# pattern and the attribution string is in one place.
-_OSM_URL: Final[str] = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+# pattern and the attribution string is in one place. The bare
+# ``tile.openstreetmap.org`` host, not the old ``{s}`` a/b/c
+# subdomains: OSM's tile policy says other hostnames "may be slower or
+# withdrawn without notice".
+#
+# OSM only works here because the app is served over HTTP, so the
+# browser sends a Referer with each tile request. OSM refuses tile
+# requests without one, which is why the standalone HTML export and the
+# PDF map use Esri instead (see `tile_sources.py`).
+_OSM_URL: Final[str] = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 _OSM_ATTRIBUTION: Final[str] = (
     '&copy; <a href="https://www.openstreetmap.org/copyright">'
     "OpenStreetMap</a> contributors"
 )
 
-# ESRI World Topographic Map. Free for low-volume use with attribution
-# per ESRI's terms; no API key required. URL pattern is {z}/{y}/{x}
-# (Y before X — different from OSM).
-_TOPO_URL: Final[str] = (
-    "https://server.arcgisonline.com/ArcGIS/rest/services/"
-    "World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
-)
-_TOPO_ATTRIBUTION: Final[str] = (
-    "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, "
-    "iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, "
-    "Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community"
-)
-
-# ESRI World Imagery (satellite / aerial). Same terms as Topographic.
-_IMAGERY_URL: Final[str] = (
-    "https://server.arcgisonline.com/ArcGIS/rest/services/"
-    "World_Imagery/MapServer/tile/{z}/{y}/{x}"
-)
-_IMAGERY_ATTRIBUTION: Final[str] = (
-    "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, "
-    "GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
-)
+# ESRI World Topographic Map and World Imagery (satellite / aerial) —
+# shared with the map exports, so defined in the Dash-free
+# `tile_sources` module.
 
 
 # --- BC-sourced overlay configuration ---------------------------------------
@@ -172,8 +163,8 @@ WELLS_MIN_ZOOM: Final[int] = 13
 # widget. Kept short so the widget doesn't expand to fit the longest
 # label.
 OSM_NAME: Final[str] = "OpenStreetMap"
-TOPO_NAME: Final[str] = "Topographic"
-IMAGERY_NAME: Final[str] = "Satellite"
+TOPO_NAME: Final[str] = ESRI_TOPO.name
+IMAGERY_NAME: Final[str] = ESRI_IMAGERY.name
 
 # Overlay display names. These are the exact strings shown in the
 # LayersControl widget and reported back through its `overlays` prop,
@@ -202,12 +193,12 @@ def make_basemap_layers(default: str = OSM_NAME) -> list[dl.BaseLayer]:
             checked=(default == OSM_NAME),
         ),
         dl.BaseLayer(
-            dl.TileLayer(url=_TOPO_URL, attribution=_TOPO_ATTRIBUTION),
+            dl.TileLayer(url=ESRI_TOPO.url, attribution=ESRI_TOPO.attribution),
             name=TOPO_NAME,
             checked=(default == TOPO_NAME),
         ),
         dl.BaseLayer(
-            dl.TileLayer(url=_IMAGERY_URL, attribution=_IMAGERY_ATTRIBUTION),
+            dl.TileLayer(url=ESRI_IMAGERY.url, attribution=ESRI_IMAGERY.attribution),
             name=IMAGERY_NAME,
             checked=(default == IMAGERY_NAME),
         ),

@@ -1192,6 +1192,32 @@ Delivered, grouped as committed:
     chart onto one page, so height traded for screen legibility comes
     straight out of the report.
 
+### Phase 7b — Map exports (September 2026 client feedback) *(built, not yet released)*
+
+Client-reported, on the map exports.
+
+- **HTML map "Access blocked".** Not a regression in the tool: the
+  export's OSM tile URL was unchanged since Phase 5c. OSM's tile
+  servers now refuse browser requests that carry no `Referer`
+  (verified: a browser User-Agent with no Referer gets a 200 carrying
+  the "Access blocked" PNG and `x-blocked: No referer sent`). A
+  downloaded file opens as `file://`, which never sends one, so no
+  `referrerPolicy` setting can help. The export now offers Esri Streets
+  (default), Topographic and Satellite, from the new Dash-free
+  `ui/components/tile_sources.py` that `basemaps.py` also reads. The
+  in-app maps keep OSM: a page served from `http://127.0.0.1` sends a
+  Referer and passes. Its URL moved off the `{s}` a/b/c subdomains,
+  which the policy says "may be withdrawn without notice".
+  - *Longer term:* a GeoBC basemap instead of Esri, as the more open
+    option. GeoBC's BC Basemap
+    (`tiles.arcgis.com/.../BC_BASEMAP_20240307/VectorTileServer`) is
+    vector tiles, so Leaflet needs a vector renderer (MapLibre GL or
+    esri-leaflet-vector) — the tinkering other projects ran into. A
+    cheaper first look: GeoBC's raster "BC Roads Web Mercator base
+    cache" (`maps.gov.bc.ca/arcgis/rest/services/province/roads_wm`)
+    serves `{z}/{y}/{x}` tiles with no Referer check (tested 2026-09),
+    though its service notes say it "may change at any time".
+
 ## 7. Decision register
 
 Nothing here is outstanding. These questions were raised at kickoff and are

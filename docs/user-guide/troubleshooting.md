@@ -73,6 +73,15 @@ Check the buffer radius on the setup page — a small radius in a sparsely
 drilled area may genuinely contain no registered wells. Try a larger
 radius. Also confirm the pumping point is where you intended.
 
+## The downloaded HTML map shows "Access blocked" tiles
+
+The file was made by an older version of the tool, which used
+OpenStreetMap for the background map. OpenStreetMap now refuses map tiles
+to a page opened straight from a file, so older files show a grid of
+"Access blocked" tiles; the well markers still draw on top. Re-download
+the map from the results page. Current versions use Esri basemaps, which
+work from a file.
+
 ## Getting more help
 
 Contact your project lead. Include the contents of the `run.bat` console

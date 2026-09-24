@@ -7,11 +7,11 @@ well, its buffer circle, and every observation well as a circle marker
 click popup carrying the per-well summary.
 
 This is the export-side counterpart of the live results-page map.
-A *static image* snapshot of the live map is not produced: capturing a
-Leaflet map with cross-origin basemap tiles taints the browser canvas,
-so a reliable image export is not feasible. A self-contained HTML file
-is both reliable to generate (pure string templating, no headless
-browser) and more useful — it stays interactive.
+
+Basemaps are Esri only — Streets (default), Topographic, Satellite.
+The file is opened from disk, and a ``file://`` page sends no HTTP
+Referer, which OpenStreetMap's tile servers now answer with an "Access
+blocked" tile. See `tile_sources` for the full reasoning.
 
 The module is pure: it takes an (override-applied) `AnalysisResult`
 and returns an HTML string. No Dash imports.
@@ -25,7 +25,16 @@ from gwdrawdown.analysis import AnalysisResult, WellResult
 from gwdrawdown.core.crs_utils import to_wgs84
 from gwdrawdown.ui import disclaimers
 from gwdrawdown.ui.components.palette import BUFFER_COLOR, STATUS_COLOR
+from gwdrawdown.ui.components.tile_sources import (
+    ESRI_IMAGERY,
+    ESRI_STREETS,
+    ESRI_TOPO,
+)
 from gwdrawdown.ui.format_utils import format_licence_status, is_licensed
+
+# Basemap choices offered in the file's layer control; the first is
+# shown on open.
+_BASEMAPS = (ESRI_STREETS, ESRI_TOPO, ESRI_IMAGERY)
 
 # Circle-marker radius bounds (pixels) — mirrors
 # `results_map._MIN_RADIUS_PX` / `_MAX_RADIUS_PX` so the exported map
@@ -76,9 +85,9 @@ def _well_payload(result: AnalysisResult) -> list[dict[str, object]]:
     return wells
 
 
-# The HTML shell. ``__PAYLOAD__`` is replaced with a JSON literal; the
-# inline script then draws the map. Kept dependency-light: Leaflet from
-# unpkg, OpenStreetMap + ESRI imagery basemaps, no build step.
+# The HTML shell. ``__PAYLOAD__`` and ``__BASEMAPS__`` are replaced with
+# JSON literals; the inline script then draws the map. Kept
+# dependency-light: Leaflet from unpkg, Esri basemaps, no build step.
 _HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -104,18 +113,15 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
 <div id="map"></div>
 <script>
 var DATA = __PAYLOAD__;
+var BASEMAPS = __BASEMAPS__;
 var map = L.map('map');
-var osm = L.tileLayer(
-  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  {maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'}
-);
-var imagery = L.tileLayer(
-  'https://server.arcgisonline.com/ArcGIS/rest/services/' +
-  'World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  {maxZoom: 19, attribution: 'Imagery &copy; Esri'}
-);
-osm.addTo(map);
-L.control.layers({'OpenStreetMap': osm, 'Satellite imagery': imagery}).addTo(map);
+var baseLayers = {};
+BASEMAPS.forEach(function(b, i) {
+  var layer = L.tileLayer(b.url, {maxZoom: 19, attribution: b.attribution});
+  baseLayers[b.name] = layer;
+  if (i === 0) { layer.addTo(map); }
+});
+L.control.layers(baseLayers).addTo(map);
 
 var bounds = [];
 
@@ -203,8 +209,13 @@ def build_html_map(
         },
         "wells": _well_payload(result),
     }
+    basemaps = [
+        {"name": b.name, "url": b.url, "attribution": b.attribution}
+        for b in _BASEMAPS
+    ]
     return (
         _HTML_TEMPLATE.replace("__PAYLOAD__", json.dumps(payload))
+        .replace("__BASEMAPS__", json.dumps(basemaps))
         .replace("__BUFFER__", BUFFER_COLOR)
         .replace("__BANNER__", disclaimers.INTERPRETATION_BANNER)
         .replace(

@@ -8,11 +8,17 @@ Changed, Fixed, Removed.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The downloadable HTML map no longer shows "Access blocked" tiles.**
+  OpenStreetMap has started refusing map tiles to pages opened straight
+  from a file, which is how the downloaded map is opened. The file now
+  uses Esri basemaps (Streets, the default, plus Topographic and
+  Satellite), which work from a file. Maps downloaded with an earlier
+  version still show the blocked tiles; download them again. The map on
+  the results page itself was not affected.
+
 ## [0.5.4] — 2026-08-12
-
-Working through the feedback from the end-user testing round. These notes
-move under a version heading when the release is actually cut.
-
 ### Added
 
 - **Licensed and unlicensed wells are now shown.** Every well carries its
